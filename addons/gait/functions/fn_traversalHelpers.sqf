@@ -45,6 +45,29 @@ GAIT_fnc_isSuspendedContext = {
     false
 };
 
+// Only an expected standing locomotion blend may bridge the normal
+// transition rejection during the single custom sprint entry request.
+GAIT_fnc_isStandingLocomotionBlend = {
+    params [["_animation", "", [""]], ["_source", "", [""]], ["_target", "", [""]]];
+    private _parts = (toLower _animation) splitString "_";
+    _parts = _parts - ["gait"];
+    if ((count _parts) != 2) exitWith {false};
+    private _valid = true;
+    {
+        if (!((_x select [0, 8]) isEqualTo "amovperc") ||
+            {!((_x select [8, 4]) in ["mstp", "mwlk", "mrun", "mtac", "meva", "mspr"])} ||
+            {!((_x select [12, 8]) in ["sraswrfl", "slowwrfl", "sraswpst", "snonwnon"])} ||
+            {!((_x select [20]) in ["dnon", "df", "dfl", "dl", "dbl", "db", "dbr", "dr", "dfr"])}) exitWith {
+            _valid = false;
+        };
+    } forEach _parts;
+    if (!_valid) exitWith {false};
+    private _sourceParts = ((toLower _source) splitString "_") - ["gait"];
+    private _targetParts = ((toLower _target) splitString "_") - ["gait"];
+    if ((count _sourceParts) != 1 || {(count _targetParts) != 1}) exitWith {false};
+    _parts isEqualTo [_sourceParts select 0, _targetParts select 0]
+};
+
 GAIT_fnc_nativeMovementEligible = {
     params [
         ["_unit", player, [objNull]],
@@ -74,7 +97,16 @@ GAIT_fnc_nativeMovementEligible = {
     // rejecting every underscore. Full-body actions remain outside the list.
     private _animation = toLower (animationState _unit);
     private _transition = ["_amov", "_acin", "_ainv", "_acts", "_aadj", "_adth", "_awop", "_aswm", "_aovr", "_acrg"] findIf {(_animation find _x) >= 0};
-    if (_transition >= 0) exitWith {false};
+    // Animation speed scales with grade/load. A legitimate slow blend must
+    // not be canceled merely because a fixed entry timer expired. Exact
+    // source/target matching still excludes every unrelated transition.
+    private _expectedBlend = false;
+    if (_transition >= 0 && {(_unit getVariable ["GAIT_slopeAttemptLatched", false])} &&
+        {!(_unit getVariable ["GAIT_slopeExitPending", false])} &&
+        {(stance _unit) isEqualTo "STAND"}) then {
+        _expectedBlend = [_animation, _unit getVariable ["GAIT_slopeEntrySource", ""], _unit getVariable ["GAIT_slopeEntryTarget", ""]] call GAIT_fnc_isStandingLocomotionBlend;
+    };
+    if (_transition >= 0 && {!_expectedBlend}) exitWith {false};
     private _action = ["reload", "medic", "melee", "throw", "climb", "ladder", "putdown", "getin", "getout", "vault", "dive", "diving", "roll", "salute", "surrender", "gear"] findIf {(_animation find _x) >= 0};
     if (_action >= 0) exitWith {false};
     private _nativePrefix = (_animation select [0, 4]) isEqualTo "amov";

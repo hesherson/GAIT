@@ -212,7 +212,7 @@ GAIT_fnc_tripPlayer = {
     if !(alive player) exitWith {};
     if (player getVariable ["ACE_isUnconscious", false]) exitWith {};
 
-    call GAIT_fnc_releaseNativeMovement;
+    [] call GAIT_fnc_releaseNativeMovement;
     player setVariable ["GAIT_isTripping", true, false];
     missionNamespace setVariable ["GAIT_lastTripTime", time];
 
@@ -268,7 +268,7 @@ GAIT_fnc_tripPlayer = {
 
     while {true} do {
         if (!isNull player && {player != _lastPlayer}) then {
-            call GAIT_fnc_releaseNativeMovement;
+            [] call GAIT_fnc_releaseNativeMovement;
             _lastPlayer = player;
 
             if (missionNamespace getVariable ["GAIT_ss_resetOnRespawn", true]) then {
@@ -290,7 +290,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.7.0-rc2"];
+missionNamespace setVariable ["GAIT_versionString", "1.7.0-rc3"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -799,7 +799,7 @@ GAIT_fnc_setTunnelVisionFX = {
             _downhillTripSprintStartTime = -1;
             _downhillTripHighSpeedStartTime = -1;
             _lastTunnelStrength = 0;
-            call GAIT_fnc_releaseNativeMovement;
+            [] call GAIT_fnc_releaseNativeMovement;
         };
 
         // Refresh live Addon Options settings each tick.
@@ -1624,12 +1624,12 @@ GAIT_fnc_setTunnelVisionFX = {
                 } else {
                     _currentSpeed = _effectiveNormalSpeed;
                     _shiftReleaseTaperActiveUntil = -999;
-                    call GAIT_fnc_releaseNativeMovement;
+                    [] call GAIT_fnc_releaseNativeMovement;
                 };
                 if (_debugHudEnabled && {(time - _lastDebugHudTime) >= ((_debugHudInterval max 0.05) min 1)}) then {
                     _lastDebugHudTime = time;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.7.0-rc2<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13</t>",
+                        "<t align='left' size='0.82'>GAIT 1.7.0-rc3<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,
@@ -1644,18 +1644,18 @@ GAIT_fnc_setTunnelVisionFX = {
             } else {
                 // Fast Carry pickup/lift owns its animation.
                 _currentSpeed = 1;
-                call GAIT_fnc_releaseNativeMovement;
+                [] call GAIT_fnc_releaseNativeMovement;
             };
         } else {
             _slopeSmoothInitialized = false;
             _smoothedSlopeDegrees = 0;
             _shiftReleaseTaperActiveUntil = -999;
             _lastShiftReleaseTime = -999;
-            call GAIT_fnc_releaseNativeMovement;
+            [] call GAIT_fnc_releaseNativeMovement;
             _sprintReserve = _sprintReserveMax;
             _currentSpeed = _normalSpeed;
             if (alive player && {!(call GAIT_fnc_modeIsActive)}) then {
-                call GAIT_fnc_releaseNativeMovement;
+                [] call GAIT_fnc_releaseNativeMovement;
                 player setCustomAimCoef 1;
             };
             _visualFatigue = _freshFatigue;

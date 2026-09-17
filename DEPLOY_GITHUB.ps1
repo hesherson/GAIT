@@ -51,7 +51,7 @@ param(
     Push-Location $RepoPath
     try {
         Run-Git fetch origin
-        $Branch = 'dev/gait-1.7.0-rc2'
+        $Branch = 'dev/gait-1.7.0-rc3'
         $LocalBranch = @(Run-Git branch --list $Branch)
         if ($LocalBranch.Count -gt 0) {
             Run-Git switch $Branch
@@ -60,7 +60,7 @@ param(
             if ($RemoteBranch.Count -gt 0) {
                 Run-Git switch --track "origin/$Branch"
             } else {
-                Run-Git switch -c $Branch origin/dev/gait-1.7.0-rc1
+                Run-Git switch -c $Branch origin/dev/gait-1.7.0-rc2
             }
         }
 
@@ -90,7 +90,7 @@ param(
         Run-Git diff --cached --check
         $ChangedFiles = @(Run-Git diff --cached --name-only)
         if ($ChangedFiles.Count -gt 0) {
-            Run-Git commit -m 'Prepare GAIT RC2 for direct HEMTT builds'
+            Run-Git commit -m 'Fix GAIT sprint animations, blended transitions and cleanup argument leak'
         }
         Run-Git push -u origin $Branch
         Write-Host "Deployed $Branch. Build with: cd $RepoPath; hemtt build"

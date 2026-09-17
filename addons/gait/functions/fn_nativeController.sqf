@@ -1,9 +1,10 @@
 /*
-    GAIT 1.7.0-rc2: one owner for the movement speed coefficient.
+    GAIT 1.7.0-rc3: one owner for the movement speed coefficient.
     Arma handles direction and collision inside the dedicated sprint action family.
 */
-GAIT_fnc_releaseNativeMovement = {
-    if (!isNil "GAIT_fnc_releaseSlopeLocomotion") then {call GAIT_fnc_releaseSlopeLocomotion;};
+// Coefficient ownership can change during an ordinary animation blend.
+// Acquiring it must not issue a second body-animation release.
+GAIT_fnc_releaseSpeedCoefficient = {
     private _owner = missionNamespace getVariable ["GAIT_nativeOwner", objNull];
     private _written = missionNamespace getVariable ["GAIT_nativeLastWritten", -1];
     if (!isNull _owner && {local _owner} && {_written >= 0}) then {
@@ -18,6 +19,13 @@ GAIT_fnc_releaseNativeMovement = {
     missionNamespace setVariable ["GAIT_nativeLastWritten", -1];
     missionNamespace setVariable ["GAIT_nativeMovementActive", false];
     missionNamespace setVariable ["GAIT_vegDragFactor", 0];
+};
+
+GAIT_fnc_releaseNativeMovement = {
+    // Empty arguments prevent inheriting [unit, coefficient, carry] from the
+    // speed writer. The release helper expects an input array in slot two.
+    if (!isNil "GAIT_fnc_releaseSlopeLocomotion") then {[] call GAIT_fnc_releaseSlopeLocomotion;};
+    [] call GAIT_fnc_releaseSpeedCoefficient;
 };
 
 GAIT_fnc_clearACEAdvancedFatigueMovementLocks = {
@@ -49,11 +57,11 @@ GAIT_fnc_installNativeAceBridge = {
 GAIT_fnc_applyNativeMovement = {
     params [["_unit", player, [objNull]], ["_coefficient", 1, [0]], ["_allowCarry", false, [false]]];
     if !([_unit, _allowCarry] call GAIT_fnc_nativeMovementEligible) exitWith {
-        call GAIT_fnc_releaseNativeMovement;
+        [] call GAIT_fnc_releaseNativeMovement;
     };
     private _owner = missionNamespace getVariable ["GAIT_nativeOwner", objNull];
     if (_owner != _unit) then {
-        call GAIT_fnc_releaseNativeMovement;
+        [] call GAIT_fnc_releaseSpeedCoefficient;
         missionNamespace setVariable ["GAIT_nativeOwner", _unit];
         missionNamespace setVariable ["GAIT_nativePreviousCoef", getAnimSpeedCoef _unit];
     };

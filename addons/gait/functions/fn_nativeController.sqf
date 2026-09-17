@@ -1,8 +1,9 @@
 /*
-    GAIT 1.7.0-rc1: one owner for the movement speed coefficient.
-    Direction, collision response and locomotion transitions belong to Arma.
+    GAIT 1.7.0-rc2: one owner for the movement speed coefficient.
+    Arma handles direction and collision inside the dedicated sprint action family.
 */
 GAIT_fnc_releaseNativeMovement = {
+    if (!isNil "GAIT_fnc_releaseSlopeLocomotion") then {call GAIT_fnc_releaseSlopeLocomotion;};
     private _owner = missionNamespace getVariable ["GAIT_nativeOwner", objNull];
     private _written = missionNamespace getVariable ["GAIT_nativeLastWritten", -1];
     if (!isNull _owner && {local _owner} && {_written >= 0}) then {
@@ -16,7 +17,6 @@ GAIT_fnc_releaseNativeMovement = {
     missionNamespace setVariable ["GAIT_nativeOwner", objNull];
     missionNamespace setVariable ["GAIT_nativeLastWritten", -1];
     missionNamespace setVariable ["GAIT_nativeMovementActive", false];
-    missionNamespace setVariable ["GAIT_nativeSprintSlopeAllowed", false];
     missionNamespace setVariable ["GAIT_vegDragFactor", 0];
 };
 
@@ -27,20 +27,7 @@ GAIT_fnc_clearACEAdvancedFatigueMovementLocks = {
     if (isNil "ace_common_fnc_statusEffect_set") exitWith {};
     if !([_unit] call GAIT_fnc_nativeMovementEligible) exitWith {};
 
-    // Keep ACE's steep-terrain restrictions above the selected sprint grade.
-    // Use terrain steepness here, and directional grade for the speed penalty.
-    // A small exit band prevents repeated lock toggling at the threshold.
-    private _grade = 0;
-    if (((getPosATL _unit) select 2) < 0.6) then {
-        _grade = acos (((surfaceNormal (getPosWorld _unit)) select 2) max -1 min 1);
-    };
-    private _limit = (missionNamespace getVariable ["GAIT_ss_maxSprintSlopeDegrees", 38]) max 20 min 50;
-    private _wasAllowed = _unit getVariable ["GAIT_nativeGradeAllowed", false];
-    private _allowed = _grade <= (if (_wasAllowed) then {_limit} else {_limit - 2});
-    _unit setVariable ["GAIT_nativeGradeAllowed", _allowed];
-    missionNamespace setVariable ["GAIT_nativeSprintSlopeAllowed", _allowed];
-    if (!_allowed) exitWith {};
-
+    // No angle cutoff: GAIT scales pace continuously on traversable terrain.
     // Never call forceWalk false: ACE combines restrictions by source.
     [_unit, "blockSprint", "ace_advanced_fatigue", false] call ace_common_fnc_statusEffect_set;
     [_unit, "forceWalk", "ace_advanced_fatigue", false] call ace_common_fnc_statusEffect_set;
@@ -97,7 +84,7 @@ GAIT_fnc_applyNativeMovement = {
             ace_advanced_fatigue_setAnimExclusions = ace_advanced_fatigue_setAnimExclusions - ["GAIT"];
         };
     };
-    private _final = (_coefficient * (1 - _drag)) max 0.1 min 2;
+    private _final = (_coefficient * (1 - _drag)) max 0.000001;
     _unit setAnimSpeedCoef _final;
     missionNamespace setVariable ["GAIT_nativeLastWritten", _final];
     missionNamespace setVariable ["GAIT_nativeMovementActive", true];

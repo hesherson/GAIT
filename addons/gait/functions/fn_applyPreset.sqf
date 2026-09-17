@@ -41,6 +41,10 @@ private _set = {
 {
     _x call _set;
 } forEach [
+    ["GAIT_ss_slopeLocomotionEnabled", true],
+    ["GAIT_ss_minSprintWalkRatio", 1.20],
+    ["GAIT_ss_freshSprintWalkMargin", 0.20],
+    ["GAIT_ss_extraHeavyPenaltyPer50Lb", 0.18],
     ["GAIT_ss_normalSpeed", 0.86],
     ["GAIT_ss_sprintFullSpeed", 1.28],
     ["GAIT_ss_sprintExhaustedSpeed", 0.89],
@@ -82,7 +86,6 @@ private _set = {
     ["GAIT_ss_uphillStartDegrees", 5.0],
     ["GAIT_ss_uphillMaxDegrees", 35.0],
     ["GAIT_ss_uphillMaxPenalty", 0.40],
-    ["GAIT_ss_uphillMinSprintMultiplier", 0.60],
     ["GAIT_ss_vegetationDragEnabled", true],
     ["GAIT_ss_vegetationDragMax", 0.18],
     ["GAIT_ss_vegetationDragRadius", 2.50],
@@ -144,7 +147,6 @@ switch (_preset) do {
             ["GAIT_ss_tunnelMaxStrength", 1.10],
             ["GAIT_ss_runningAimCoef", 2.35],
             ["GAIT_ss_uphillMaxPenalty", 0.45],
-            ["GAIT_ss_uphillMinSprintMultiplier", 0.55],
             ["GAIT_ss_downhillMaxBoost", 0.04]
         ];
     };
@@ -168,7 +170,6 @@ switch (_preset) do {
             ["GAIT_ss_runningAimCoef", 1.25],
             ["GAIT_ss_swayRecoveryTime", 3.00],
             ["GAIT_ss_uphillMaxPenalty", 0.22],
-            ["GAIT_ss_uphillMinSprintMultiplier", 0.78],
             ["GAIT_ss_downhillMaxBoost", 0.12]
         ];
     };
@@ -198,7 +199,6 @@ switch (_preset) do {
             ["GAIT_ss_mediumBraceRelief", 0.50],
             ["GAIT_ss_moderateBraceRelief", 0.28],
             ["GAIT_ss_uphillMaxPenalty", 0.30],
-            ["GAIT_ss_uphillMinSprintMultiplier", 0.70],
             ["GAIT_ss_downhillMaxBoost", 0.08]
         ];
     };
@@ -222,7 +222,6 @@ switch (_preset) do {
             ["GAIT_ss_heavyBraceRelief", 0.00],
             ["GAIT_ss_runningAimCoef", 2.50],
             ["GAIT_ss_uphillMaxPenalty", 0.50],
-            ["GAIT_ss_uphillMinSprintMultiplier", 0.50],
             ["GAIT_ss_downhillMaxBoost", 0.03]
         ];
     };

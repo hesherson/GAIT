@@ -1,0 +1,13 @@
+name = "GAIT"
+prefix = "gait"
+mainprefix = "z"
+
+[version]
+major = 1
+minor = 7
+patch = 0
+build = 0
+git_hash = 0
+
+[files]
+include = ["README_TEST_BUILD.md", "README_HEMTT.md"]

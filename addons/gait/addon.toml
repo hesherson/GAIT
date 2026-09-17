@@ -1,0 +1,2 @@
+# Preserve GAIT's existing runtime virtual path.
+ignore_pboprefix = true

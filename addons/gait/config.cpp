@@ -1,16 +1,16 @@
-// GAIT 1.7.0-rc1: native movement test build
+// GAIT 1.7.0-rc2: slope sprint test build
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.7;
-        versionStr = "1.7.0-rc1";
+        versionStr = "1.7.0-rc2";
         versionAr[] = {1,7,0,0};
         author = "mavis";
         url = "";
         requiredVersion = 2.14;
-        requiredAddons[] = {"A3_Functions_F", "A3_Modules_F", "A3_Characters_F", "cba_main", "cba_xeh", "cba_settings", "ace_common", "ace_advanced_fatigue"};
+        requiredAddons[] = {"A3_Functions_F", "A3_Modules_F", "A3_Characters_F", "A3_Anims_F", "cba_main", "cba_xeh", "cba_settings", "ace_common", "ace_advanced_fatigue"};
         units[] = {"GAIT_ModuleResetEffects"};
         weapons[] = {};
     };
@@ -22,6 +22,8 @@ class CfgMovesFatigue
 {
     terrainSpeedCoef = 1;
 };
+
+#include "slope_actions.hpp"
 
 class CfgFunctions
 {

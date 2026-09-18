@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Protect GAIT's RC4 tuning while its locomotion foundation is rebuilt.
+"""Protect GAIT's retained RC4 tuning with explicit alpha2 user-authorized deltas.
 
 Run: python tests/feature_preservation.py [project-root] [--self-test]
 No Arma, third-party packages or adjacent old checkout is required.
@@ -745,6 +745,81 @@ def token_digest(values: list[str]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+# Keep the original byte digest above as provenance. The user authorized two
+# description updates (including one display label) and two added sliders in
+# alpha2; the rest of registration code must match the fixed RC4 token digest.
+SETTINGS_FILE = "addons/gait/functions/fn_registerSettings.sqf"
+SETTINGS_RC4_TOKEN_SHA256 = "f7bd1d615a86f458f89f1a13b4cda438ede05e6241dc5ea12bcdf3b53b929ee5"
+MAIN_FILE = "addons/gait/functions/fn_initSprintSystem.sqf"
+
+# Exact, reviewed source deltas are reversed ONLY for comparison to RC4.
+# A missing or altered authorized fragment fails. This is not a wildcard
+# exemption for these blocks and none of the historical hashes are changed.
+# New helpers also require their separate SQF behavior tests.
+AUTHORIZED_BLOCK_DELTAS = [
+    ("preset_and_reset_state", "reset new momentum state", """
+        _lastResetRequestHandled = _resetRequest;
+        _braceMomentumState = [false, -999, 0, 0];
+        _downhillMomentum = 0;
+        missionNamespace setVariable ["GAIT_braceActive", false];
+        missionNamespace setVariable ["GAIT_braceEndTime", -1];
+    """, "_lastResetRequestHandled = _resetRequest;"),
+    ("directional_grade_trips_and_walk_pace", "sustained load-aware downhill bonus", """
+        private _sustainedBonus = missionNamespace getVariable ["GAIT_ss_downhillSustainedExtraBoost", 0.12];
+        _slopeSpeedMultiplier = _slopeSpeedMultiplier * ([_slopeDegrees, _gearLbs, _downhillMomentum,
+            _downhillBoostStartDegrees, _downhillBoostMaxDegSafe, _downhillMaxBoost + _sustainedBonus]
+            call GAIT_fnc_downhillPaceMultiplier);
+    """, """
+        private _downhillDegForBoost = abs _slopeDegrees;
+        private _downhillBoost = linearConversion [_downhillBoostStartDegrees, _downhillBoostMaxDegSafe, _downhillDegForBoost, 0, _downhillMaxBoost, true];
+        _slopeSpeedMultiplier = _slopeSpeedMultiplier * (1 + (_downhillBoost max 0 min 0.35));
+    """),
+    ("step_off_brace_and_sprint_end", "physical stop and retained-momentum readiness", """
+        private _hasNoSprintMomentum = !_hasRetainedSprintMomentum && {
+            (_currentSpeed <= (_effectiveNormalSpeed + _braceNoMomentumThreshold)) ||
+            {_horizontalSpeedMS <= 0.25} || {_forwardReleasedLongEnough}
+        };
+    """, """
+        private _hasNoSprintMomentum =
+            (_currentSpeed <= (_effectiveNormalSpeed + _braceNoMomentumThreshold)) ||
+            {_forwardReleasedLongEnough};
+    """),
+    ("step_off_brace_and_sprint_end", "shared momentum veto for every brace trigger", """
+        private _canBrace = [_sprintStartBraceEnabled, _hasRetainedSprintMomentum,
+            _isCrouched, _braceArmedFromCrouch, _normalBraceReady, _zeroMomentumBraceReady, _slopeBraceReady]
+            call GAIT_fnc_shouldBrace;
+    """, """
+        private _canBrace = _sprintStartBraceEnabled &&
+            (_isCrouched || _braceArmedFromCrouch || _normalBraceReady || _zeroMomentumBraceReady || _slopeBraceReady);
+    """),
+]
+
+AUTHORIZED_SETTINGS_DELTAS = [
+    ("brace description", '\"Coefficient margin used to detect settled walking. Established moving sprint momentum overrides all brace triggers until a real stop or settled recovery. Default: 0.04.\"',
+     '\"If current speed is within this amount of normal speed, next sprint start is treated as zero momentum and braces. Default: 0.04.\"'),
+    ("downhill description and label", '\"Downhill base speed boost\", \"Base unloaded downhill bonus at full momentum, added to the sustained bonus below. Both scale down with kit weight and extreme descent angle. Default: 0.06.\"',
+     '\"Downhill max speed boost\", \"Maximum sprint speed increase when running downhill. 0.06 means up to 6% faster. Default: 0.06.\"'),
+    ("sustained bonus slider", '''
+        ["GAIT_ss_downhillSustainedExtraBoost", "Sustained downhill bonus", "Additional unloaded downhill bonus built by actual sprint travel. Combined bonus is capped at 35%, reduced by kit weight, and tapered above 35 degrees. Zero removes this extra bonus. Default: 0.12.", _categorySlope, 0.00, 0.25, 0.12, 2] call _addSlider;
+    ''', ""),
+    ("momentum build slider", '''
+        ["GAIT_ss_downhillMomentumBuildSeconds", "Downhill momentum build time", "Seconds of actual sprint travel to build 95% of downhill momentum. Moving sprint releases retain it; a real stop clears it. Default: 2.5 seconds.", _categorySlope, 0.50, 8.00, 2.50, 2] call _addSlider;
+    ''', ""),
+]
+
+
+def reverse_exact_delta(values: list[str], current: str, old: str,
+                        label: str, failures: list[str]) -> list[str]:
+    needle = tokenize(current)
+    matches = [i for i in range(len(values) - len(needle) + 1)
+               if values[i:i + len(needle)] == needle]
+    if len(matches) != 1:
+        failures.append(f"Authorized delta {label}: expected one exact current fragment, found {len(matches)}")
+        return values
+    start = matches[0]
+    return values[:start] + tokenize(old) + values[start + len(needle):]
+
+
 def verify(root: Path) -> tuple[list[str], dict[str, str]]:
     failures: list[str] = []
     locations: dict[str, str] = {}
@@ -752,11 +827,22 @@ def verify(root: Path) -> tuple[list[str], dict[str, str]]:
         path = root / relative
         if not path.is_file():
             failures.append(f"Missing unchanged tuning file: {relative}")
+        elif relative == SETTINGS_FILE:
+            settings = tokenize(path.read_text(encoding="utf-8-sig"))
+            for label, current, old in AUTHORIZED_SETTINGS_DELTAS:
+                settings = reverse_exact_delta(settings, current, old,
+                                               f"{SETTINGS_FILE}: {label}", failures)
+            if token_digest(settings) != SETTINGS_RC4_TOKEN_SHA256:
+                failures.append(f"Registration code differs beyond authorized descriptions and two sliders: {relative}")
         elif hashlib.sha256(path.read_bytes()).hexdigest() != expected:
             failures.append(f"Tuning file bytes differ from RC4: {relative}")
     sources = {}
     for path in sorted((root / "addons/gait/functions").glob("*.sqf")):
         sources[str(path.relative_to(root))] = tokenize(path.read_text(encoding="utf-8-sig"))
+    if MAIN_FILE in sources:
+        for feature, label, current, old in AUTHORIZED_BLOCK_DELTAS:
+            sources[MAIN_FILE] = reverse_exact_delta(sources[MAIN_FILE], current, old,
+                                                     f"{feature}: {label}", failures)
     for block in BLOCKS:
         matches = []
         width = block["token_count"]
@@ -793,6 +879,8 @@ def self_test(root: Path) -> None:
         ("shift_release_hold_and_taper", "(1 - _taperRaw) ^ _taperCurve", "(1 - _taperRaw)"),
         ("sprint_pace_gate", "_turboHeld && {_isForwardHeld}", "_turboHeld && {_isForwardHeld || {_isLateralHeld}}"),
         ("frame_rate_independent_ramp", "(_dt max 0 min 0.20) / 0.05", "(_dt max 0 min 0.20) / 0.10"),
+        ("step_off_brace_and_sprint_end", "private _canBrace = [_sprintStartBraceEnabled, _hasRetainedSprintMomentum,", "private _canBrace = [_sprintStartBraceEnabled, false,"),
+        ("directional_grade_trips_and_walk_pace", "_downhillMaxBoost + _sustainedBonus", "_downhillMaxBoost + 0.35"),
     ]
     with tempfile.TemporaryDirectory(prefix="gait-feature-preservation-") as directory:
         copy = Path(directory)
@@ -808,7 +896,7 @@ def self_test(root: Path) -> None:
             path.write_text(original, encoding="utf-8")
         settings = copy / "addons/gait/functions/fn_registerSettings.sqf"
         original_bytes = settings.read_bytes()
-        settings.write_bytes(original_bytes + b"\n// accidental registration change\n")
+        settings.write_bytes(original_bytes.replace(b"0.00, 0.50, 0.04, 2", b"0.00, 0.50, 0.05, 2", 1))
         failures, _ = verify(copy)
         assert any("fn_registerSettings.sqf" in failure for failure in failures)
         settings.write_bytes(original_bytes)
@@ -826,7 +914,7 @@ def self_test(root: Path) -> None:
         assert not verify(copy)[0], "Intact extraction should preserve the feature"
         extracted_path.write_text("/*\n" + extracted + "\n*/", encoding="utf-8")
         assert any(feature["name"] in f for f in verify(copy)[0]), "A comment cannot preserve executable code"
-    print("PASS mutation checks: changed brace dip, reserve gate, Shift taper, lateral sprint gate, ramp timing and settings are rejected; intact extraction is accepted")
+    print("PASS mutation checks: changed brace dip, reserve gate, Shift taper, sprint gate, ramp timing, momentum veto, downhill integration and setting default are rejected; intact extraction is accepted")
 
 
 def main() -> int:
@@ -840,7 +928,9 @@ def main() -> int:
         for failure in failures:
             print("FAIL " + failure)
         return 1
-    print(f"PASS {len(BYTE_FILES)} unchanged tuning files and {len(BLOCKS)} protected feature blocks")
+    changed_blocks = {delta[0] for delta in AUTHORIZED_BLOCK_DELTAS}
+    print(f"PASS {len(BYTE_FILES) - 1} byte-identical tuning files; original registrations preserved except two descriptions/one label and two new sliders")
+    print(f"PASS {len(BLOCKS) - len(changed_blocks)} intact RC4 feature blocks; {len(changed_blocks)} blocks with {len(AUTHORIZED_BLOCK_DELTAS)} exact authorized deltas; all historical hashes retained")
     for feature, relative in locations.items():
         print(f"  {feature}: {relative}")
     if args.self_test:

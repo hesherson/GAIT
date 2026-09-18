@@ -26,7 +26,7 @@ private _seq = 0;
     "rows: tick,frame,phase,input,animation,gesture,engine,pace,brace,features",
     "engine: ground,stance,sprintAllowed,forcedWalk,ACEblock,ACEwalk,life,unconscious",
     "pace: coefficient,horizontalMS,grade,walkCoef,sprintCoef,calibrated,walkTargetMS,sprintTargetMS,loadAbs",
-    "brace: active,configuredDuration,activeDuration,activeCoefficient,factor,plannedCoefficient",
+    "brace: active,configuredDuration,activeDuration,activeCoefficient,factor,plannedCoefficient,momentumProtected,downhillMomentum,animationStage,endTime",
     "features: GAITenabled,ACEAFenabled,movementEligible,reserveRatio,shiftCoast,exitIssued,exitFailed"]] call _emit;
 systemChat format ["GAIT foundation capture started for %1 seconds. Stop early with GAIT_foundationCaptureEnabled = false.", _duration];
 private _deadline = diag_tickTime + _duration;
@@ -51,7 +51,9 @@ waitUntil {
         private _brace = [missionNamespace getVariable ["GAIT_braceActive", false],
             missionNamespace getVariable ["GAIT_ss_sprintStartBraceDuration", -1],
             missionNamespace getVariable ["GAIT_activeBraceDuration", -1], missionNamespace getVariable ["GAIT_activeBraceSpeed", -1],
-            missionNamespace getVariable ["GAIT_slopeBraceFactor", 0], missionNamespace getVariable ["GAIT_plannedMovementCoefficient", -1]];
+            missionNamespace getVariable ["GAIT_slopeBraceFactor", 0], missionNamespace getVariable ["GAIT_plannedMovementCoefficient", -1],
+            missionNamespace getVariable ["GAIT_braceMomentumProtected", false], missionNamespace getVariable ["GAIT_downhillMomentum", 0],
+            _unit getVariable ["GAIT_slopeBraceStage", ""], missionNamespace getVariable ["GAIT_braceEndTime", -1]];
         private _features = [missionNamespace getVariable ["GAIT_ss_enabled", false], missionNamespace getVariable ["ace_advanced_fatigue_enabled", false], _eligible,
             missionNamespace getVariable ["GAIT_observedReserveRatio", -1], missionNamespace getVariable ["GAIT_shiftReleaseRunTaperActive", false],
             _unit getVariable ["GAIT_slopeExitIssued", false], _unit getVariable ["GAIT_slopeExitFailureReported", false]];

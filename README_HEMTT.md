@@ -1,14 +1,14 @@
-# GAIT foundation: build and deployment
+# GAIT 1.8.0-alpha2: build and deployment
 
-Save `GAIT_v1_8_0_ALPHA1_HEMTT.zip` to `M:\downloads`. Close Arma before rebuilding. HEMTT and Git must be on PATH.
+Save `GAIT_v1_8_0_ALPHA2_HEMTT.zip` to `M:\downloads`. Close Arma before rebuilding. HEMTT and Git must be on PATH. Arma 3 2.18 or later is required for the smooth animation handoff.
 
 Paste this complete block into PowerShell:
 
 ```powershell
 & {
     $ErrorActionPreference = 'Stop'
-    $Extract = 'M:\downloads\GAIT_Foundation_1_8_0'
-    Expand-Archive -LiteralPath 'M:\downloads\GAIT_v1_8_0_ALPHA1_HEMTT.zip' `
+    $Extract = 'M:\downloads\GAIT_Foundation_1_8_0_ALPHA2'
+    Expand-Archive -LiteralPath 'M:\downloads\GAIT_v1_8_0_ALPHA2_HEMTT.zip' `
         -DestinationPath $Extract -Force
     Set-Location 'M:\downloads'
     powershell.exe -NoProfile -ExecutionPolicy Bypass `
@@ -38,9 +38,9 @@ hemtt build
 | Edit gameplay source | `F:\GAIT\addons\gait` |
 | Graph generator | `F:\GAIT\tools\generate_foundation_actions.py` |
 
-The PBO's virtual prefix remains `gait`, preserving asset and function paths. The source ZIP contains existing PAA/OGG assets, tests and HEMTT configuration; generated build output is excluded. HEMTT compiles ten addon SQF files and the addon config. Python is unnecessary for a normal build because the generated graph is already included.
+The PBO's virtual prefix remains `gait`, preserving asset and function paths. The source ZIP contains existing PAA/OGG assets, tests and HEMTT configuration; generated build output is excluded. HEMTT compiles twelve addon SQF files and the addon config. Python is unnecessary for a normal build because the generated graph is already included.
 
-Load CBA_A3, ACE3 and the new local mod. Unload older GAIT copies and start a fresh mission with GAIT and ACE AF enabled. The runtime/HUD version is **1.8.0-alpha1**. Follow `README_TEST_BUILD.md` for one short gameplay capture that includes the original step-off behavior.
+Load CBA_A3, ACE3 and the new local mod. Unload older GAIT copies and start a fresh mission with GAIT and ACE AF enabled. The runtime/HUD version is **1.8.0-alpha2**. Follow `README_TEST_BUILD.md` for the focused brace, moving re-tap and downhill comparison.
 
 If HEMTT is missing, install it using the [official instructions](https://hemtt.dev/installation/index.html), then open a new PowerShell window. This package was built with HEMTT 1.21.0. The existing PAA/OGG assets require no raw model/texture binarization.
 

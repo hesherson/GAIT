@@ -109,7 +109,7 @@ param(
         Run-Git diff --cached --check
         $ChangedFiles = @(Run-Git diff --cached --name-only)
         if ($ChangedFiles.Count -gt 0) {
-            Run-Git commit -m 'Rebuild GAIT locomotion foundation while preserving tuned movement features'
+            Run-Git commit -m 'Smooth GAIT sprint transitions and preserve moving momentum through brace gates'
         }
         if (-not $NoPush) { Run-Git push -u origin $Branch }
         Write-Host "Built $Branch. Load local mod: $RepoPath\.hemttout\build"

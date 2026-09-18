@@ -200,6 +200,8 @@ GAIT_fnc_animLooksLikeRaisedCombat = {
 call compile preprocessFileLineNumbers "\gait\functions\fn_traversalHelpers.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_slopePaceModel.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_locomotionPace.sqf";
+call compile preprocessFileLineNumbers "\gait\functions\fn_braceMomentum.sqf";
+call compile preprocessFileLineNumbers "\gait\functions\fn_downhillPace.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_slopeLocomotion.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_nativeController.sqf";
 [] call GAIT_fnc_installLocomotionController;
@@ -292,7 +294,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha1"];
+missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha2"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -761,6 +763,8 @@ GAIT_fnc_setTunnelVisionFX = {
     private _downhillTripSprintStartTime = -1;
     private _downhillTripHighSpeedStartTime = -1;
     private _lastResetRequestHandled = -1;
+    private _braceMomentumState = [false, -999, 0, 0];
+    private _downhillMomentum = 0;
 
     while {true} do {
         private _now = time;
@@ -781,6 +785,10 @@ GAIT_fnc_setTunnelVisionFX = {
         private _resetRequest = missionNamespace getVariable ["GAIT_resetRequested", -1];
         if (_resetRequest > _lastResetRequestHandled) then {
             _lastResetRequestHandled = _resetRequest;
+            _braceMomentumState = [false, -999, 0, 0];
+            _downhillMomentum = 0;
+            missionNamespace setVariable ["GAIT_braceActive", false];
+            missionNamespace setVariable ["GAIT_braceEndTime", -1];
             _slopeSmoothInitialized = false;
             _smoothedSlopeDegrees = 0;
             _shiftReleaseTaperActiveUntil = -999;
@@ -1081,8 +1089,8 @@ GAIT_fnc_setTunnelVisionFX = {
                 // =====================================================
                 // TERRAIN / SLOPE MODIFIER
                 // Directional grade scales pace continuously; there is no maximum sprint angle.
-                // Downhill gives a small speed bonus, with optional trip risk
-                // on steep descents.
+                // Downhill bonus grows with actual sustained travel, scales
+                // down with kit weight and tapers on extreme descents.
                 // =====================================================
                 private _slopeDegrees = 0;
                 private _slopeSpeedMultiplier = 1;
@@ -1125,9 +1133,10 @@ GAIT_fnc_setTunnelVisionFX = {
                         };
 
                         if (_downhillBoostEnabled && {_slopeDegrees < -_downhillBoostStartDegrees}) then {
-                            private _downhillDegForBoost = abs _slopeDegrees;
-                            private _downhillBoost = linearConversion [_downhillBoostStartDegrees, _downhillBoostMaxDegSafe, _downhillDegForBoost, 0, _downhillMaxBoost, true];
-                            _slopeSpeedMultiplier = _slopeSpeedMultiplier * (1 + (_downhillBoost max 0 min 0.35));
+                            private _sustainedBonus = missionNamespace getVariable ["GAIT_ss_downhillSustainedExtraBoost", 0.12];
+                            _slopeSpeedMultiplier = _slopeSpeedMultiplier * ([_slopeDegrees, _gearLbs, _downhillMomentum,
+                                _downhillBoostStartDegrees, _downhillBoostMaxDegSafe, _downhillMaxBoost + _sustainedBonus]
+                                call GAIT_fnc_downhillPaceMultiplier);
                         };
 
                         private _downhillDegForTrip = abs _slopeDegrees;
@@ -1224,6 +1233,35 @@ GAIT_fnc_setTunnelVisionFX = {
                 missionNamespace setVariable ["GAIT_hillWalkSlowdownMultiplier", _hillWalkSlowdownMultiplier];
                 missionNamespace setVariable ["GAIT_hillWalkSlowdownSeverity", _hillWalkSlowdownSeverity];
 
+                // Sample established motion BEFORE processing a new sprint
+                // press. Holding Turbo against a wall cannot establish it.
+                // A transient animation blend does not clear physical history.
+                private _momentumContextOk = _gaitMovementEnabled && {!_isAceCarrying} && {!_isAceDragging} &&
+                    {!_externalSprintLock} && {!_externalWalkLock} && {[player] call GAIT_fnc_fatigueMovementContextEligible};
+                private _continuingSprint = _isSprinting && {_wasSprinting} && {_sprintBraceEndTime <= time};
+                private _motion = [_braceMomentumState, _continuingSprint, _momentumContextOk,
+                    _horizontalSpeedMS, _currentSpeed, _effectiveNormalSpeed * _hillWalkSlowdownMultiplier,
+                    time, _dt, _braceRecentSprintCooldown, _braceRequiredWalkTime, _braceNoMomentumThreshold]
+                    call GAIT_fnc_stepBraceMomentum;
+                _braceMomentumState = _motion select 0;
+                private _hasRetainedSprintMomentum = _motion select 1;
+                missionNamespace setVariable ["GAIT_braceMomentumProtected", _hasRetainedSprintMomentum];
+
+                if (!_momentumContextOk || {(_braceMomentumState select 3) >= 0.15}) then {
+                    _downhillMomentum = 0;
+                } else {
+                    private _momentumTarget = 0;
+                    if (_continuingSprint && {_horizontalSpeedMS > 0.25}) then {
+                        _momentumTarget = 1;
+                    } else {
+                        if (_hasRetainedSprintMomentum) then {_momentumTarget = _downhillMomentum;};
+                    };
+                    _downhillMomentum = [_downhillMomentum, _momentumTarget, _dt,
+                        missionNamespace getVariable ["GAIT_ss_downhillMomentumBuildSeconds", 2.5], 1.5]
+                        call GAIT_fnc_stepDownhillMomentum;
+                };
+                missionNamespace setVariable ["GAIT_downhillMomentum", _downhillMomentum];
+
                 // Brace readiness:
                 // Standing still or slow deliberate movement for long enough arms the next brace.
                 // Active crouch also arms the brace, but this checks real stance only, not the crouch key.
@@ -1290,9 +1328,10 @@ GAIT_fnc_setTunnelVisionFX = {
                     // if the player has no built-up sprint momentum, force the brace.
                     // This catches walk-forward -> Shift starts even when the walk timer/cooldown
                     // misses the transition, while still preserving momentum after quick Shift taps.
-                    private _hasNoSprintMomentum =
+                    private _hasNoSprintMomentum = !_hasRetainedSprintMomentum && {
                         (_currentSpeed <= (_effectiveNormalSpeed + _braceNoMomentumThreshold)) ||
-                        {_forwardReleasedLongEnough};
+                        {_horizontalSpeedMS <= 0.25} || {_forwardReleasedLongEnough}
+                    };
 
                     private _zeroMomentumBraceReady =
                         _hasNoSprintMomentum &&
@@ -1312,9 +1351,9 @@ GAIT_fnc_setTunnelVisionFX = {
                     };
                     private _slopeBraceReady = _slopeStopBraceEnabled && {_slopeBraceFactor > 0} && {_recentSlopeStop || {_normalBraceReady} || {_zeroMomentumBraceReady}};
 
-                    private _canBrace =
-                        _sprintStartBraceEnabled &&
-                        (_isCrouched || _braceArmedFromCrouch || _normalBraceReady || _zeroMomentumBraceReady || _slopeBraceReady);
+                    private _canBrace = [_sprintStartBraceEnabled, _hasRetainedSprintMomentum,
+                        _isCrouched, _braceArmedFromCrouch, _normalBraceReady, _zeroMomentumBraceReady, _slopeBraceReady]
+                        call GAIT_fnc_shouldBrace;
 
                     private _braceDurationNow = _sprintStartBraceDuration + (((_slopeStopBraceExtraDuration max 0) min 2.0) * _slopeBraceFactor);
                     private _braceDipNow = ((_slopeStopBraceExtraDip max 0) min 0.90) * _slopeBraceFactor;
@@ -1580,7 +1619,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 missionNamespace setVariable ["GAIT_paceCalibrated", false];
                 missionNamespace setVariable ["GAIT_walkTargetMS", -1];
                 missionNamespace setVariable ["GAIT_sprintTargetMS", -1];
-                if (_isSprinting && {_gaitStanceOk} && {!_isAceCarrying} && {_slopeHandlingEnabled} && {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]}) then {
+                if (_isSprinting && {_sprintBraceEndTime <= time} && {_gaitStanceOk} && {!_isAceCarrying} && {_slopeHandlingEnabled} && {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]}) then {
                     private _family = [player] call GAIT_fnc_slopeWeaponFamily;
                     private _direction = [_movementInput select 0, _movementInput select 1] call GAIT_fnc_slopeDirection;
                     private _resolved = [_normalSpeed, _flatSprintPace, _hillWalkSlowdownMultiplier, _slopeSpeedMultiplier, _weightSpeedMult, _paceFloorRatio,
@@ -1644,7 +1683,9 @@ GAIT_fnc_setTunnelVisionFX = {
                     [player, _coef, _isAceCarrying] call GAIT_fnc_applyNativeMovement;
 
                 } else {
-                    _currentSpeed = _effectiveNormalSpeed;
+                    // Keep internal momentum through a short W release while
+                    // the body is still moving. No velocity is added or forced.
+                    if (!_hasRetainedSprintMomentum) then {_currentSpeed = _effectiveNormalSpeed;};
                     _shiftReleaseTaperActiveUntil = -999;
                     if (_gaitMovementEnabled && {_movementEligible} && {_turboHeld} && {_gaitStanceOk} && {!_isAceCarrying}) then {
                         // Keep the custom idle while Turbo remains held. The
@@ -1657,6 +1698,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 // Read-only acceptance telemetry; these values never feed back
                 // into the preserved brace, reserve or momentum calculation.
                 missionNamespace setVariable ["GAIT_braceActive", _isSprinting && {_sprintBraceEndTime > time}];
+                missionNamespace setVariable ["GAIT_braceEndTime", _sprintBraceEndTime];
                 missionNamespace setVariable ["GAIT_plannedMovementCoefficient", _currentSpeed];
                 missionNamespace setVariable ["GAIT_observedReserveRatio", _reserveRatio];
                 // Movement-family ownership is independent of forward sprint
@@ -1667,7 +1709,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 if (_debugHudEnabled && {(time - _lastDebugHudTime) >= ((_debugHudInterval max 0.05) min 1)}) then {
                     _lastDebugHudTime = time;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha1<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13<br/>Foundation: %14 | Measured pace profile: %15</t>",
+                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha2<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13<br/>Foundation: %14 | Measured pace profile: %15</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,
@@ -1683,10 +1725,18 @@ GAIT_fnc_setTunnelVisionFX = {
                 };
             } else {
                 // Fast Carry pickup/lift owns its animation.
+                _braceMomentumState = [false, -999, 0, 0];
+                _downhillMomentum = 0;
+                missionNamespace setVariable ["GAIT_braceActive", false];
+                missionNamespace setVariable ["GAIT_braceEndTime", -1];
                 _currentSpeed = 1;
                 [] call GAIT_fnc_releaseNativeMovement;
             };
         } else {
+            _braceMomentumState = [false, -999, 0, 0];
+            _downhillMomentum = 0;
+            missionNamespace setVariable ["GAIT_braceActive", false];
+            missionNamespace setVariable ["GAIT_braceEndTime", -1];
             _slopeSmoothInitialized = false;
             _smoothedSlopeDegrees = 0;
             _shiftReleaseTaperActiveUntil = -999;

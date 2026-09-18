@@ -49,61 +49,73 @@ class FoundationGraph(unittest.TestCase):
         cls.actions = {name: (base, body) for name, base, body in blocks if name.startswith("GAIT_Slope")}
 
     def test_real_native_clip_parents_and_controller_markers(self):
-        self.assertEqual(len(self.states), 36)
-        counts = {"idle": 0, "sprint": 0, "run": 0}
+        self.assertEqual(len(self.states), 72)
+        counts = {"idle": 0, "sprint": 0, "run": 0, "brace": 0}
         for name, (parent, body) in self.states.items():
             with self.subTest(state=name):
                 p = properties(body)
-                match = re.fullmatch(r"AmovPerc(Mstp|Mrun|Meva)(\w{8})(Dnon|Df|Dfl|Dl|Dbl|Db|Dbr|Dr|Dfr)_GAIT", name)
+                match = re.fullmatch(r"AmovPerc(Mstp|Mrun|Meva|Mwlk)(\w{8})(Dnon|Df|Dfl|Dl|Dbl|Db|Dbr|Dr|Dfr)(Brace)?_GAIT", name)
                 self.assertIsNotNone(match)
-                pace, family, direction = match.groups()
+                pace, family, direction, idle_brace = match.groups()
+                brace = pace == "Mwlk" or bool(idle_brace)
                 self.assertIn(family, FAMILIES)
-                self.assertEqual(parent, name.removesuffix("_GAIT"))
+                self.assertEqual(parent, name.removesuffix("_GAIT").removesuffix("Brace"))
                 self.assertEqual(p["GAIT_nativeState"], parent)
                 self.assertEqual(p["GAIT_slopeFamily"], family)
-                self.assertEqual(p["actions"], FAMILIES[family][0])
+                expected_actions = FAMILIES[family][0]
+                if brace:
+                    expected_actions = expected_actions.replace("Actions", "BraceActions")
+                self.assertEqual(p["actions"], expected_actions)
                 self.assertRegex(body, r"\bGAIT_slopeState\s*=\s*1;")
                 self.assertRegex(body, r"\blooped\s*=\s*1;")
                 self.assertEqual(p["equivalentTo"], "")
-                role = "idle" if direction == "Dnon" else "move"
+                role = "brace" if brace else "idle" if direction == "Dnon" else "move"
                 self.assertEqual(p["GAIT_locomotionRole"], role)
-                wanted_pace = "Mstp" if role == "idle" else "Meva" if direction in FORWARD else "Mrun"
+                wanted_pace = "Mstp" if direction == "Dnon" else "Mwlk" if brace else "Meva" if direction in FORWARD else "Mrun"
                 self.assertEqual(pace, wanted_pace)
-                counts[{"Mstp": "idle", "Meva": "sprint", "Mrun": "run"}[pace]] += 1
+                counts["brace" if brace else {"Mstp": "idle", "Meva": "sprint", "Mrun": "run"}[pace]] += 1
                 # Root motion, clip speed, brace timing and pose properties
                 # remain inherited; this graph must not retune those values.
                 self.assertNotRegex(body, r"\b(?:file|speed|duty|stamina|disableWeapons|headBobStrength)\s*=")
-        self.assertEqual(counts, {"idle": 4, "sprint": 12, "run": 20})
+        self.assertEqual(counts, {"idle": 4, "sprint": 12, "run": 20, "brace": 36})
 
     def test_default_stop_turn_and_every_direction_remain_in_family(self):
-        self.assertEqual(len(self.actions), 4)
+        self.assertEqual(len(self.actions), 8)
         for family, (actions, native_actions) in FAMILIES.items():
-            parent, body = self.actions[actions]
-            p = properties(body)
-            self.assertEqual(parent, native_actions)
-            idle = f"AmovPercMstp{family}Dnon_GAIT"
-            for selector in ("Default", "Stop", "StopRelaxed", "TurnL", "TurnR", "TurnLRelaxed", "TurnRRelaxed"):
-                self.assertEqual(p[selector], idle)
-            for pace in ("Walk", "PlayerWalk", "Slow", "PlayerSlow", "Fast", "PlayerFast", "Tact", "PlayerTact"):
-                for selector, direction in SELECTOR_DIRECTIONS.items():
-                    target = p[pace + selector]
-                    expected_pace = "Meva" if direction in FORWARD else "Mrun"
-                    self.assertEqual(target, f"AmovPerc{expected_pace}{family}{direction}_GAIT")
-                    self.assertIn(target, self.states)
-            # The opt-in action patch does not override medical, stance,
-            # weapon, limping, falling, ladder, or vehicle actions.
-            self.assertEqual(len(p), 71)
+            for brace in (False, True):
+                name = actions.replace("Actions", "BraceActions") if brace else actions
+                parent, body = self.actions[name]
+                p = properties(body)
+                self.assertEqual(parent, native_actions)
+                suffix = "Brace" if brace else ""
+                idle = f"AmovPercMstp{family}Dnon{suffix}_GAIT"
+                for selector in ("Default", "Stop", "StopRelaxed", "TurnL", "TurnR", "TurnLRelaxed", "TurnRRelaxed"):
+                    self.assertEqual(p[selector], idle)
+                for pace in ("Walk", "PlayerWalk", "Slow", "PlayerSlow", "Fast", "PlayerFast", "Tact", "PlayerTact"):
+                    for selector, direction in SELECTOR_DIRECTIONS.items():
+                        target = p[pace + selector]
+                        expected_pace = "Mwlk" if brace else "Meva" if direction in FORWARD else "Mrun"
+                        self.assertEqual(target, f"AmovPerc{expected_pace}{family}{direction}_GAIT")
+                        self.assertIn(target, self.states)
+                # Medical, stance, weapon and vehicle selectors remain inherited.
+                self.assertEqual(len(p), 71)
 
     def test_idle_recovery_and_direction_reversals_have_direct_edges(self):
         for family in FAMILIES:
             members = {name for name, (_, body) in self.states.items() if properties(body)["GAIT_slopeFamily"] == family}
-            self.assertEqual(len(members), 9)
+            self.assertEqual(len(members), 18)
+            brace_members = {name for name in members if properties(self.states[name][1])["GAIT_locomotionRole"] == "brace"}
+            sprint_members = members - brace_members
             for source in members:
                 pairs = edges(self.states[source][1], "InterpolateTo")
                 names = [name for name, _ in pairs]
                 self.assertEqual(len(names), len(set(names)))
                 internal = {name for name in names if name.endswith("_GAIT")}
-                self.assertEqual(internal, members - {source})
+                # Brace can promote to any current direction, but active sprint
+                # has no route back into brace. Key/direction changes cannot
+                # reapply the low-speed brace once momentum is established.
+                expected = members - {source} if source in brace_members else sprint_members - {source}
+                self.assertEqual(internal, expected)
                 for target, weight in pairs:
                     self.assertGreater(weight, 0)
                     self.assertLessEqual(weight, 0.025)

@@ -1,15 +1,15 @@
-// GAIT 1.8.0-alpha1: slope sprint test build
+// GAIT 1.8.0-alpha2: slope sprint test build
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha1";
-        versionAr[] = {1,8,0,1};
+        versionStr = "1.8.0-alpha2";
+        versionAr[] = {1,8,0,2};
         author = "mavis";
         url = "";
-        requiredVersion = 2.14;
+        requiredVersion = 2.18;
         requiredAddons[] = {"A3_Functions_F", "A3_Modules_F", "A3_Characters_F", "A3_Anims_F", "cba_main", "cba_xeh", "cba_settings", "ace_common", "ace_advanced_fatigue"};
         units[] = {"GAIT_ModuleResetEffects"};
         weapons[] = {};

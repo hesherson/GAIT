@@ -1,30 +1,41 @@
-GAIT 1.8.0-alpha1 — foundation validation
+GAIT 1.8.0-alpha2 validation
 
-Preservation: PASS, three byte-identical tuning files (CBA registration,
-presets and the original slope pace model), 25 protected executable feature
-blocks. Mutation checks reject altered brace, reserve gate, Shift taper,
-sideways sprint classification, acceleration timing and settings.
+HEMTT 1.21.0: PASS; config 1.8.0.2, 12 SQF files, one PBO.
+Requires Arma 3 2.18 for array switchMove and getUnitMovesInfo.
+Build warnings are style suggestions; bundled wiki fallback was used.
 
-Graph: PASS, 36 native-derived custom states, four nine-state action families,
-284 internal action selectors, native compatibility/exit routes, generated
-file consistency. Four config-contract test groups.
+Preservation: PASS including mutation checks. All 25 historical reference
+hashes retained: 22 unchanged feature blocks and three blocks with four exact
+reviewed exceptions for the requested momentum/downhill changes. Two original
+tuning files are byte-identical; all prior CBA setting defaults are retained.
+Brace duration/dip/snap/kit relief, ACE reserve gates, Shift taper, sway,
+hearing, trip/landing behavior and vegetation tuning remain protected.
 
-SQF-VM actual-function regression suites: PASS
-- State machine: 27 cases, held W/A/D/idle sequence, single entry/release,
-  failed/late entry and medical handoff, ten blend-name cases
-- Pace adapter: 39 exact legacy fallback cases, 60 physical-unit roundtrips,
-  steady physical floor, partial profiles and invalid-profile rejection
-- ACE bridge: ordered registration, reset idempotence, nested dispatch,
-  medical owners, mode/AF/stable-context gates, animation-independent ownership
-- Original input/ramp, direction, sprint-state selection and five inherited
-  cleanup-argument contexts plus twelve safe/unsafe blend cases
+Graph: PASS; 72 native-derived states and eight action maps, preserving the
+original 36 sprint/run/idle states and adding 36 short walk/idle brace states.
+Four config-contract groups and generator consistency pass.
 
-HEMTT 1.21.0: config and ten addon SQF files compile into one PBO.
-PBO prefix and embedded script bytes are verified against packaged source.
-Existing style suggestions remain. Arma 3 Tools is absent; no raw assets
-require Binarize in this addon. HEMTT uses bundled wiki data in this environment.
-Foundation recorder and calibration collector syntax are checked separately.
+Ten SQF-VM actual-function regression suites: PASS
+- brace_momentum: physical history, uphill low coefficient, downhill high
+  actual speed with low coefficient, all-trigger veto, single zero-speed
+  frame, real stop/rearm, settled walking, first press and wall/unsafe context
+- downhill_pace: 797 checks including angle/load order, bounded steep descent,
+  existing pace floor, time-step consistency, stall cap and moving recovery
+- locomotion_handoff: aim/phase arguments, 12 lifecycle cases, one brace and
+  promotion, active-family stop/restart, 36 brace selections
+- locomotion_state_machine: held W/A/D/idle, entry/release, escape and handoff
+- release_and_blend: inherited argument safety and allowed/unsafe blends
+- input_and_ramp: immediate directions and time-based coefficient ramp
+- slope_direction: 16 selections and reversal/release
+- slope_state_selection: 12 sprint and 20 side/rear run states
+- locomotion_pace: fallback/physical-unit interface and invalid calibration
+- ace_status_bridge: initialization order, medical masks and physiology owner
 
-Not an Arma runtime simulation. Camera continuity, graph persistence, actual
-terrain speeds, weapon handoffs, multiplayer, and Windows deployment still
-require acceptance in the target environment. No measured speed profiles ship.
+Recorder syntax is checked separately. Built PBO prefix and all 12 embedded
+scripts are compared with source during packaging; archive hashes are checked.
+
+SQF-VM uses a dummy registry entry for getUnitMovesInfo solely to parse the
+new command. It does not execute the live animation helper or simulate Arma
+physics. Tests do not establish camera smoothness, visible brace duration,
+actual terrain speed, animation-mod compatibility or multiplayer behavior.
+Windows installer execution and in-game acceptance remain target checks.

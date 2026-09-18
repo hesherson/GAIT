@@ -106,7 +106,8 @@ GAIT_fnc_nativeMovementEligible = {
         {(stance _unit) isEqualTo "STAND"}) then {
         _expectedBlend = [_animation, _unit getVariable ["GAIT_slopeEntrySource", ""], _unit getVariable ["GAIT_slopeEntryTarget", ""]] call GAIT_fnc_isStandingLocomotionBlend;
     };
-    if (_transition >= 0 && {!_expectedBlend}) exitWith {false};
+    private _familyBlend = _transition >= 0 && {!isNil "GAIT_fnc_isSlopeLocomotionBlend"} && {[_animation] call GAIT_fnc_isSlopeLocomotionBlend};
+    if (_transition >= 0 && {!_expectedBlend} && {!_familyBlend}) exitWith {false};
     private _action = ["reload", "medic", "melee", "throw", "climb", "ladder", "putdown", "getin", "getout", "vault", "dive", "diving", "roll", "salute", "surrender", "gear"] findIf {(_animation find _x) >= 0};
     if (_action >= 0) exitWith {false};
     private _nativePrefix = (_animation select [0, 4]) isEqualTo "amov";

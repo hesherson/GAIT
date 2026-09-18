@@ -1,0 +1,24 @@
+GAIT 1.7.0-rc4 — validation record, 2026-09-17
+
+HEMTT 1.21.0 build: PASS; version 1.7.0.4; one addon config,
+nine addon SQF files, one PBO. Existing style diagnostics remain.
+Arma 3 Tools absent; no raw assets require Binarize for this addon.
+Wiki update unavailable in this environment; HEMTT used its bundled data.
+
+ACE status bridge regression: PASS in SQF-VM using the real installer and
+clear helper with a model of ordered CBA dispatch / ACE source bitmasks.
+Covers delayed Common initialization, reset/reinstall idempotence,
+unchanged ACE effects function, recursive zero-mask termination,
+synchronous final mask, medical/dragging owners and mode/context gates.
+The model does not emulate Arma native animation transitions or compileFinal.
+
+Diagnostic scripts: SQF-VM parse checks; focused entry trial also checked
+by HEMTT in an isolated addon fixture. They were not executed in Arma here.
+
+Packaging checks: original RC3 action graph, locomotion and pace functions
+remain byte-identical; PBO virtual prefix is gait; embedded addon scripts
+match source; ZIP integrity and per-file SHA-256 manifest checked.
+
+Not verified: animation graph persistence, camera smoothness, steep-slope
+collision, actual sprint-versus-walk speeds, multiplayer or Windows deployment.
+These require the described in-game test and the user's Windows environment.

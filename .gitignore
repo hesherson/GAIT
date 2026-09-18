@@ -5,3 +5,6 @@
 /hemtt
 *.hemttprivatekey
 *.biprivatekey
+
+__pycache__/
+*.pyc

@@ -199,8 +199,10 @@ GAIT_fnc_animLooksLikeRaisedCombat = {
 // Traversal helpers are definitions only, loaded before any client loops start.
 call compile preprocessFileLineNumbers "\gait\functions\fn_traversalHelpers.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_slopePaceModel.sqf";
+call compile preprocessFileLineNumbers "\gait\functions\fn_locomotionPace.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_slopeLocomotion.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_nativeController.sqf";
+[] call GAIT_fnc_installLocomotionController;
 
 GAIT_fnc_tripPlayer = {
     params [
@@ -290,7 +292,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.7.0-rc3"];
+missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha1"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -1572,6 +1574,26 @@ GAIT_fnc_setTunnelVisionFX = {
                     } else {_carryWalkSpeed * _hillWalkSlowdownMultiplier}) * _weightSpeedMult;
                 };
 
+                // Optional measured-clip interface. No unverified speed
+                // profiles ship; absent calibration is exactly the legacy pair.
+                // Steady targets are resolved BEFORE the unchanged brace/ramp.
+                missionNamespace setVariable ["GAIT_paceCalibrated", false];
+                missionNamespace setVariable ["GAIT_walkTargetMS", -1];
+                missionNamespace setVariable ["GAIT_sprintTargetMS", -1];
+                if (_isSprinting && {_gaitStanceOk} && {!_isAceCarrying} && {_slopeHandlingEnabled} && {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]}) then {
+                    private _family = [player] call GAIT_fnc_slopeWeaponFamily;
+                    private _direction = [_movementInput select 0, _movementInput select 1] call GAIT_fnc_slopeDirection;
+                    private _resolved = [_normalSpeed, _flatSprintPace, _hillWalkSlowdownMultiplier, _slopeSpeedMultiplier, _weightSpeedMult, _paceFloorRatio,
+                        missionNamespace getVariable ["GAIT_locomotionPaceProfiles", []], _family, _direction, "sprint"] call GAIT_fnc_locomotionPaceTargets;
+                    _pacePair = _resolved select [0, 2];
+                    _targetSpeed = _pacePair select 1;
+                    missionNamespace setVariable ["GAIT_walkPaceTarget", _pacePair select 0];
+                    missionNamespace setVariable ["GAIT_sprintPaceTarget", _pacePair select 1];
+                    missionNamespace setVariable ["GAIT_walkTargetMS", _resolved select 2];
+                    missionNamespace setVariable ["GAIT_sprintTargetMS", _resolved select 3];
+                    missionNamespace setVariable ["GAIT_paceCalibrated", _resolved select 4];
+                };
+
                 // v1.1.49: releasing Shift while still holding W should not snap from
                 // run speed to walk speed, especially at max exhaustion. Hold the last
                 // real run speed for a short sustain window, then taper toward W-only speed.
@@ -1620,16 +1642,32 @@ GAIT_fnc_setTunnelVisionFX = {
                         _coef = _coef min _effectiveNormalSpeed;
                     };
                     [player, _coef, _isAceCarrying] call GAIT_fnc_applyNativeMovement;
-                    [player, _isSprinting && {_gaitStanceOk} && {!_isAceCarrying}, _movementInput, _externalSprintLock || {_externalWalkLock}] call GAIT_fnc_updateSlopeLocomotion;
+
                 } else {
                     _currentSpeed = _effectiveNormalSpeed;
                     _shiftReleaseTaperActiveUntil = -999;
-                    [] call GAIT_fnc_releaseNativeMovement;
+                    if (_gaitMovementEnabled && {_movementEligible} && {_turboHeld} && {_gaitStanceOk} && {!_isAceCarrying}) then {
+                        // Keep the custom idle while Turbo remains held. The
+                        // original step-off rearm logic above still sees no W.
+                        [] call GAIT_fnc_releaseSpeedCoefficient;
+                    } else {
+                        [] call GAIT_fnc_releaseNativeMovement;
+                    };
                 };
+                // Read-only acceptance telemetry; these values never feed back
+                // into the preserved brace, reserve or momentum calculation.
+                missionNamespace setVariable ["GAIT_braceActive", _isSprinting && {_sprintBraceEndTime > time}];
+                missionNamespace setVariable ["GAIT_plannedMovementCoefficient", _currentSpeed];
+                missionNamespace setVariable ["GAIT_observedReserveRatio", _reserveRatio];
+                // Movement-family ownership is independent of forward sprint
+                // effort. Pure A/D keeps native directional selection in the
+                // same graph without changing reserve/brace or sideways caps.
+                private _fastMoveIntent = _gaitMovementEnabled && {_turboHeld} && {_gaitStanceOk} && {!_isAceCarrying};
+                [player, _fastMoveIntent, _movementInput, _externalSprintLock || {_externalWalkLock}] call GAIT_fnc_updateSlopeLocomotion;
                 if (_debugHudEnabled && {(time - _lastDebugHudTime) >= ((_debugHudInterval max 0.05) min 1)}) then {
                     _lastDebugHudTime = time;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.7.0-rc3<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13</t>",
+                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha1<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13<br/>Foundation: %14 | Measured pace profile: %15</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,
@@ -1638,7 +1676,9 @@ GAIT_fnc_setTunnelVisionFX = {
                         player getVariable ["ace_common_effect_blockSprint", 0],
                         player getVariable ["ace_common_effect_forceWalk", 0],
                         missionNamespace getVariable ["GAIT_slopeLocomotionActive", false],
-                        (_pacePair select 0) toFixed 2, (_pacePair select 1) toFixed 2
+                        (_pacePair select 0) toFixed 2, (_pacePair select 1) toFixed 2,
+                        missionNamespace getVariable ["GAIT_locomotionPhase", "native"],
+                        missionNamespace getVariable ["GAIT_paceCalibrated", false]
                     ];
                 };
             } else {

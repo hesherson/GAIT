@@ -1,0 +1,30 @@
+GAIT 1.8.0-alpha1 — foundation validation
+
+Preservation: PASS, three byte-identical tuning files (CBA registration,
+presets and the original slope pace model), 25 protected executable feature
+blocks. Mutation checks reject altered brace, reserve gate, Shift taper,
+sideways sprint classification, acceleration timing and settings.
+
+Graph: PASS, 36 native-derived custom states, four nine-state action families,
+284 internal action selectors, native compatibility/exit routes, generated
+file consistency. Four config-contract test groups.
+
+SQF-VM actual-function regression suites: PASS
+- State machine: 27 cases, held W/A/D/idle sequence, single entry/release,
+  failed/late entry and medical handoff, ten blend-name cases
+- Pace adapter: 39 exact legacy fallback cases, 60 physical-unit roundtrips,
+  steady physical floor, partial profiles and invalid-profile rejection
+- ACE bridge: ordered registration, reset idempotence, nested dispatch,
+  medical owners, mode/AF/stable-context gates, animation-independent ownership
+- Original input/ramp, direction, sprint-state selection and five inherited
+  cleanup-argument contexts plus twelve safe/unsafe blend cases
+
+HEMTT 1.21.0: config and ten addon SQF files compile into one PBO.
+PBO prefix and embedded script bytes are verified against packaged source.
+Existing style suggestions remain. Arma 3 Tools is absent; no raw assets
+require Binarize in this addon. HEMTT uses bundled wiki data in this environment.
+Foundation recorder and calibration collector syntax are checked separately.
+
+Not an Arma runtime simulation. Camera continuity, graph persistence, actual
+terrain speeds, weapon handoffs, multiplayer, and Windows deployment still
+require acceptance in the target environment. No measured speed profiles ship.

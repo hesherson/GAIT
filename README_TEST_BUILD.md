@@ -1,70 +1,83 @@
-# GAIT 1.7.0-rc3
+# GAIT 1.8.0-alpha1: locomotion foundation rebuild
 
-This build fixes the RC2 runtime error and replaces its jogging-only movement family with real sprint animation states. Uphill movement still uses continuous slope/load pacing, with no angle that deliberately forces walking.
+This is the complete GAIT source with a rebuilt animation controller and custom movement family. The tuned step-off, brace, momentum, reserve, slope, gear and effects logic is retained. It is an **in-game validation build**: HEMTT and regression tests pass, but Arma movement and camera behavior have not been executed here.
 
-## What changed
+## What was preserved
 
-* Fixed `Error Params: Type Number, expected Array` in `fn_slopeLocomotion.sqf`. Bare cleanup calls inherited the speed writer's `[unit, coefficient, carry]` arguments. Cleanup now passes explicit empty argument arrays.
-* Forward, forward-left and forward-right now inherit native **Meva sprint animations** for raised/lowered rifle, pistol and unarmed poses. Sideways and backward movement use the native **Mrun** clips.
-* Replaced immediate `switchMove` cuts with single `playMoveNow` entry/exit requests and explicit animation-graph connections.
-* Acquiring speed-coefficient ownership no longer releases the body animation. This prevents unrelated coefficient resets from causing another animation switch.
-* Expected standing entry blends retain movement eligibility. Matching uses the exact entry source/target; crouch, prone, medical, weapon actions and unrelated transitions remain excluded. Slow blends on steep terrain do not fail solely because a fixed timer expires.
-* Entry/exit requests are tracked so polling cannot restart an exit repeatedly. Canceling sprint during entry retains enough ownership to cancel the pending switch safely.
-* The equipped weapon and the active animation family's pose stabilize rifle-family selection. A sprint clip lowering the rifle does not itself trigger a family change.
+The original CBA settings registration, preset file and slope pace model are byte-identical to RC4. An automated audit protects 25 executable feature blocks, including:
 
-The slope/load pace model, reserve-based target margin, brace and acceleration values are retained from RC2. GAIT still removes only the ACE Advanced Fatigue movement restriction source, keeping other ACE restriction owners. ACE physiology remains read-only to GAIT.
+* Initial push-off, crouch-armed brace, zero-momentum detection and gear brace relief
+* Brace duration, speed dip, acceleration curve, cooldown and walking-settle requirements
+* Slope-stop memory, additional slope brace duration and dip
+* Short sprint retaps, forward-release rearming, momentum ramp and Shift-release hold/taper
+* ACE reserve reading, standalone reserve/recovery, exhaustion response and carry pace
+* Weapon sway/recovery, tinnitus/hearing, hard landings, downhill trips and vegetation drag
+* Existing visual-effect cleanup behavior; previously disabled post-processing is not reintroduced
+
+These checks preserve the program and its settings. The different animation foundation can still change how that tuning feels, which is why the first acceptance run includes the step-off itself. See `tests/FEATURE_PRESERVATION.md` for the detailed contract.
+
+## What was rebuilt
+
+The feature loop computes the same tuned pace and brace output. It submits locomotion intent to a separate controller instead of issuing body animation commands from its scheduled loop.
+
+The controller has explicit native, entering, active, exiting and blocked states. It reads current input from Draw3D and makes one direct entry into the custom family. Arma chooses movement directions after entry. It does not restart the clip whenever A/D changes, and it does not write position or velocity to drive ordinary movement.
+
+The action graph has 36 states: four custom idles, 12 real forward/diagonal Meva sprint clips and 20 lateral/backward Mrun clips. Default, stop and turn selectors stay within the family. Turning uses the custom native-idle derivative as a fallback rather than assuming unverified turn clip names. Native action/transition inheritance is preserved for weapon, injury, stance and other actions; the graph does not remove every inherited native edge.
+
+Pure A/D and a brief stop while Turbo remains held retain the family. **Forward sprint effort remains forward-only**, preserving the original brace/reserve decisions and normal sideways speed cap. Verified blends between two custom states in the same family now remain eligible; medical, stance and unrelated blends do not receive that exemption.
+
+Releases cancel intent immediately and queue one Draw3D exit. Reload/throw/melee gestures, lost contact and weapon handoffs defer that exit while retaining cleanup ownership. A native or medical body transition clears the pending command. An exit and re-entry cannot be issued in the same frame. Unexpected graph escape is reported and latched until the input/context changes, rather than hidden with repeated forced animation.
+
+ACE's fatigue movement policy now has a stable ownership check separate from the eligibility of a particular animation frame. It retains the RC4 public status-event bridge and removes only AF's restriction source. Medical and other owners remain effective. ACE's physiology and final functions are untouched. This remains a reactive bridge, not a pre-setter ACE integration hook.
+
+## Physical speed interface
+
+A new pace adapter supports measured per-clip references in metres per second and applies the sustained sprint/walk margin before brace and acceleration. It does not impose a speed floor on the brace itself.
+
+No measured speed profiles are invented or bundled. With the default empty profile set, this adapter returns the **exact existing coefficient targets**. `GAIT_paceCalibrated=false` and metric targets `-1` mean no verified profile is installed. The optional developer collector in `tests/collect_pace_reference.sqf` reports candidates without changing gameplay or activating them. It is not required to play this build.
+
+A physical target remains distinct from actual speed on collision-limited or nontraversable terrain. The current build does not claim to have demonstrated sprint faster than walking at every grade.
 
 ## Install and build
 
-Follow `README_HEMTT.md` to apply the complete source package to `F:\GAIT`, push `dev/gait-1.7.0-rc3`, and run:
+Use `README_HEMTT.md`. Keep the checkout named `F:\GAIT`. Load `F:\GAIT\.hemttout\build`, together with CBA_A3 and ACE3, and unload previous GAIT versions. Check the HUD/log identifies **1.8.0-alpha1**.
+
+**Re-enable both GAIT and ACE Advanced Fatigue in mission Addon Options** if earlier isolation tests disabled them. Start a fresh single-player Eden preview. For this first comparison, load only CBA_A3, ACE3 and GAIT; add Animate Rewrite and other movement addons afterward.
+
+## One normal gameplay acceptance run
+
+This checks the rebuilt mod with its features active. The previous isolated native/custom clip tests are not required for this run.
+
+1. Copy `tests/foundation_capture.sqf` into the saved mission's folder.
+2. Run this in the debug console using **Local Exec**:
+
+```sqf
+[60, "foundation step-off and hill"] execVM "foundation_capture.sqf";
+```
+
+3. From a stop, sprint forward. Check the familiar push-off/dip and acceleration. Release and immediately retap Turbo, then stop long enough for the brace to rearm. Repeat once from crouch.
+4. Cross the original steep hill with W+Turbo. Alternate W+A/W+D, then release W while holding Turbo+A or Turbo+D and return to forward movement. Briefly stop with Turbo still held, then move again. Test uphill and downhill.
+5. Release Turbo while still moving. Check the familiar release hold/taper. Reload, change weapon and crouch/prone once to check control returns normally.
+6. Wait for the capture STOP message, or stop early with `GAIT_foundationCaptureEnabled = false;`. Send the RPT and note whether the step-off still feels right, sprint persists past the problem grade, and the camera jumps at entry/exit.
+
+The recorder is read-only and samples at 10 Hz. It includes the controller phase, inputs, animation, restrictions, actual speed, brace telemetry and configured pace targets. The controller also logs entry, exit and unexpected escape events directly.
+
+## Remaining runtime questions
+
+* A string `switchMove` starts a clip directly and can reset phase/aim. Draw3D timing addresses the previously investigated camera context, but does not prove smoothness.
+* Custom idle/default routing and retained native edges need confirmation in the loaded game configuration.
+* Inherited weapon transitions must take control during a weapon handoff; GAIT will not force a cross-weapon movement pose to hide a failure.
+* Exact physical speed calibration, multiplayer observation, respawn and integration with other animation addons need Arma acceptance.
+
+No DLL or modified ACE distribution is required. If a stable custom graph still encounters an independent engine terrain restriction, that result will justify the next, narrower engine investigation.
+
+## Development checks
 
 ```powershell
-Set-Location 'F:\GAIT'
+python tests/feature_preservation.py --self-test
+python tests/foundation_graph.py
+python tools/generate_foundation_actions.py --check
 hemtt build
 ```
 
-Load `F:\GAIT\.hemttout\build` as a local mod, together with CBA_A3 and ACE3. Unload previous GAIT versions and start a fresh mission. Check the GAIT debug HUD shows **1.7.0-rc3**.
-
-`hemtt build` produces unsigned local test output. A future server release requires your chosen signing workflow.
-
-## Focused in-game checks
-
-1. On flat ground, start sprinting from idle and from jogging. Forward/diagonal motion should use `AmovPercMeva..._GAIT`, with the real sprint pose and no instant screen jump.
-2. Hold W+Turbo continuously while crossing the original problem slope. Keep alternating A/D, including W+A → W+A+D → W+D. The engine should select matching directions inside the same family.
-3. Release Turbo while holding W, release W while holding A/D, and tap/release sprint very quickly from rest. There should be no delayed custom-state entry or repeated transition.
-4. Test crouch/prone, reload, weapon changes, casualty handling, vehicles, Zeus and unconsciousness during sprint. GAIT should give those actions control and allow normal recovery afterward.
-5. Compare settled walking and sprinting on the same unobstructed strip, with the same load, weapon and reserve. Repeat above the native walk threshold and with kit above 75 lb. Steeper slopes and extra load should reduce pace; sprint should remain faster than matching walking.
-
-Test first and third person. These changes target the observed error, wrong clip selection and abrupt transitions. **Compilation and regression checks cannot establish camera smoothness, collision behavior or physical speed in Arma.** Those still require this in-game comparison.
-
-Launcher/binocular poses, crouched sprint and casualty carry keep native animation maps. Terrain sampling skips elevated structures to avoid applying the ground slope beneath a bridge. Walls and nontraversable terrain remain engine-controlled.
-
-## Capture a remaining problem
-
-Copy `tests/slope_runtime_capture.sqf` into your mission folder. In the local debug console:
-
-```sqf
-[] execVM "slope_runtime_capture.sqf";
-GAIT_runtimeCaptureLabel = "rc3_sprint_strafe_same_hill";
-```
-
-Stop with `GAIT_runtimeCaptureEnabled = false;`. The RPT receives `[GAIT_CAPTURE]` rows at 10 Hz containing resolved inputs, real forward/lateral and surface speeds, animation/action family, coefficient, grade, load, locks, reserve and FPS. Include the RPT and a short first-person clip if the one-frame jump remains.
-
-## Verification
-
-* HEMTT compiled the addon config and all nine SQF files into the test PBO.
-* The former inherited-argument error was reproduced in a small SQF-VM case. The real cleanup functions now pass tests from five different caller argument contexts.
-* Coefficient-only cleanup is checked not to release the animation family.
-* Expected/unsafe transition cases cover ordinary entry, crouch, prone, medical actions, unexpected directions and extra state fragments.
-* Direction tests preserve opposite-key cancellation, A/D reversal, diagonal normalization and side-only release.
-* State selection tests require all 12 forward/diagonal sprint states and all 20 native lateral/backward running states.
-* The unchanged pace model retains RC2's earlier validation across 225,900 grade/load/reserve combinations plus 5,400 default reserve-response samples.
-
-Arma and multiplayer tests have not been run here. HEMTT style suggestions may remain; they are separate from the corrected runtime argument error.
-
-## Primary references
-
-* [Bohemia native movement states](https://community.bistudio.com/wiki/Arma_3:_Moves)
-* [Bohemia animation graph configuration](https://community.bistudio.com/wiki/CfgMoves_Config_Reference)
-* [ACE native movement configuration](https://github.com/acemod/ACE3/blob/master/addons/movement/CfgMoves.hpp)
-* [ACE fatigue movement effects](https://github.com/acemod/ACE3/blob/master/addons/advanced_fatigue/functions/fnc_handleEffects.sqf)
+Python is only needed for these developer checks, not for a normal HEMTT build. SQF regression cases and the validation record are in `tests`.

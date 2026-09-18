@@ -1,6 +1,8 @@
 param(
     [string]$RepoPath = 'F:\GAIT',
-    [string]$PreviousRepoPath = 'F:\GAIT-Git'
+    [string]$PreviousRepoPath = 'F:\GAIT-Git',
+    [switch]$StashChanges,
+    [switch]$NoPush
 )
 & {
     $ErrorActionPreference = 'Stop'
@@ -15,7 +17,15 @@ param(
         }
         $DirtyFiles = @(Run-Git -C $Path status --porcelain)
         if ($DirtyFiles.Count -gt 0) {
-            throw "Commit or stash your changes in $Path first. No files have been replaced."
+            if (-not $StashChanges) {
+                throw "Commit or stash changes in $Path, or rerun with -StashChanges to preserve them automatically. No files have been replaced."
+            }
+            $StashLabel = 'Before GAIT foundation ' + (Get-Date -Format 'yyyyMMdd_HHmmss')
+            Run-Git -C $Path stash push --include-untracked -m $StashLabel
+            Write-Host "Local edits preserved in stash: $StashLabel. They will not be reapplied automatically."
+            if (@(Run-Git -C $Path status --porcelain).Count -gt 0) {
+                throw 'Checkout is still dirty after stashing; deployment stopped.'
+            }
         }
     }
     function Preserve-ExistingFolder([string]$Path) {
@@ -51,7 +61,7 @@ param(
     Push-Location $RepoPath
     try {
         Run-Git fetch origin
-        $Branch = 'dev/gait-1.7.0-rc3'
+        $Branch = 'dev/gait-foundation-1.8.0'
         $LocalBranch = @(Run-Git branch --list $Branch)
         if ($LocalBranch.Count -gt 0) {
             Run-Git switch $Branch
@@ -60,7 +70,13 @@ param(
             if ($RemoteBranch.Count -gt 0) {
                 Run-Git switch --track "origin/$Branch"
             } else {
-                Run-Git switch -c $Branch origin/dev/gait-1.7.0-rc2
+                $BaseBranch = $null
+                foreach ($Candidate in @('origin/dev/gait-1.7.0-rc4', 'origin/dev/gait-1.7.0-rc3', 'origin/main')) {
+                    & git rev-parse --verify --quiet $Candidate *> $null
+                    if ($LASTEXITCODE -eq 0) { $BaseBranch = $Candidate; break }
+                }
+                if (-not $BaseBranch) { throw 'No expected remote base branch was found.' }
+                Run-Git switch -c $Branch $BaseBranch
             }
         }
 
@@ -72,7 +88,7 @@ param(
             New-Item -ItemType Directory -Path 'addons' -Force | Out-Null
             Run-Git mv -- source/gait addons/gait
         }
-        foreach ($Folder in @('addons', '.hemtt', 'tests')) {
+        foreach ($Folder in @('addons', '.hemtt', 'tests', 'tools')) {
             Copy-Item -LiteralPath (Join-Path $PackagePath $Folder) -Destination $RepoPath -Recurse -Force
         }
         foreach ($File in @('mod.cpp', 'README_HEMTT.md', 'README_TEST_BUILD.md', 'DEPLOY_GITHUB.ps1')) {
@@ -86,13 +102,17 @@ param(
             $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
             [IO.File]::AppendAllText($IgnorePath, [Environment]::NewLine + ($NewRules -join [Environment]::NewLine) + [Environment]::NewLine, $Utf8NoBom)
         }
-        Run-Git add -- addons .hemtt tests mod.cpp .gitignore README_HEMTT.md README_TEST_BUILD.md DEPLOY_GITHUB.ps1
+        if (-not (Get-Command hemtt -ErrorAction SilentlyContinue)) { throw 'HEMTT must be on PATH before deployment. Source was copied; no new commit or push was made.' }
+        & hemtt build
+        if ($LASTEXITCODE -ne 0) { throw 'HEMTT build failed. Source remains available for inspection; no new commit or push was made.' }
+        Run-Git add -- addons .hemtt tests tools mod.cpp .gitignore README_HEMTT.md README_TEST_BUILD.md DEPLOY_GITHUB.ps1
         Run-Git diff --cached --check
         $ChangedFiles = @(Run-Git diff --cached --name-only)
         if ($ChangedFiles.Count -gt 0) {
-            Run-Git commit -m 'Fix GAIT sprint animations, blended transitions and cleanup argument leak'
+            Run-Git commit -m 'Rebuild GAIT locomotion foundation while preserving tuned movement features'
         }
-        Run-Git push -u origin $Branch
-        Write-Host "Deployed $Branch. Build with: cd $RepoPath; hemtt build"
+        if (-not $NoPush) { Run-Git push -u origin $Branch }
+        Write-Host "Built $Branch. Load local mod: $RepoPath\.hemttout\build"
+        if ($NoPush) { Write-Host 'Local commit created. GitHub push skipped by -NoPush.' }
     } finally { Pop-Location }
 }

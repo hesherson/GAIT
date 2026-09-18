@@ -1,5 +1,5 @@
 /*
-    GAIT 1.7.0-rc3: one owner for the movement speed coefficient.
+    GAIT 1.8.0-alpha1: one owner for the movement speed coefficient.
     Arma handles direction and collision inside the dedicated sprint action family.
 */
 // Coefficient ownership can change during an ordinary animation blend.
@@ -28,12 +28,45 @@ GAIT_fnc_releaseNativeMovement = {
     [] call GAIT_fnc_releaseSpeedCoefficient;
 };
 
+// Fatigue policy ownership is broader than permission to scale this frame's
+// animation. Ordinary blends, reload gestures and brief ground-contact loss
+// must not let AF repeatedly reinstate its slope restriction.
+GAIT_fnc_fatigueMovementContextEligible = {
+    params [["_unit", player, [objNull]]];
+    if (isNull _unit || {!local _unit} || {_unit isNotEqualTo player} || {!alive _unit}) exitWith {false};
+    if (call GAIT_fnc_isSuspendedContext) exitWith {false};
+    if (!isNull (objectParent _unit) || {!isNull (attachedTo _unit)}) exitWith {false};
+    if ((lifeState _unit) isEqualTo "INCAPACITATED") exitWith {false};
+    if (underwater _unit || {missionNamespace getVariable ["ace_advanced_fatigue_isSwimming", false]}) exitWith {false};
+
+    private _restricted = [
+        "ACE_isUnconscious",
+        "GAIT_isTripping",
+        "MAV_fastCarry_pickupActive",
+        "ace_dragging_isDragging",
+        "ace_dragging_isDragged",
+        "ace_dragging_isCarried",
+        "ace_dragging_isCarrying",
+        "ace_common_isClimbing",
+        "ace_medical_treatment_inProgress"
+    ] findIf {(_unit getVariable [_x, false]) isEqualTo true};
+    if (_restricted >= 0) exitWith {false};
+    if ((missionNamespace getVariable ["ace_common_isClimbing", false]) isEqualTo true) exitWith {false};
+    if ((missionNamespace getVariable ["ace_medical_treatment_inProgress", false]) isEqualTo true) exitWith {false};
+    true
+};
+
+GAIT_fnc_ownsFatigueMovementPolicy = {
+    params [["_unit", player, [objNull]]];
+    (call GAIT_fnc_modeAllowsAceLockClearing) &&
+    {call GAIT_fnc_aceAdvancedFatigueActive} &&
+    {[_unit] call GAIT_fnc_fatigueMovementContextEligible}
+};
+
 GAIT_fnc_clearACEAdvancedFatigueMovementLocks = {
     params [["_unit", player, [objNull]]];
-    if !(call GAIT_fnc_modeAllowsAceLockClearing) exitWith {};
-    if !(call GAIT_fnc_aceAdvancedFatigueActive) exitWith {};
     if (isNil "ace_common_fnc_statusEffect_set") exitWith {};
-    if !([_unit] call GAIT_fnc_nativeMovementEligible) exitWith {};
+    if !([_unit] call GAIT_fnc_ownsFatigueMovementPolicy) exitWith {};
 
     // No angle cutoff: GAIT scales pace continuously on traversable terrain.
     // Never call forceWalk false: ACE combines restrictions by source.
@@ -43,14 +76,33 @@ GAIT_fnc_clearACEAdvancedFatigueMovementLocks = {
 
 GAIT_fnc_installNativeAceBridge = {
     if (missionNamespace getVariable ["GAIT_nativeAceBridgeInstalled", false]) exitWith {};
-    if (isNil "ace_advanced_fatigue_fnc_handleEffects") exitWith {};
-    GAIT_nativeOriginalAceHandleEffects = ace_advanced_fatigue_fnc_handleEffects;
-    ace_advanced_fatigue_fnc_handleEffects = {
-        _this call GAIT_nativeOriginalAceHandleEffects;
-        // ACE's mainLoop resolves handleEffects dynamically. Remove only its
-        // movement restriction in the same call; all physiology/effects ran.
-        [_this param [0, objNull]] call GAIT_fnc_clearACEAdvancedFatigueMovementLocks;
+    // Keep our handler IDs across GAIT resets/recompilation. The callbacks
+    // resolve GAIT's helper at dispatch time, so reinstalling would duplicate them.
+    if ((missionNamespace getVariable ["GAIT_nativeAceBridgeHandlers", []]) isNotEqualTo []) exitWith {
+        missionNamespace setVariable ["GAIT_nativeAceBridgeInstalled", true];
     };
+    if (isNil "CBA_fnc_addEventHandler" || {isNil "ace_common_fnc_statusEffect_set"}) exitWith {};
+    // ACE sets this after registering its own movement event handlers. CBA
+    // appends handlers in order; ours must run after ACE applies the new mask.
+    if !(missionNamespace getVariable ["ace_common_commonPostInited", false]) exitWith {};
+
+    private _handlers = [];
+    {
+        private _id = [_x, {
+            params [["_unit", objNull, [objNull]], ["_mask", 0, [0]]];
+            // Clearing the last source emits a nested zero-mask event. Stop
+            // there; positive masks may still belong to another ACE component.
+            if (_mask <= 0) exitWith {};
+            [_unit] call GAIT_fnc_clearACEAdvancedFatigueMovementLocks;
+        }] call CBA_fnc_addEventHandler;
+        _handlers pushBack [_x, _id];
+    } forEach ["ace_common_blockSprint", "ace_common_forceWalk"];
+
+    // ACE's local status events are synchronous. Clear only its AF owner in
+    // that dispatch, before the scheduled GAIT loop can observe a lasting lock.
+    // ACE owns all event application and keeps other reasons in its bitmask.
+    // Its compiled-final effects function and physiology are left intact.
+    missionNamespace setVariable ["GAIT_nativeAceBridgeHandlers", _handlers];
     missionNamespace setVariable ["GAIT_nativeAceBridgeInstalled", true];
 };
 

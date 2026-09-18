@@ -23,11 +23,13 @@ private _emit = {
 };
 private _seq = 0;
 ["START", [_label, missionNamespace getVariable ["GAIT_versionString", "unknown"], productVersion,
-    "rows: tick,frame,phase,input,animation,gesture,engine,pace,brace,features",
+    "rows: tick,frame,phase,input,animation,gesture,engine,pace,brace,features,uphillBrake,gearInertia",
     "engine: ground,stance,sprintAllowed,forcedWalk,ACEblock,ACEwalk,life,unconscious",
     "pace: coefficient,horizontalMS,grade,walkCoef,sprintCoef,calibrated,walkTargetMS,sprintTargetMS,loadAbs",
     "brace: active,configuredDuration,activeDuration,activeCoefficient,factor,plannedCoefficient,momentumProtected,downhillMomentum,animationStage,endTime",
-    "features: GAITenabled,ACEAFenabled,movementEligible,reserveRatio,shiftCoast,exitIssued,exitFailed"]] call _emit;
+    "features: GAITenabled,ACEAFenabled,movementEligible,reserveRatio,shiftCoast,exitIssued,exitFailed",
+    "uphillBrake: active,severity,target,endTime,readyUntil",
+    "gearInertia: loadLbs,responseProfile,coastActive,coastPrearmUntil"]] call _emit;
 systemChat format ["GAIT foundation capture started for %1 seconds. Stop early with GAIT_foundationCaptureEnabled = false.", _duration];
 private _deadline = diag_tickTime + _duration;
 waitUntil {
@@ -57,8 +59,14 @@ waitUntil {
         private _features = [missionNamespace getVariable ["GAIT_ss_enabled", false], missionNamespace getVariable ["ace_advanced_fatigue_enabled", false], _eligible,
             missionNamespace getVariable ["GAIT_observedReserveRatio", -1], missionNamespace getVariable ["GAIT_shiftReleaseRunTaperActive", false],
             _unit getVariable ["GAIT_slopeExitIssued", false], _unit getVariable ["GAIT_slopeExitFailureReported", false]];
+        private _uphillBrake = [missionNamespace getVariable ["GAIT_uphillBrakeActive", false],
+            missionNamespace getVariable ["GAIT_uphillBrakeSeverity", 0], missionNamespace getVariable ["GAIT_uphillBrakeTarget", -1],
+            missionNamespace getVariable ["GAIT_uphillBrakeEndTime", -1], missionNamespace getVariable ["GAIT_uphillBrakeReadyUntil", -1]];
+        private _gearInertia = [loadAbs _unit / ((missionNamespace getVariable ["GAIT_ss_loadAbsPerLb", 10]) max 0.01),
+            missionNamespace getVariable ["GAIT_gearInertia", []], missionNamespace getVariable ["GAIT_coastActive", false],
+            missionNamespace getVariable ["GAIT_coastReadyUntil", -1]];
         ["SAMPLE", [diag_tickTime, diag_frameNo, _unit getVariable ["GAIT_locomotionPhase", "native"], _input,
-            animationState _unit, gestureState _unit, _engine, _pace, _brace, _features]] call _emit;
+            animationState _unit, gestureState _unit, _engine, _pace, _brace, _features, _uphillBrake, _gearInertia]] call _emit;
     };
     uiSleep 0.1;
     diag_tickTime >= _deadline || {!(missionNamespace getVariable ["GAIT_foundationCaptureEnabled", false])} ||

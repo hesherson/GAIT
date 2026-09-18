@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Protect GAIT's retained RC4 tuning with explicit alpha2 user-authorized deltas.
+"""Protect GAIT's retained RC4 tuning with exact user-authorized deltas through alpha4.
 
 Run: python tests/feature_preservation.py [project-root] [--self-test]
 No Arma, third-party packages or adjacent old checkout is required.
@@ -747,7 +747,8 @@ def token_digest(values: list[str]) -> str:
 
 # Keep the original byte digest above as provenance. The user authorized two
 # description updates (including one display label) and two added sliders in
-# alpha2; the rest of registration code must match the fixed RC4 token digest.
+# alpha2, plus one alpha3 uphill-release checkbox. The rest of registration
+# code must match the fixed RC4 token digest.
 SETTINGS_FILE = "addons/gait/functions/fn_registerSettings.sqf"
 SETTINGS_RC4_TOKEN_SHA256 = "f7bd1d615a86f458f89f1a13b4cda438ede05e6241dc5ea12bcdf3b53b929ee5"
 MAIN_FILE = "addons/gait/functions/fn_initSprintSystem.sqf"
@@ -757,6 +758,110 @@ MAIN_FILE = "addons/gait/functions/fn_initSprintSystem.sqf"
 # exemption for these blocks and none of the historical hashes are changed.
 # New helpers also require their separate SQF behavior tests.
 AUTHORIZED_BLOCK_DELTAS = [
+    # Alpha4 authorizes load-dependent acceleration/deceleration and launch
+    # response. Reverse each precise integration change before the earlier
+    # deltas; every original RC4 digest remains the comparison target.
+    ("initial_tuning_and_momentum_state", "alpha4 snapshot load-scaled coast windows", """
+        private _shiftReleaseTaperStartSpeed = _normalSpeed;
+        private _activeCoastHold = 0;
+        private _activeCoastDuration = 0.05;
+    """, "private _shiftReleaseTaperStartSpeed = _normalSpeed;"),
+    ("preset_and_reset_state", "alpha4 reset coast ownership", """
+        _lastResetRequestHandled = _resetRequest;
+        _uphillBrakeState = [];
+        missionNamespace setVariable ["GAIT_uphillBrakeActive", false];
+        missionNamespace setVariable ["GAIT_uphillBrakeEndTime", -1];
+        missionNamespace setVariable ["GAIT_uphillBrakeReadyUntil", -1];
+        missionNamespace setVariable ["GAIT_uphillBrakeUnit", objNull];
+        missionNamespace setVariable ["GAIT_coastUnit", objNull];
+        missionNamespace setVariable ["GAIT_coastActive", false];
+        missionNamespace setVariable ["GAIT_coastReadyUntil", -1];
+    """, """
+        _lastResetRequestHandled = _resetRequest;
+        _uphillBrakeState = [];
+        missionNamespace setVariable ["GAIT_uphillBrakeActive", false];
+        missionNamespace setVariable ["GAIT_uphillBrakeEndTime", -1];
+        missionNamespace setVariable ["GAIT_uphillBrakeReadyUntil", -1];
+        missionNamespace setVariable ["GAIT_uphillBrakeUnit", objNull];
+    """),
+    ("gear_weight_and_brace_relief", "alpha4 continuous load inertia and existing brace relief anchors", """
+        private _gearInertia = [_gearLbs,
+            [_lightBraceRelief, _mediumBraceRelief, _moderateBraceRelief, _heavyBraceRelief],
+            [_lightWeightMax, _mediumWeightMax, _moderateWeightMax]] call GAIT_fnc_gearInertia;
+        _gearInertia params ["_accelerationScale", "_decelerationScale", "_coastScale", "_launchDurationScale", "_braceRelief"];
+        missionNamespace setVariable ["GAIT_gearInertia", _gearInertia];
+    """, """
+        private _braceRelief = _heavyBraceRelief;
+        if (_gearLbs <= _lightWeightMax) then {
+            _braceRelief = _lightBraceRelief;
+        } else {
+            if (_gearLbs <= _mediumWeightMax) then {
+                _braceRelief = _mediumBraceRelief;
+            } else {
+                if (_gearLbs <= _moderateWeightMax) then {
+                    _braceRelief = _moderateBraceRelief;
+                };
+            };
+        };
+    """),
+    ("step_off_brace_and_sprint_end", "alpha4 gear-scaled launch duration", """
+        private _braceDurationNow = (_sprintStartBraceDuration * _launchDurationScale) + (((_slopeStopBraceExtraDuration max 0) min 2.0) * _slopeBraceFactor);
+    """, """
+        private _braceDurationNow = _sprintStartBraceDuration + (((_slopeStopBraceExtraDuration max 0) min 2.0) * _slopeBraceFactor);
+    """),
+    ("step_off_brace_and_sprint_end", "alpha4 snapshot coast duration at sprint release", """
+        private _coastWindow = [_shiftReleaseRunTaperHoldDuration, _shiftReleaseRunTaperDuration, _coastScale] call GAIT_fnc_gearCoastWindow;
+        _activeCoastHold = _coastWindow select 0;
+        _activeCoastDuration = _coastWindow select 1;
+        _shiftReleaseTaperActiveUntil = time + _activeCoastHold + _activeCoastDuration;
+    """, """
+        _shiftReleaseTaperActiveUntil = time + ((_shiftReleaseRunTaperHoldDuration max 0) min 3.0) + ((_shiftReleaseRunTaperDuration max 0.05) min 4.0);
+    """),
+    ("shift_release_hold_and_taper", "alpha4 consume unchanged release-time coast snapshot", """
+        private _holdDuration = _activeCoastHold;
+        private _taperDuration = _activeCoastDuration;
+    """, """
+        private _holdDuration = (_shiftReleaseRunTaperHoldDuration max 0) min 3.0;
+        private _taperDuration = (_shiftReleaseRunTaperDuration max 0.05) min 4.0;
+    """),
+    ("brace_or_momentum_speed_ramp", "alpha4 load-dependent response outside carry and brace phases", """
+        if (!_isAceCarrying && {!_uphillBrakeActive} && {!(_isSprinting && {_sprintBraceEndTime > time})}) then {
+            _ramp = [_ramp, [_decelerationScale, _accelerationScale] select (_rampTarget > _currentSpeed)] call GAIT_fnc_scaleInertiaRamp;
+        };
+        _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
+    """, """
+        _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
+    """),
+    # Reverse alpha3 first so the unchanged alpha2 reverse fragments below
+    # still describe exactly what was previously reviewed.
+    ("preset_and_reset_state", "alpha3 reset uphill brake ownership", """
+        _lastResetRequestHandled = _resetRequest;
+        _uphillBrakeState = [];
+        missionNamespace setVariable ["GAIT_uphillBrakeActive", false];
+        missionNamespace setVariable ["GAIT_uphillBrakeEndTime", -1];
+        missionNamespace setVariable ["GAIT_uphillBrakeReadyUntil", -1];
+        missionNamespace setVariable ["GAIT_uphillBrakeUnit", objNull];
+    """, "_lastResetRequestHandled = _resetRequest;"),
+    ("step_off_brace_and_sprint_end", "alpha3 sprint resume cancels release brake without new launch brace", """
+        private _canBrace = [_sprintStartBraceEnabled, _hasRetainedSprintMomentum || {_uphillBrakeResumed},
+            _isCrouched, _braceArmedFromCrouch, _normalBraceReady, _zeroMomentumBraceReady, _slopeBraceReady]
+            call GAIT_fnc_shouldBrace;
+    """, """
+        private _canBrace = [_sprintStartBraceEnabled, _hasRetainedSprintMomentum,
+            _isCrouched, _braceArmedFromCrouch, _normalBraceReady, _zeroMomentumBraceReady, _slopeBraceReady]
+            call GAIT_fnc_shouldBrace;
+    """),
+    ("brace_or_momentum_speed_ramp", "alpha3 uphill release target and slope-dependent braking ramp", """
+        private _ramp = if (_uphillBrakeActive) then {_uphillBrakeRamp} else {
+            if (_isSprinting && {_sprintBraceEndTime > time}) then {_sprintStartBraceLerp} else {_speedLerp}
+        };
+        private _rampTarget = if (_uphillBrakeActive) then {_uphillBrakeTarget min _currentSpeed} else {
+            if (_isSprinting && {_sprintBraceEndTime > time}) then {_activeBraceSpeed min _targetSpeed} else {_targetSpeed}
+        };
+    """, """
+        private _ramp = if (_isSprinting && {_sprintBraceEndTime > time}) then {_sprintStartBraceLerp} else {_speedLerp};
+        private _rampTarget = if (_isSprinting && {_sprintBraceEndTime > time}) then {_activeBraceSpeed min _targetSpeed} else {_targetSpeed};
+    """),
     ("preset_and_reset_state", "reset new momentum state", """
         _lastResetRequestHandled = _resetRequest;
         _braceMomentumState = [false, -999, 0, 0];
@@ -795,6 +900,9 @@ AUTHORIZED_BLOCK_DELTAS = [
 ]
 
 AUTHORIZED_SETTINGS_DELTAS = [
+    ("alpha3 uphill release checkbox", '''
+        ["GAIT_ss_uphillReleaseBraceEnabled", "Uphill sprint-release brace", "Dig-in braking when releasing a moving uphill sprint. Uses the slope brace start/max angles, duration and dip; steeper slopes brake harder. Flat/downhill momentum is preserved. Default: enabled.", _categoryBrace, true] call _addCheckbox;
+    ''', ""),
     ("brace description", '\"Coefficient margin used to detect settled walking. Established moving sprint momentum overrides all brace triggers until a real stop or settled recovery. Default: 0.04.\"',
      '\"If current speed is within this amount of normal speed, next sprint start is treated as zero momentum and braces. Default: 0.04.\"'),
     ("downhill description and label", '\"Downhill base speed boost\", \"Base unloaded downhill bonus at full momentum, added to the sustained bonus below. Both scale down with kit weight and extreme descent angle. Default: 0.06.\"',
@@ -833,7 +941,7 @@ def verify(root: Path) -> tuple[list[str], dict[str, str]]:
                 settings = reverse_exact_delta(settings, current, old,
                                                f"{SETTINGS_FILE}: {label}", failures)
             if token_digest(settings) != SETTINGS_RC4_TOKEN_SHA256:
-                failures.append(f"Registration code differs beyond authorized descriptions and two sliders: {relative}")
+                failures.append(f"Registration code differs beyond authorized descriptions, two sliders and release checkbox: {relative}")
         elif hashlib.sha256(path.read_bytes()).hexdigest() != expected:
             failures.append(f"Tuning file bytes differ from RC4: {relative}")
     sources = {}
@@ -879,8 +987,14 @@ def self_test(root: Path) -> None:
         ("shift_release_hold_and_taper", "(1 - _taperRaw) ^ _taperCurve", "(1 - _taperRaw)"),
         ("sprint_pace_gate", "_turboHeld && {_isForwardHeld}", "_turboHeld && {_isForwardHeld || {_isLateralHeld}}"),
         ("frame_rate_independent_ramp", "(_dt max 0 min 0.20) / 0.05", "(_dt max 0 min 0.20) / 0.10"),
-        ("step_off_brace_and_sprint_end", "private _canBrace = [_sprintStartBraceEnabled, _hasRetainedSprintMomentum,", "private _canBrace = [_sprintStartBraceEnabled, false,"),
+        ("step_off_brace_and_sprint_end", "private _canBrace = [_sprintStartBraceEnabled, _hasRetainedSprintMomentum || {_uphillBrakeResumed},", "private _canBrace = [_sprintStartBraceEnabled, false,"),
+        ("step_off_brace_and_sprint_end", "_hasRetainedSprintMomentum || {_uphillBrakeResumed}", "_hasRetainedSprintMomentum || {false}"),
+        ("brace_or_momentum_speed_ramp", "_uphillBrakeTarget min _currentSpeed", "_uphillBrakeTarget max _currentSpeed"),
         ("directional_grade_trips_and_walk_pace", "_downhillMaxBoost + _sustainedBonus", "_downhillMaxBoost + 0.35"),
+        ("step_off_brace_and_sprint_end", "_sprintStartBraceDuration * _launchDurationScale", "_sprintStartBraceDuration / _launchDurationScale"),
+        ("gear_weight_and_brace_relief", "[_lightBraceRelief, _mediumBraceRelief, _moderateBraceRelief, _heavyBraceRelief]", "[_heavyBraceRelief, _mediumBraceRelief, _moderateBraceRelief, _lightBraceRelief]"),
+        ("shift_release_hold_and_taper", "private _holdDuration = _activeCoastHold;", "private _holdDuration = _activeCoastDuration;"),
+        ("brace_or_momentum_speed_ramp", "[_decelerationScale, _accelerationScale] select (_rampTarget > _currentSpeed)", "[_accelerationScale, _decelerationScale] select (_rampTarget > _currentSpeed)"),
     ]
     with tempfile.TemporaryDirectory(prefix="gait-feature-preservation-") as directory:
         copy = Path(directory)
@@ -914,7 +1028,7 @@ def self_test(root: Path) -> None:
         assert not verify(copy)[0], "Intact extraction should preserve the feature"
         extracted_path.write_text("/*\n" + extracted + "\n*/", encoding="utf-8")
         assert any(feature["name"] in f for f in verify(copy)[0]), "A comment cannot preserve executable code"
-    print("PASS mutation checks: changed brace dip, reserve gate, Shift taper, sprint gate, ramp timing, momentum veto, downhill integration and setting default are rejected; intact extraction is accepted")
+    print("PASS mutation checks: unauthorized brace dip/duration, gear-relief anchors, reserve gate, Shift taper/window, sprint gate, ramp timing/load selection, momentum veto, release-resume veto, brake target direction, downhill integration and setting default are rejected; intact extraction is accepted")
 
 
 def main() -> int:
@@ -929,7 +1043,7 @@ def main() -> int:
             print("FAIL " + failure)
         return 1
     changed_blocks = {delta[0] for delta in AUTHORIZED_BLOCK_DELTAS}
-    print(f"PASS {len(BYTE_FILES) - 1} byte-identical tuning files; original registrations preserved except two descriptions/one label and two new sliders")
+    print(f"PASS {len(BYTE_FILES) - 1} byte-identical tuning files; original registrations preserved except two descriptions/one label, two new sliders and one release checkbox")
     print(f"PASS {len(BLOCKS) - len(changed_blocks)} intact RC4 feature blocks; {len(changed_blocks)} blocks with {len(AUTHORIZED_BLOCK_DELTAS)} exact authorized deltas; all historical hashes retained")
     for feature, relative in locations.items():
         print(f"  {feature}: {relative}")

@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha2: slope sprint test build
+// GAIT 1.8.0-alpha4: slope sprint test build
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha2";
-        versionAr[] = {1,8,0,2};
+        versionStr = "1.8.0-alpha4";
+        versionAr[] = {1,8,0,4};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

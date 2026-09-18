@@ -1,41 +1,46 @@
-GAIT 1.8.0-alpha2 validation
+GAIT 1.8.0-alpha4 validation
 
-HEMTT 1.21.0: PASS; config 1.8.0.2, 12 SQF files, one PBO.
-Requires Arma 3 2.18 for array switchMove and getUnitMovesInfo.
-Build warnings are style suggestions; bundled wiki fallback was used.
+HEMTT 1.21.0: PASS; config 1.8.0.4, 14 SQF files, one PBO.
+Requires Arma 3 2.18 for array switchMove/getUnitMovesInfo.
+Build warnings: existing style suggestions; bundled wiki fallback used.
 
-Preservation: PASS including mutation checks. All 25 historical reference
-hashes retained: 22 unchanged feature blocks and three blocks with four exact
-reviewed exceptions for the requested momentum/downhill changes. Two original
-tuning files are byte-identical; all prior CBA setting defaults are retained.
-Brace duration/dip/snap/kit relief, ACE reserve gates, Shift taper, sway,
-hearing, trip/landing behavior and vegetation tuning remain protected.
+Preservation + mutation checks: PASS. All 25 historical RC4 hashes retained:
+18 unchanged blocks; 7 changed blocks with 14 exact reviewed reversals across
+alpha2/3/4. Original presets and slope pace model byte-identical; all original
+CBA defaults retained. Alpha4 intentionally refines gear relief/duration,
+response rates, release windows and animation ownership as documented.
 
-Graph: PASS; 72 native-derived states and eight action maps, preserving the
-original 36 sprint/run/idle states and adding 36 short walk/idle brace states.
-Four config-contract groups and generator consistency pass.
+Graph: PASS; 4 contract groups. Existing 72 states and 8 action maps unchanged.
+Recorder: syntax PASS, including alpha4 gear profile/coast telemetry.
 
-Ten SQF-VM actual-function regression suites: PASS
-- brace_momentum: physical history, uphill low coefficient, downhill high
-  actual speed with low coefficient, all-trigger veto, single zero-speed
-  frame, real stop/rearm, settled walking, first press and wall/unsafe context
-- downhill_pace: 797 checks including angle/load order, bounded steep descent,
-  existing pace floor, time-step consistency, stall cap and moving recovery
-- locomotion_handoff: aim/phase arguments, 12 lifecycle cases, one brace and
-  promotion, active-family stop/restart, 36 brace selections
-- locomotion_state_machine: held W/A/D/idle, entry/release, escape and handoff
-- release_and_blend: inherited argument safety and allowed/unsafe blends
-- input_and_ramp: immediate directions and time-based coefficient ramp
-- slope_direction: 16 selections and reversal/release
-- slope_state_selection: 12 sprint and 20 side/rear run states
-- locomotion_pace: fallback/physical-unit interface and invalid calibration
-- ace_status_bridge: initialization order, medical masks and physiology owner
+Fourteen actual-helper-source SQF-VM suites: PASS, zero test diagnostics.
+- gear_inertia: continuous/custom tier thresholds; stronger heavy launch;
+  heavier slower acceleration/deceleration; frame independence; bounded coast;
+  uphill priority; residual heavy coast; expiry, direction and stale-state gates.
+- locomotion_coast: same-unit lease; fresh stop/strafe/back input priority;
+  Turbo-held stop; fast re-tap; entry-cancellation ownership and deadlines;
+  real tick dispatcher cannot overtake deferred cancellation.
+- uphill_brake: signed grade, release edges, scaling, retap, bounded braking.
+- uphill_brake_handoff: prearm, lease expiry, protected actions.
+- brace_momentum: actual movement history, all-trigger protection, stop rearm.
+- downhill_pace: angle/load ordering, bounds, time consistency and recovery.
+- locomotion_handoff: aim/phase arguments, brace lifecycle and promotion.
+- locomotion_state_machine: entry/release, escape, direction and ownership.
+- release_and_blend: argument safety and allowed/unsafe transitions.
+- input_and_ramp: immediate direction samples and time-based coefficients.
+- slope_direction: direction selections/reversal/release.
+- slope_state_selection: sprint and lateral/rear clip selections.
+- locomotion_pace: fallback/physical-unit interface and invalid calibration.
+- ace_status_bridge: event order, medical masks and physiology ownership.
 
-Recorder syntax is checked separately. Built PBO prefix and all 12 embedded
-scripts are compared with source during packaging; archive hashes are checked.
+Reproduce using tools/run_regressions.py with caller-supplied SQF-VM.
+The runner combines current helper files, never cached function copies, and
+records command lines, source hashes, PASS evidence and completion markers.
 
-SQF-VM uses a dummy registry entry for getUnitMovesInfo solely to parse the
-new command. It does not execute the live animation helper or simulate Arma
-physics. Tests do not establish camera smoothness, visible brace duration,
-actual terrain speed, animation-mod compatibility or multiplayer behavior.
-Windows installer execution and in-game acceptance remain target checks.
+Packaging verifies the built PBO prefix and all 14 embedded scripts against
+source, plus ZIP integrity and the complete SHA256 manifest.
+
+Limitations: SQF-VM does not simulate Arma movement, root motion, blending,
+camera, collision or network replication. The getUnitMovesInfo dummy allows
+parsing only; tests do not call it. Actual animation feel, stopping distance,
+slope speeds, multiplayer and Windows installer remain in-game/target checks.

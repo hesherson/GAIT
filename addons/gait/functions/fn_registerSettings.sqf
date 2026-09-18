@@ -137,6 +137,7 @@ private _addList = {
 ["GAIT_ss_slopeStopBraceExtraDuration", "Slope brace extra duration", "Extra brace duration added on steep inclines/declines. Default: 0.18 sec.", _categoryBrace, 0.00, 2.00, 0.18, 2] call _addSlider;
 ["GAIT_ss_slopeStopBraceExtraDip", "Slope brace extra dip", "Additional speed dip applied to the brace step on steep slopes. Default: 0.28.", _categoryBrace, 0.00, 0.90, 0.28, 2] call _addSlider;
 ["GAIT_ss_slopeStopBraceMemoryTime", "Slope brace memory", "Seconds after stopping sprint on an incline where the next sprint start still uses the slope brace. Default: 2.5 sec.", _categoryBrace, 0.00, 10.00, 2.50, 1] call _addSlider;
+["GAIT_ss_uphillReleaseBraceEnabled", "Uphill sprint-release brace", "Dig-in braking when releasing a moving uphill sprint. Uses the slope brace start/max angles, duration and dip; steeper slopes brake harder. Flat/downhill momentum is preserved. Default: enabled.", _categoryBrace, true] call _addCheckbox;
 
 // -----------------------------------------------------
 // 07 Weapon Sway

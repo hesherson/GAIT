@@ -18,6 +18,9 @@ if (!isNil "GAIT_fnc_releaseNativeMovement") then {
 };
 
 missionNamespace setVariable ["GAIT_resetRequested", time];
+missionNamespace setVariable ["GAIT_coastUnit", objNull];
+missionNamespace setVariable ["GAIT_coastActive", false];
+missionNamespace setVariable ["GAIT_coastReadyUntil", -1];
 missionNamespace setVariable ["GAIT_exhaustionLevel", 0];
 missionNamespace setVariable ["GAIT_tinnitusTargetVolume", 0];
 missionNamespace setVariable ["GAIT_tinnitusCurrentVolume", 0];

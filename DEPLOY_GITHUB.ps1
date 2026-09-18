@@ -91,7 +91,7 @@ param(
         foreach ($Folder in @('addons', '.hemtt', 'tests', 'tools')) {
             Copy-Item -LiteralPath (Join-Path $PackagePath $Folder) -Destination $RepoPath -Recurse -Force
         }
-        foreach ($File in @('mod.cpp', 'README_HEMTT.md', 'README_TEST_BUILD.md', 'DEPLOY_GITHUB.ps1')) {
+        foreach ($File in @('mod.cpp', 'README_HEMTT.md', 'README_TEST_BUILD.md', 'README_SPEED_REFERENCE.md', 'DEPLOY_GITHUB.ps1')) {
             Copy-Item -LiteralPath (Join-Path $PackagePath $File) -Destination $RepoPath -Force
         }
         # Preserve the repository's existing ignore rules.
@@ -105,11 +105,11 @@ param(
         if (-not (Get-Command hemtt -ErrorAction SilentlyContinue)) { throw 'HEMTT must be on PATH before deployment. Source was copied; no new commit or push was made.' }
         & hemtt build
         if ($LASTEXITCODE -ne 0) { throw 'HEMTT build failed. Source remains available for inspection; no new commit or push was made.' }
-        Run-Git add -- addons .hemtt tests tools mod.cpp .gitignore README_HEMTT.md README_TEST_BUILD.md DEPLOY_GITHUB.ps1
+        Run-Git add -- addons .hemtt tests tools mod.cpp .gitignore README_HEMTT.md README_TEST_BUILD.md README_SPEED_REFERENCE.md DEPLOY_GITHUB.ps1
         Run-Git diff --cached --check
         $ChangedFiles = @(Run-Git diff --cached --name-only)
         if ($ChangedFiles.Count -gt 0) {
-            Run-Git commit -m 'Smooth GAIT sprint transitions and preserve moving momentum through brace gates'
+            Run-Git commit -m 'Refine gear inertia and sprint animation handoffs in GAIT alpha4'
         }
         if (-not $NoPush) { Run-Git push -u origin $Branch }
         Write-Host "Built $Branch. Load local mod: $RepoPath\.hemttout\build"

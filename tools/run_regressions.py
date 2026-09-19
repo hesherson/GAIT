@@ -6,8 +6,8 @@ Example:
 
 SQF-VM is supplied by the caller, not bundled. Each suite gets an isolated VM.
 Combined source, complete logs, source hashes and results are retained in the
-output directory. getUnitMovesInfo is registered solely so its live function
-definition parses; no test executes that dummy or simulates Arma animation.
+output directory. No parser-only dummy commands are registered; the suites
+do not simulate Arma's animation engine or physical movement.
 """
 from __future__ import annotations
 
@@ -29,10 +29,11 @@ SUITES = {
     "brace_momentum": ("braceMomentum",),
     "downhill_pace": ("slopePaceModel", "downhillPace"),
     "locomotion_state_machine": ("traversalHelpers", "slopeLocomotion", "nativeController"),
-    "locomotion_handoff": ("slopeLocomotion",),
+    "locomotion_handoff": ("traversalHelpers", "slopeLocomotion"),
     "release_and_blend": ("traversalHelpers", "slopeLocomotion", "nativeController"),
     "input_and_ramp": ("traversalHelpers",),
     "ace_status_bridge": ("nativeController",),
+    "native_stamina_ownership": ("nativeController",),
     "slope_direction": ("slopeLocomotion",),
     "slope_state_selection": ("slopeLocomotion",),
     "locomotion_pace": ("slopePaceModel", "locomotionPace"),
@@ -57,7 +58,7 @@ def run_suite(root: Path, executable: Path, output: Path,
     combined.write_text("\n".join(path.read_text(encoding="utf-8-sig") for path in paths)
                         + f'\ndiag_log "{sentinel}";\n', encoding="utf-8")
     command = [str(executable), "--automated", "--suppress-welcome", "--no-execute-print",
-               "--no-work-print", "--command-dummy-unary", "getUnitMovesInfo",
+               "--no-work-print",
                "--max-runtime", "20000", "--input-sqf", str(combined)]
     try:
         result = subprocess.run(command, cwd=root, text=True, stdout=subprocess.PIPE,

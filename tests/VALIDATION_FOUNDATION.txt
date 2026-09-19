@@ -1,54 +1,58 @@
-GAIT 1.8.0-alpha5 validation
+GAIT 1.8.0-alpha6 validation
 
-Source contracts and behavioral tests: PASS against this checkout.
-HEMTT 1.21.0: PASS; config 1.8.0.5, 14 SQF files, one PBO.
-Final post-carry-correction build completed successfully.
-Package verification follows in the final archive step.
-Requires Arma 3 2.18 for array switchMove/getUnitMovesInfo.
+HEMTT 1.21.0: PASS; config 1.8.0.6, 14 compiled SQF files, one PBO.
+Build retains nonblocking style advisories. No Arma runtime was available.
+Final archive validation checks prefix gait, config.bin, matching source bytes
+for all fourteen embedded scripts, source manifest and ZIP integrity.
 
-Preservation + mutation checks: PASS. All 25 historical RC4 block hashes remain:
-19 intact blocks; 6 changed blocks with 14 exact reviewed reversals.
-Original presets and slope pace model are byte-identical. All original CBA
-ranges/defaults remain; four release descriptions and the inactive sustain
-label now explain the bounded curve. Original tier relief and launch duration
-are restored. Mutation checks reject retuning those restored values, removing
-the forward-input gate, extending the endpoint, filtering the direct curve,
-changing sprint intent, and other protected brace/reserve/ramp behavior.
+Source preservation and mutation checks: PASS.
+All 25 historical RC4 block hashes retained: 17 intact blocks and 8 blocks
+with 16 exact authorized reversals. Original presets and slope pace model
+remain byte-identical. Original settings ranges/defaults remain; descriptions
+explain alpha6 brace relief and the shorter forward ramp. Four additional
+source assertions protect native stamina acquisition order and trip/player
+change/reset cleanup. Removal and tuning mutations are rejected.
 
-Graph: PASS; all 4 contract tests. 72 states and 8 action maps unchanged.
+Graph: PASS, 5 contracts. 36 states and 4 action maps. Every forward custom
+movement state inherits a real Meva sprint clip. No custom walking-brace
+states or switchMove calls remain. Graph generation matches shipped config.
 
-All 14 actual-helper-source SQF-VM suites: PASS, zero diagnostics.
-- gear_inertia: original inclusive relief tiers and custom thresholds; original
-  launch duration; modest acceleration (scale 0.90-1.00); default release under
-  0.5 seconds; configured release 0.20-0.65 seconds; no hold; direct monotonic
-  release curve across ten loads and five pace pairs; exact/late endpoints at
-  five tick rates; no-W/stop/re-tap/deadline cancellation; forward diagonals;
-  no residual animation tail; uphill brake priority.
-- locomotion_coast: live input priority; W+A/D response; released-W cancellation;
-  stale coast lease rejection; pending entry cleanup; actual tick dispatcher
-  cannot replace a deferred exit; forward release observed during cleanup.
-- locomotion_handoff: aim/phase arguments; brace promotion; token cancellation;
-  promotion-timeout cleanup; held sprint can recover to native sprint intent;
-  input-history transitions. Engine restriction queries remain at live edges.
-- release_and_blend: argument safety; recognized custom/native blends; strict
-  lowered-rifle walk/tactical _ver2 handling; unknown suffix rejection.
-- uphill_brake: signed grade, release edges, scaling, re-tap, bounded braking.
-- uphill_brake_handoff: prearm, lease expiry and protected actions.
-- brace_momentum: actual movement history, all-trigger protection, stop rearm.
+All 15 actual-helper-source SQF-VM suites: PASS, zero diagnostics.
+- native_stamina_ownership: acquisition/release, original enabled flag, player
+  replacement, disabled settings/context, pre-disabled flag, external enable,
+  locality loss and unchanged ACE medical masks. Engine flag access is mocked.
+- brace_momentum: 6 m/s sprint to settled 4 m/s W-only jog rearms brace across
+  three pace coefficients; quick moving retap avoids another brace; ongoing
+  steep sprint and actual-stop behavior remain protected. The new settled-jog
+  case fails against the alpha5 helper, demonstrating the old regression.
+- gear_inertia: original relief settings and duration, bounded acceleration
+  scale 1.00-1.06, heavy baseline 1.00, default finite release 0.268-0.342 s,
+  configured bounds 0.15-0.45 s, monotonic endpoints across ten loads/five
+  pace pairs/five tick rates, no-W/stop/retap cancellation and uphill priority.
+- locomotion_coast: immediate raw release, safe fresh-press exit reversal,
+  no held-key restarting, deferred unsafe cleanup and W-release history.
+- locomotion_handoff: exact entry/exit blend recognition, interrupted-blend
+  source grace, numeric brace cancellation and no walking-stage promotion.
+- release_and_blend: strict native/custom movement endpoints and supported
+  lowered-rifle variants; unrelated suffixes and unsafe transitions rejected.
+- uphill_brake_handoff: brake remains numerical, cannot hold sprint clip.
+- uphill_brake: signed grade, release edges, scaling, retap and bounded brake.
 - downhill_pace: angle/load ordering, bounds, time consistency and recovery.
 - locomotion_state_machine: entry/release, escape, direction and ownership.
 - input_and_ramp: immediate input samples and time-based coefficients.
-- slope_direction: direction selections, reversal and release.
-- slope_state_selection: real sprint and appropriate lateral/rear clips.
+- slope_direction: direction selection, reversal and release.
+- slope_state_selection: genuine sprint and appropriate lateral/rear clips.
 - locomotion_pace: fallback/physical-unit interface and invalid calibration.
 - ace_status_bridge: event order, medical masks and physiology ownership.
 
 Reproduce with tools/run_regressions.py and caller-supplied SQF-VM.
-The runner combines current helper sources, not cached function copies, and
-records commands, SHA256 hashes, PASS evidence and completion markers.
+The runner combines current helper sources and records commands, source
+SHA256 hashes, PASS evidence and completion markers. Tests do not execute
+live animation commands or simulate Arma's native stamina system.
 
-Limitations: SQF-VM does not simulate Arma root motion, animation blending,
-camera, collision or network replication. The getUnitMovesInfo dummy permits
-parsing only and is not executed by these tests. Actual smoothness, stopping
-distance, steep-slope speed and multiplayer behavior require game checks.
+Limits: these checks cannot establish heavy-backpack sprint permission,
+root motion, animation/camera blending, collision or multiplayer in Arma.
+Check the focused acceptance cases in README_TEST_BUILD.md in a fresh mission.
+The read-only foundation capture records native stamina ownership, permission
+flags, ACE masks, backpack/load and exact entry/exit animation observations.
 Windows deployment remains a target-platform check.

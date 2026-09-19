@@ -117,10 +117,19 @@ GAIT_fnc_nativeMovementEligible = {
     if (_transition >= 0 && {(_unit getVariable ["GAIT_slopeAttemptLatched", false])} &&
         {!(_unit getVariable ["GAIT_slopeExitPending", false])} &&
         {(stance _unit) isEqualTo "STAND"}) then {
-        _expectedBlend = [_animation, _unit getVariable ["GAIT_slopeEntrySource", ""], _unit getVariable ["GAIT_slopeEntryTarget", ""]] call GAIT_fnc_isStandingLocomotionBlend;
+        _expectedBlend = [_animation, _unit getVariable ["GAIT_slopeEntrySource", ""], _unit getVariable ["GAIT_slopeEntryTarget", ""]] call GAIT_fnc_isLocomotionHandoffBlend;
+        _expectedBlend = _expectedBlend || {[_animation, _unit getVariable ["GAIT_slopeEntrySource", ""],
+            diag_tickTime <= (_unit getVariable ["GAIT_slopeEntryDeadline", -1])] call GAIT_fnc_isLocomotionHandoffSource};
     };
+    // Keep coefficient ownership through our exact native-release blend.
+    // This does not admit stance, weapon, medical or unrelated transitions.
+    private _exitBlend = _transition >= 0 &&
+        {_unit getVariable ["GAIT_slopeExitPending", false]} &&
+        {!isNil "GAIT_fnc_isLocomotionHandoffBlend"} &&
+        {[_animation, _unit getVariable ["GAIT_slopeExitSource", ""],
+            _unit getVariable ["GAIT_slopeExitTarget", ""]] call GAIT_fnc_isLocomotionHandoffBlend};
     private _familyBlend = _transition >= 0 && {!isNil "GAIT_fnc_isSlopeLocomotionBlend"} && {[_animation] call GAIT_fnc_isSlopeLocomotionBlend};
-    if (_transition >= 0 && {!_expectedBlend} && {!_familyBlend}) exitWith {false};
+    if (_transition >= 0 && {!_expectedBlend} && {!_familyBlend} && {!_exitBlend}) exitWith {false};
     private _action = ["reload", "medic", "melee", "throw", "climb", "ladder", "putdown", "getin", "getout", "vault", "dive", "diving", "roll", "salute", "surrender", "gear"] findIf {(_animation find _x) >= 0};
     if (_action >= 0) exitWith {false};
     private _nativePrefix = (_animation select [0, 4]) isEqualTo "amov";

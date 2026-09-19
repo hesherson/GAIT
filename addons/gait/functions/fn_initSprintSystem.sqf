@@ -218,6 +218,7 @@ GAIT_fnc_tripPlayer = {
     if !(alive player) exitWith {};
     if (player getVariable ["ACE_isUnconscious", false]) exitWith {};
 
+    [] call GAIT_fnc_releaseNativeStaminaOwnership;
     [] call GAIT_fnc_releaseNativeMovement;
     player setVariable ["GAIT_isTripping", true, false];
     missionNamespace setVariable ["GAIT_lastTripTime", time];
@@ -274,6 +275,7 @@ GAIT_fnc_tripPlayer = {
 
     while {true} do {
         if (!isNull player && {player != _lastPlayer}) then {
+            [] call GAIT_fnc_releaseNativeStaminaOwnership;
             [] call GAIT_fnc_releaseNativeMovement;
             _lastPlayer = player;
 
@@ -296,7 +298,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha5"];
+missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha6"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -967,6 +969,10 @@ GAIT_fnc_setTunnelVisionFX = {
             _sprintReserve = _sprintReserveMax * _reserveRatioBeforeChange;
         };
 
+        // Own native stamina before asking the engine for sprint permission.
+        // This also restores its saved flag when movement is disabled or the
+        // player enters a context owned by another system.
+        [player] call GAIT_fnc_updateNativeStaminaOwnership;
         if (alive player && {call GAIT_fnc_modeIsActive} && {!(call GAIT_fnc_isSuspendedContext)}) then {
             private _pickupActive = player getVariable ["MAV_fastCarry_pickupActive", false];
             private _gaitMovementEnabled = call GAIT_fnc_modeAllowsMovement;
@@ -1100,7 +1106,11 @@ GAIT_fnc_setTunnelVisionFX = {
                 };
 
                 private _effectiveNormalSpeed = _normalSpeed * _weightSpeedMult;
-                private _effectiveBraceSpeed = (_sprintStartBraceSpeed + ((_normalSpeed - _sprintStartBraceSpeed) * _braceRelief)) * _weightSpeedMult;
+                // Every load gets the same brief step within the running clip.
+                // Keep the original base and duration, with only a small tier
+                // difference in the dip instead of nearly removing light brace.
+                private _effectiveBraceRelief = (_braceRelief max 0 min 1) * 0.20;
+                private _effectiveBraceSpeed = (_sprintStartBraceSpeed + ((_normalSpeed - _sprintStartBraceSpeed) * _effectiveBraceRelief)) * _weightSpeedMult;
 
                 private _gearInertia = [_gearLbs,
                     [_lightBraceRelief, _mediumBraceRelief, _moderateBraceRelief, _heavyBraceRelief],
@@ -1792,7 +1802,9 @@ GAIT_fnc_setTunnelVisionFX = {
                     _hasRetainedSprintMomentum, _horizontalSpeedMS > 0.25, _currentSpeed, _pacePair select 0,
                     time, _shiftReleaseTaperActiveUntil, _shiftReleaseTaperActiveNow] call GAIT_fnc_gearCoastActive;
                 _coastActive = _coastActive && {!_uphillBrakeActive} && {_movementEligible} && {!_externalSprintLock} && {!_externalWalkLock};
-                private _fastMoveIntent = _gaitMovementEnabled && {_turboHeld || {_uphillBrakeActive} || {_coastActive}} && {_gaitStanceOk} && {!_isAceCarrying};
+                // Publish permission, not a scheduled snapshot of Turbo. The
+                // render controller handles press/release edges immediately.
+                private _fastMoveIntent = _gaitMovementEnabled && {_gaitStanceOk} && {!_isAceCarrying};
                 private _coastPrearm = _shiftReleaseRunTaperEnabled && {_momentumContextOk} && {_isSprinting} &&
                     {_sprintBraceEndTime <= time} && {_horizontalSpeedMS > 0.25};
                 private _brakePrearm = _uphillBrakeEnabled && {_uphillBrakeContext} && {_isSprinting} &&
@@ -1816,7 +1828,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 if (_debugHudEnabled && {(time - _lastDebugHudTime) >= ((_debugHudInterval max 0.05) min 1)}) then {
                     _lastDebugHudTime = time;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha5<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13<br/>Foundation: %14 | Measured pace profile: %15</t>",
+                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha6<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13<br/>Foundation: %14 | Measured pace profile: %15</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,

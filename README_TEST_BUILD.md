@@ -1,61 +1,56 @@
-# GAIT 1.8.0-alpha5: original gear feel and short forward slowdown
+# GAIT 1.8.0-alpha6: sprint entry and animation correction
 
-Complete HEMTT source based on alpha4. Requires Arma 3 2.18+, CBA_A3 and ACE3. Deployment commands are in README_HEMTT.md. Load only the new GAIT copy and start a fresh mission.
+Complete HEMTT source based on alpha5. Requires Arma 3 2.18+, CBA_A3 and ACE3. Deployment commands are in README_HEMTT.md. Load the new GAIT copy and start a fresh mission.
 
-## Correction to alpha4
+## What changed
 
-Alpha4 added a longer speed hold, slower gear-dependent braking and a residual animation coast lasting beyond its target curve. It also deepened lighter-tier brace relief and increased launch duration. Those changes exceeded the requested refinement and have been removed.
+The brace now applies its brief speed dip inside the running animation, as the original implementation did. The additional walking stage and its promotion timer are removed. Holding sprint and forward requests the sprint family directly, regardless of gear tier.
 
-* Original tier brace relief is restored exactly: Light 0.55 through 35 lb, Medium 0.35 through 55 lb, Moderate 0.18 through 75 lb, Heavy 0 above 75 lb, with existing custom settings honored.
-* Original base launch duration, brace speed, snap and slope addition are restored. Heavier gear already produces a deeper initial dip through its original relief setting.
-* Acceleration has only a modest load factor, ranging from the original rate to 90% of that rate at the heaviest endpoint. It changes time to build sprint, never permission to sprint.
-* Original steady sprint/load targets, presets and downhill build timing remain. No new gear-based walk lock is applied.
+The native stamina override removed during the rebuild is restored with explicit ownership. GAIT saves the original enabled flag and restores it when movement ownership ends. This addresses the native load/stamina gate while retaining GAIT's existing continuous weight and fatigue pace calculations. ACE injury restrictions remain respected. This corrects a source regression; heavy-backpack behavior still needs an in-game check.
 
-## Forward movement and release
+All tiers keep the original 0.15-second base brace, 0.42 base coefficient and 0.575 brace response. Existing tier relief now contributes at 20% strength, making the brace more similar across tiers and giving light gear a clearer step. This deliberately strengthens light bracing compared with the original relief formula. Heavy gear retains the original acceleration rate; lighter gear gets a small continuous boost, up to 6%. Original steady speed/load targets and presets are unchanged.
 
-Releasing sprint while W remains held starts one finite smooth curve immediately. It has no speed-hold period, secondary exponential filter or residual six-second tail.
+Light gear also had a rearming bug: ordinary jogging could remain above the old fixed 2 m/s cutoff indefinitely. Returning to settled ordinary pace now rearms using the existing cooldown and settling periods. A quick moving sprint re-tap still avoids a second brace.
 
-| Load, default thresholds | Forward release duration |
+## Sprint release and animation blending
+
+Entry and release now request the movement graph's interpolation with one `playMoveNow` call. The previous `switchMove` pose-weight argument did not provide a timed animation transition. The graph contains 36 locomotion states, with direct ordinary entry/exit connections and no separate walking-brace family.
+
+Releasing sprint begins the native movement transition promptly. A fresh sprint press can replace an ordinary exit in progress once, through the graph. Holding the same key does not repeatedly restart the animation. Stance changes, medical actions, weapon changes and other incompatible actions retain priority.
+
+Releasing sprint while W remains held also starts a short, finite coefficient ramp:
+
+| Displayed load | Default forward release ramp |
 | --- | --- |
-| 0 lb | 0.383 seconds |
-| 35 lb | 0.404 seconds |
-| 55 lb | 0.425 seconds |
-| 75 lb | 0.446 seconds |
-| 100 lb | 0.468 seconds |
-| 125+ lb | 0.489 seconds |
+| 0 lb | 0.268 s |
+| 35 lb | 0.283 s |
+| 55 lb | 0.298 s |
+| 75 lb | 0.312 s |
+| 100 lb | 0.327 s |
+| 125+ lb | 0.342 s |
 
-These are coefficient-curve durations, not measured stopping distances. The existing taper setting scales the duration, bounded to 0.20-0.65 seconds. The old sustain setting remains visible as inactive for existing saved profiles; it cannot add a hold period.
+These are coefficient timings, not measured stopping distances or animation-blend durations. The stored taper setting scales this ramp within 0.15-0.45 seconds. There is no full-speed hold or extra decay tail.
 
-W+A/D is still forward movement: directions remain immediate while the short curve runs. Releasing W, choosing pure strafe/back movement, or stopping cancels stored forward coast and downhill speed buildup. A render-time input serial catches even a release/repress between scheduled feature updates. No synthetic input, position or velocity forces the player forward.
+W+A/D keeps forward response and direction control. Releasing W, choosing pure strafe/back movement, or stopping cancels stored forward coast. A render-time input serial catches a W release even between scheduled updates. No input, velocity or position is synthesized to keep the player moving forward.
 
-Actual movement history is retained only to avoid another launch brace while the body is still moving; it cannot restore cancelled speed. A real stop still rearms the original step-off. Re-pressing sprint during a valid forward coast accelerates from the remaining coefficient.
-
-## Animation and uphill braking
-
-Walking clips are used only for the short brace stages. A raw key release consumes the current brace token so old scheduled state cannot re-enter that walking stage. A sprint re-tap cancels an active uphill-brake stage immediately.
-
-If the one-shot transition from brace to sprint is not observed, GAIT exits through its normal movement cleanup and prevents repeated entry attempts until sprint is released. This avoids an indefinitely owned walking-brace state. The 72-state graph is retained.
-
-The alpha3 uphill brake still acts when sprint is released while W remains held. Its 15-35 degree scaling and strength are unchanged. Stop/pure-strafe input takes precedence over the forward brake animation and coefficient. Uphill braking also shortens the forward coast and cannot restore the pre-brake sprint coefficient.
-
-Existing ACE restrictions from injury or other systems, fatigue reserve, carrying, dragging, sway, sound, hearing, vegetation, landing and trip features retain their existing ownership. See tests/FEATURE_PRESERVATION.md for the exact source-preservation scope.
+The existing uphill brake still applies its numerical speed dip when sprint is released with W held. Its angle, strength and timing tuning remain. It does not insert a walking clip. Sprint re-taps resume from the remaining coefficient without another launch brace.
 
 ## Focused in-game check
 
-1. Compare light, medium and heavy kits from walk/jog into sprint. Check the original brief brace, then continued acceleration into the sprint animation.
-2. At full sprint, release Shift but hold W. Pace should begin falling promptly and finish its smooth coefficient transition in roughly half a second. Re-tap Shift midway; no second launch brace should occur.
-3. Repeat with W+A/D. Then release W completely, choose pure A/D or S, and release every movement key. No forward coast should keep those inputs waiting.
-4. Release/repress W quickly during a launch brace and during sprint coast. No stale walking brace or old sprint boost should return.
-5. Repeat on the working downhill slope and uphill beyond 32 degrees. Uphill Shift release should still dig in while W remains held. Also check reload, weapon change, crouch and prone.
+1. With a heavy backpack, hold W and sprint from rest, then from a jog. Check that the running animation starts with the brief brace and builds into full sprint. Repeat with medium and light gear.
+2. Sprint, release sprint while holding W, then tap it repeatedly during the slowdown. Check interpolation in both directions, especially with light gear. There should be no walking-stage pause or new brace on quick moving re-taps.
+3. Return to ordinary W-only jogging for several seconds, then sprint again. Confirm the brace returns in every tier.
+4. Release every movement key. Repeat by switching to pure A/D or S. Check prompt stop/direction response. W+A/D should remain responsive during the short forward ramp.
+5. Repeat on the working downhill slope and steep uphill terrain. Check the uphill release brake, reload, weapon changes, crouch/prone and ACE medical restrictions.
 
 For a remaining problem, copy tests/foundation_capture.sqf into the saved Eden mission and use Local Exec:
 
 ```sqf
-[90, "alpha5 responsive forward coast"] execVM "foundation_capture.sqf";
+[90, "alpha6 heavy sprint and sprint taps"] execVM "foundation_capture.sqf";
 ```
 
-Send the RPT after STOP, with the exact key sequence and approximate gear weight.
+The read-only recorder now includes native stamina ownership, engine sprint/walk permission, ACE restriction masks, backpack and load. Send the RPT after STOP with the key sequence and gear weight.
 
 ## Validation limits
 
-HEMTT and SQF-VM check compilation, bounded response, original brace tuning, input policy, cleanup and regression cases. They cannot simulate Arma root motion, camera blending, collision or multiplayer. The final switch between custom and native clips, actual physical stopping and sprint feel remain in-game acceptance checks. No physical speed calibration profiles are invented.
+HEMTT and the actual-helper SQF-VM suites check compilation, ownership lifecycle, brace rearming, finite ramps and controller requests. They cannot simulate Arma animation blending, root motion, camera, collision or multiplayer. Smoothness and heavy-backpack behavior require the focused game checks above.

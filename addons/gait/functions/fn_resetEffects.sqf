@@ -10,6 +10,10 @@ params [
 
 if (!hasInterface) exitWith {};
 
+if (!isNil "GAIT_fnc_releaseNativeStaminaOwnership") then {
+    [] call GAIT_fnc_releaseNativeStaminaOwnership;
+};
+
 // Release the actual unit whose movement GAIT owns before clearing state.
 // This also handles respawn/player replacement without applying old movement
 // values to the new player or overwriting another system's animation speed.

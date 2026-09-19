@@ -1,6 +1,6 @@
 /*
-    Alpha5 restores original per-tier brace relief and launch duration.
-    Load modestly changes acceleration, never sprint permission or steady pace.
+    Alpha6 keeps the original heavy launch rate with small lighter-load boosts.
+    Load changes acceleration, never sprint permission or steady pace.
     A released sprint has one short forward-only taper, with no hold and no
     secondary exponential tail. The separate uphill brake has priority.
 
@@ -19,7 +19,7 @@ GAIT_fnc_gearInertia = {
     private _mediumMax = (_thresholds param [1, 55, [0]]) max (_lightMax + 1);
     private _moderateMax = (_thresholds param [2, 75, [0]]) max (_mediumMax + 1);
     private _landmarks = [0, _lightMax, _mediumMax, _moderateMax, _moderateMax + 25, _moderateMax + 50];
-    private _acceleration = [1, 1, 0.98, 0.96, 0.93, 0.90];
+    private _acceleration = [1.06, 1.04, 1.02, 1, 1, 1];
     private _coast = [0.90, 0.95, 1, 1.05, 1.10, 1.15];
     private _load = _gearLbs max 0 min (_landmarks select 5);
     private _segment = 0;
@@ -47,10 +47,10 @@ GAIT_fnc_scaleInertiaRamp = {
 
 // Keep the stored hold argument for compatibility, but never apply it. Saved
 // alpha4 hold settings must not reintroduce input lag. The duration setting is
-// a scale: default .85 resolves to .383-.489 seconds across default load tiers.
+// a scale: default .85 resolves to .268-.342 seconds across default load tiers.
 GAIT_fnc_gearCoastWindow = {
     params [["_holdSeconds", 0, [0]], ["_taperSeconds", 0.85, [0]], ["_durationScale", 1, [0]]];
-    [0, ((_taperSeconds max 0.05 min 4) * 0.50 * (_durationScale max 0.9 min 1.15)) max 0.20 min 0.65]
+    [0, ((_taperSeconds max 0.05 min 4) * 0.35 * (_durationScale max 0.9 min 1.15)) max 0.15 min 0.45]
 };
 
 // Finite curve applied directly to the coefficient, not filtered a second
@@ -66,7 +66,7 @@ GAIT_fnc_forwardCoastPace = {
     [_walk + ((_start - _walk) * _keep), _keep, _t < 1]
 };
 
-// Retain the sprint graph only for the finite curve while W stays held.
+// Keep numeric coast only for the finite curve while W stays held.
 // W+A/D are valid forward movement; pure strafe/back/stop are not coasting.
 // Compatibility arguments retain old call sites without any residual tail.
 GAIT_fnc_gearCoastActive = {

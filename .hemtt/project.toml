@@ -6,7 +6,7 @@ mainprefix = "z"
 major = 1
 minor = 8
 patch = 0
-build = 5
+build = 6
 git_hash = 0
 
 [files]

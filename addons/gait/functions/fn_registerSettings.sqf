@@ -89,7 +89,7 @@ private _addList = {
 ["GAIT_ss_speedLerp", "Speed ramp smoothness", "How quickly current speed moves toward target speed. Lower is smoother/slower; higher is snappier. Default: 0.05.", _categoryMove, 0.01, 1.00, 0.05, 2] call _addSlider;
 ["GAIT_ss_wReleaseZeroMomentumDelay", "W-release zero-momentum delay", "Seconds after releasing forward movement before the next sprint start is treated as zero momentum. Lower values make brace return sooner. Default: 0.50.", _categoryMove, 0.00, 20.00, 0.50, 2] call _addSlider;
 ["GAIT_ss_shiftReleaseRunTaperEnabled", "Smooth Shift-release taper", "Release Shift while holding W to slow smoothly over a short bounded interval. Releasing W cancels the coast; forward diagonals remain responsive. Default: enabled.", _categoryMove, true] call _addCheckbox;
-["GAIT_ss_shiftReleaseRunTaperDuration", "Shift-release taper duration", "Scale for the short forward slowdown. Effective duration is half this value times a small load factor, bounded to 0.20-0.65 seconds. Default 0.85 gives about 0.38-0.49 seconds.", _categoryMove, 0.05, 4.00, 0.85, 2] call _addSlider;
+["GAIT_ss_shiftReleaseRunTaperDuration", "Shift-release taper duration", "Scale for the short forward slowdown. Effective duration is 0.35 times this value and a small load factor, bounded to 0.15-0.45 seconds. Default 0.85 gives about 0.27-0.34 seconds.", _categoryMove, 0.05, 4.00, 0.85, 2] call _addSlider;
 ["GAIT_ss_shiftReleaseRunTaperHoldDuration", "Shift-release sustain (inactive)", "Legacy setting retained for saved profiles. Slowdown now begins immediately, so this value no longer changes movement.", _categoryMove, 0.00, 3.00, 1.00, 2] call _addSlider;
 ["GAIT_ss_shiftReleaseRunTaperCurve", "Shift-release taper curve", "Shapes the smooth release curve: higher values lose pace sooner. Effective range is 1-3. The slowdown still reaches its endpoint within the bounded duration. Default: 1.45.", _categoryMove, 0.25, 5.00, 1.45, 2] call _addSlider;
 ["GAIT_ss_unarmedSprintNormalizer", "Unarmed sprint normalizer", "Multiplier applied when sprinting with no weapon out so holstering does not create an unrealistic speed boost. Default: 0.725.", _categoryMove, 0.30, 1.20, 0.725, 3] call _addSlider;
@@ -114,10 +114,10 @@ private _addList = {
 ["GAIT_ss_mediumSpeedBonus", "Light threshold speed multiplier", "Continuous speed curve at the light weight threshold. Default: 1.05.", _categoryWeight, 0.50, 1.50, 1.05, 3] call _addSlider;
 ["GAIT_ss_moderateSpeedBonus", "Medium threshold speed multiplier", "Continuous speed curve at the medium weight threshold. Default: 1.025.", _categoryWeight, 0.50, 1.50, 1.025, 3] call _addSlider;
 ["GAIT_ss_heavySpeedBonus", "Heavy threshold speed multiplier", "Continuous speed curve at the heavy weight threshold; extra weight reduces pace further. Default: 1.00.", _categoryWeight, 0.50, 1.50, 1.00, 3] call _addSlider;
-["GAIT_ss_lightBraceRelief", "Light kit brace relief", "How much the brace-step slowdown is softened for light kits. 0 = full brace; 1 = almost no brace dip. Default: 0.55.", _categoryWeight, 0.00, 1.00, 0.55, 2] call _addSlider;
-["GAIT_ss_mediumBraceRelief", "Medium kit brace relief", "How much the brace-step slowdown is softened for medium kits. Default: 0.35.", _categoryWeight, 0.00, 1.00, 0.35, 2] call _addSlider;
-["GAIT_ss_moderateBraceRelief", "Moderate kit brace relief", "How much the brace-step slowdown is softened for moderate kits. Default: 0.18.", _categoryWeight, 0.00, 1.00, 0.18, 2] call _addSlider;
-["GAIT_ss_heavyBraceRelief", "Heavy kit brace relief", "How much the brace-step slowdown is softened for heavy kits. Default: 0.00.", _categoryWeight, 0.00, 1.00, 0.00, 2] call _addSlider;
+["GAIT_ss_lightBraceRelief", "Light kit brace relief", "Small reduction of the shared brace dip for light kits. Applied at 20% strength so every tier keeps a brace. 0 = full dip; 1 = 20% relief. Default: 0.55.", _categoryWeight, 0.00, 1.00, 0.55, 2] call _addSlider;
+["GAIT_ss_mediumBraceRelief", "Medium kit brace relief", "Small reduction of the shared brace dip for medium kits, applied at 20% strength. Default: 0.35.", _categoryWeight, 0.00, 1.00, 0.35, 2] call _addSlider;
+["GAIT_ss_moderateBraceRelief", "Moderate kit brace relief", "Small reduction of the shared brace dip for moderate kits, applied at 20% strength. Default: 0.18.", _categoryWeight, 0.00, 1.00, 0.18, 2] call _addSlider;
+["GAIT_ss_heavyBraceRelief", "Heavy kit brace relief", "Small reduction of the shared brace dip for heavy kits, applied at 20% strength. Default: 0.00.", _categoryWeight, 0.00, 1.00, 0.00, 2] call _addSlider;
 
 // -----------------------------------------------------
 // 06 Brace Step and Momentum

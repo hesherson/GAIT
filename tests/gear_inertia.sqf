@@ -26,12 +26,12 @@ private _maximum = [125] call GAIT_fnc_gearInertia;
 for "_weight" from 0 to 200 do {
     private _response = [_weight] call GAIT_fnc_gearInertia;
     private _acceleration = _response select 0;
-    [_acceleration >= 0.8999 && {_acceleration <= 1},"gear only modestly slows sprint buildup"] call _assert;
+    [_acceleration >= 1 && {_acceleration <= 1.06001},"heavy keeps base acceleration with only small lighter boosts"] call _assert;
     [_acceleration <= (_lastAcceleration + _epsilon),"heavier gear does not accelerate faster"] call _assert;
     _lastAcceleration = _acceleration;
     private _window = [1,0.85,_response select 2] call GAIT_fnc_gearCoastWindow;
     [(_window select 0) isEqualTo 0,"saved sustain does not delay slowdown"] call _assert;
-    [(_window select 1) > 0.38 && {(_window select 1) < 0.50},"default release settles within half a second for all loads"] call _assert;
+    [(_window select 1) > 0.26 && {(_window select 1) < 0.35},"default release settles in about a third of a second for all loads"] call _assert;
     [(_window select 1) >= (_lastDuration - _epsilon),"heavier release is slightly longer"] call _assert;
     _lastDuration = _window select 1;
 };
@@ -40,12 +40,13 @@ for "_weight" from 0 to 200 do {
 {
     private _window = _x call GAIT_fnc_gearCoastWindow;
     [(_window select 0) isEqualTo 0,"all hold settings are ignored"] call _assert;
-    [(_window select 1) >= 0.20 && {(_window select 1) <= 0.65},"custom response stays bounded and noninstant"] call _assert;
+    [(_window select 1) >= 0.15 && {(_window select 1) <= 0.45},"custom response stays bounded and noninstant"] call _assert;
 } forEach [[0,0.05,0.9],[3,4,1.15],[1000,1000,1000],[-100,-100,-100],[1,0.85,1]];
 
 private _light = [15] call GAIT_fnc_gearInertia;
 private _medium = [55] call GAIT_fnc_gearInertia;
 private _heavy = [100] call GAIT_fnc_gearInertia;
+[(_heavy select 0) isEqualTo 1 && {(_maximum select 0) isEqualTo 1},"heavy and extreme loads retain original acceleration rate"] call _assert;
 private _accelerated = [];
 {
     private _ramp = [0.05,_x select 0] call GAIT_fnc_scaleInertiaRamp;

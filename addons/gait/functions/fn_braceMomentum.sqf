@@ -37,11 +37,14 @@ GAIT_fnc_stepBraceMomentum = {
         _lastMovingSprint = _now;
         _settled = 0;
     } else {
-        // A recovered multiplier alone cannot declare a fast downhill body
-        // settled. 2 m/s is a walking/recovery threshold, not a clip-speed
-        // calibration. Faster travel retains momentum until a real slowdown.
-        private _atWalkPace = _actualSpeedMS <= 2 &&
-            {_currentCoefficient <= ((_walkCoefficient max 0.01) + (_coefficientMargin max 0))};
+        // W-only movement can be a native jog above 2 m/s, especially with
+        // light gear. Rearm against the intended non-sprint coefficient after
+        // the original grace/settle windows, not an absolute walking speed.
+        // The finite release taper finishes well before that grace expires.
+        // Continuing sprint always takes the branch above, so a low uphill
+        // sprint coefficient cannot rearm its brace while sprint stays held.
+        private _atWalkPace =
+            _currentCoefficient <= ((_walkCoefficient max 0.01) + (_coefficientMargin max 0));
         if (_established && {_atWalkPace} && {(_now - _lastMovingSprint) >= (_graceSeconds max 0)}) then {
             _settled = _settled + _step;
             if (_settled >= (_settleSeconds max 0.05)) then {

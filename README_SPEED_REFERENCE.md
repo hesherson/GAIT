@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha5 sprint speed reference
+# GAIT 1.8.0-alpha6 sprint speed reference
 
 Balanced defaults, fresh reserve, weapon out, fully developed sprint/downhill momentum, no vegetation/injury penalty. Speed scales continuously within each gear tier.
 

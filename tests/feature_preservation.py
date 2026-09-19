@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Protect GAIT's retained RC4 tuning with exact user-authorized deltas through alpha5.
+"""Protect GAIT's retained RC4 tuning with exact user-authorized deltas through alpha6.
 
 Run: python tests/feature_preservation.py [project-root] [--self-test]
 No Arma, third-party packages or adjacent old checkout is required.
@@ -758,6 +758,20 @@ MAIN_FILE = "addons/gait/functions/fn_initSprintSystem.sqf"
 # exemption for these blocks and none of the historical hashes are changed.
 # New helpers also require their separate SQF behavior tests.
 AUTHORIZED_BLOCK_DELTAS = [
+    ("trip_ragdoll_recovery", "alpha6 release scoped native stamina before tripping", """
+        [] call GAIT_fnc_releaseNativeStaminaOwnership;
+        [] call GAIT_fnc_releaseNativeMovement;
+        player setVariable ["GAIT_isTripping", true, false];
+    """, """
+        [] call GAIT_fnc_releaseNativeMovement;
+        player setVariable ["GAIT_isTripping", true, false];
+    """),
+    ("gear_weight_and_brace_relief", "alpha6 similar running brace across gear tiers", """
+        private _effectiveBraceRelief = (_braceRelief max 0 min 1) * 0.20;
+        private _effectiveBraceSpeed = (_sprintStartBraceSpeed + ((_normalSpeed - _sprintStartBraceSpeed) * _effectiveBraceRelief)) * _weightSpeedMult;
+    """, """
+        private _effectiveBraceSpeed = (_sprintStartBraceSpeed + ((_normalSpeed - _sprintStartBraceSpeed) * _braceRelief)) * _weightSpeedMult;
+    """),
     # Alpha5 corrects the heavy-kit overreach and confines the release curve
     # to held forward input. Exact reversals still target the original RC4 hash.
     ("step_off_brace_and_sprint_end", "alpha5 forward release latch replaces lateral veto", """
@@ -805,7 +819,7 @@ AUTHORIZED_BLOCK_DELTAS = [
         };
     """),
     # Retained snapshot/ownership integration from alpha4, refined by alpha5.
-    # Original tier-relief selection and base launch duration require no delta.
+    # Original tier-relief selection and base launch duration remain protected.
     # Every original RC4 digest remains the comparison target.
     ("initial_tuning_and_momentum_state", "alpha4 snapshot load-scaled coast windows", """
         private _shiftReleaseTaperStartSpeed = _normalSpeed;
@@ -926,6 +940,16 @@ AUTHORIZED_BLOCK_DELTAS = [
 ]
 
 AUTHORIZED_SETTINGS_DELTAS = [
+    ("alpha6 shorter forward release description", '["GAIT_ss_shiftReleaseRunTaperDuration", "Shift-release taper duration", "Scale for the short forward slowdown. Effective duration is 0.35 times this value and a small load factor, bounded to 0.15-0.45 seconds. Default 0.85 gives about 0.27-0.34 seconds.", _categoryMove, 0.05, 4.00, 0.85, 2] call _addSlider;',
+     '["GAIT_ss_shiftReleaseRunTaperDuration", "Shift-release taper duration", "Scale for the short forward slowdown. Effective duration is half this value times a small load factor, bounded to 0.20-0.65 seconds. Default 0.85 gives about 0.38-0.49 seconds.", _categoryMove, 0.05, 4.00, 0.85, 2] call _addSlider;'),
+    ("alpha6 light shared-brace description", '["GAIT_ss_lightBraceRelief", "Light kit brace relief", "Small reduction of the shared brace dip for light kits. Applied at 20% strength so every tier keeps a brace. 0 = full dip; 1 = 20% relief. Default: 0.55.", _categoryWeight, 0.00, 1.00, 0.55, 2] call _addSlider;',
+     '["GAIT_ss_lightBraceRelief", "Light kit brace relief", "How much the brace-step slowdown is softened for light kits. 0 = full brace; 1 = almost no brace dip. Default: 0.55.", _categoryWeight, 0.00, 1.00, 0.55, 2] call _addSlider;'),
+    ("alpha6 medium shared-brace description", '["GAIT_ss_mediumBraceRelief", "Medium kit brace relief", "Small reduction of the shared brace dip for medium kits, applied at 20% strength. Default: 0.35.", _categoryWeight, 0.00, 1.00, 0.35, 2] call _addSlider;',
+     '["GAIT_ss_mediumBraceRelief", "Medium kit brace relief", "How much the brace-step slowdown is softened for medium kits. Default: 0.35.", _categoryWeight, 0.00, 1.00, 0.35, 2] call _addSlider;'),
+    ("alpha6 moderate shared-brace description", '["GAIT_ss_moderateBraceRelief", "Moderate kit brace relief", "Small reduction of the shared brace dip for moderate kits, applied at 20% strength. Default: 0.18.", _categoryWeight, 0.00, 1.00, 0.18, 2] call _addSlider;',
+     '["GAIT_ss_moderateBraceRelief", "Moderate kit brace relief", "How much the brace-step slowdown is softened for moderate kits. Default: 0.18.", _categoryWeight, 0.00, 1.00, 0.18, 2] call _addSlider;'),
+    ("alpha6 heavy shared-brace description", '["GAIT_ss_heavyBraceRelief", "Heavy kit brace relief", "Small reduction of the shared brace dip for heavy kits, applied at 20% strength. Default: 0.00.", _categoryWeight, 0.00, 1.00, 0.00, 2] call _addSlider;',
+     '["GAIT_ss_heavyBraceRelief", "Heavy kit brace relief", "How much the brace-step slowdown is softened for heavy kits. Default: 0.00.", _categoryWeight, 0.00, 1.00, 0.00, 2] call _addSlider;'),
     ("alpha5 release Enabled label/description", '["GAIT_ss_shiftReleaseRunTaperEnabled", "Smooth Shift-release taper", "Release Shift while holding W to slow smoothly over a short bounded interval. Releasing W cancels the coast; forward diagonals remain responsive. Default: enabled.", _categoryMove, true] call _addCheckbox;',
      '["GAIT_ss_shiftReleaseRunTaperEnabled", "Smooth Shift-release taper", "When Shift is released but W remains held, GAIT keeps current running speed briefly and smoothly tapers to normal W movement instead of snapping down. Default: enabled.", _categoryMove, true] call _addCheckbox;'),
     ("alpha5 release Duration label/description", '["GAIT_ss_shiftReleaseRunTaperDuration", "Shift-release taper duration", "Scale for the short forward slowdown. Effective duration is half this value times a small load factor, bounded to 0.20-0.65 seconds. Default 0.85 gives about 0.38-0.49 seconds.", _categoryMove, 0.05, 4.00, 0.85, 2] call _addSlider;',
@@ -947,6 +971,31 @@ AUTHORIZED_SETTINGS_DELTAS = [
     ("momentum build slider", '''
         ["GAIT_ss_downhillMomentumBuildSeconds", "Downhill momentum build time", "Seconds of actual sprint travel to build 95% of downhill momentum. Moving sprint releases retain it; a real stop clears it. Default: 2.5 seconds.", _categorySlope, 0.50, 8.00, 2.50, 2] call _addSlider;
     ''', ""),
+]
+
+# Source integration complements the mocked engine boundary in the stamina
+# lifecycle suite. It protects ordering and cleanup, not Arma's runtime result.
+NATIVE_STAMINA_INTEGRATION = [
+    (MAIN_FILE, "native stamina acquisition before active-context and permission gates", """
+        [player] call GAIT_fnc_updateNativeStaminaOwnership;
+        if (alive player && {call GAIT_fnc_modeIsActive} && {!(call GAIT_fnc_isSuspendedContext)}) then {
+    """),
+    (MAIN_FILE, "native stamina release before trip ownership", """
+        [] call GAIT_fnc_releaseNativeStaminaOwnership;
+        [] call GAIT_fnc_releaseNativeMovement;
+        player setVariable ["GAIT_isTripping", true, false];
+    """),
+    (MAIN_FILE, "native stamina release on player replacement", """
+        if (!isNull player && {player != _lastPlayer}) then {
+            [] call GAIT_fnc_releaseNativeStaminaOwnership;
+            [] call GAIT_fnc_releaseNativeMovement;
+            _lastPlayer = player;
+    """),
+    ("addons/gait/functions/fn_resetEffects.sqf", "native stamina release on reset", """
+        if (!isNil "GAIT_fnc_releaseNativeStaminaOwnership") then {
+            [] call GAIT_fnc_releaseNativeStaminaOwnership;
+        };
+    """),
 ]
 
 
@@ -981,6 +1030,13 @@ def verify(root: Path) -> tuple[list[str], dict[str, str]]:
     sources = {}
     for path in sorted((root / "addons/gait/functions").glob("*.sqf")):
         sources[str(path.relative_to(root))] = tokenize(path.read_text(encoding="utf-8-sig"))
+    for relative, label, current in NATIVE_STAMINA_INTEGRATION:
+        values = sources.get(relative, [])
+        needle = tokenize(current)
+        matches = sum(values[i:i + len(needle)] == needle
+                      for i in range(len(values) - len(needle) + 1))
+        if matches != 1:
+            failures.append(f"Integration {label}: expected one exact executable fragment, found {matches}")
     if MAIN_FILE in sources:
         for feature, label, current, old in AUTHORIZED_BLOCK_DELTAS:
             sources[MAIN_FILE] = reverse_exact_delta(sources[MAIN_FILE], current, old,
@@ -1027,6 +1083,7 @@ def self_test(root: Path) -> None:
         ("directional_grade_trips_and_walk_pace", "_downhillMaxBoost + _sustainedBonus", "_downhillMaxBoost + 0.35"),
         ("step_off_brace_and_sprint_end", "_sprintStartBraceDuration +", "(_sprintStartBraceDuration * 1.28) +"),
         ("gear_weight_and_brace_relief", "_braceRelief = _lightBraceRelief;", "_braceRelief = _heavyBraceRelief;"),
+        ("gear_weight_and_brace_relief", "(_braceRelief max 0 min 1) * 0.20", "(_braceRelief max 0 min 1) * 0.25"),
         ("shift_release_hold_and_taper", "&& {_isForwardHeld} && {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0}", "&& {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0}"),
         ("shift_release_hold_and_taper", "if !(_releaseCurve select 2) then {_shiftReleaseTaperActiveUntil = -999;};", "if !(_releaseCurve select 2) then {_shiftReleaseTaperActiveUntil = time + 6;};"),
         ("brace_or_momentum_speed_ramp", "_currentSpeed = _rampTarget;", "_currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;"),
@@ -1042,6 +1099,16 @@ def self_test(root: Path) -> None:
             path.write_text(original.replace(before, after, 1), encoding="utf-8")
             failures, _ = verify(copy)
             assert any(feature in failure for failure in failures), feature
+            path.write_text(original, encoding="utf-8")
+        for relative, label, before in [
+            (MAIN_FILE, "native stamina acquisition", "[player] call GAIT_fnc_updateNativeStaminaOwnership;"),
+            ("addons/gait/functions/fn_resetEffects.sqf", "native stamina release on reset", "[] call GAIT_fnc_releaseNativeStaminaOwnership;"),
+        ]:
+            path = copy / relative
+            original = path.read_text(encoding="utf-8-sig")
+            assert original.count(before) == 1, label
+            path.write_text(original.replace(before, "", 1), encoding="utf-8")
+            assert any(label in failure for failure in verify(copy)[0]), label
             path.write_text(original, encoding="utf-8")
         settings = copy / "addons/gait/functions/fn_registerSettings.sqf"
         original_bytes = settings.read_bytes()
@@ -1063,7 +1130,7 @@ def self_test(root: Path) -> None:
         assert not verify(copy)[0], "Intact extraction should preserve the feature"
         extracted_path.write_text("/*\n" + extracted + "\n*/", encoding="utf-8")
         assert any(feature["name"] in f for f in verify(copy)[0]), "A comment cannot preserve executable code"
-    print("PASS mutation checks: unauthorized brace dip/duration, gear-relief anchors, reserve gate, forward release target/gate/endpoint, sprint gate, ramp timing/direct response, momentum veto, release-resume veto, brake target direction, downhill integration and setting default are rejected; intact extraction is accepted")
+    print("PASS mutation checks: unauthorized brace dip/duration, gear-relief anchors/scale, reserve gate, forward release target/gate/endpoint, sprint gate, ramp timing/direct response, momentum veto, release-resume veto, brake target direction, downhill integration, setting default and missing stamina acquisition/reset are rejected; intact extraction is accepted")
 
 
 def main() -> int:
@@ -1078,8 +1145,9 @@ def main() -> int:
             print("FAIL " + failure)
         return 1
     changed_blocks = {delta[0] for delta in AUTHORIZED_BLOCK_DELTAS}
-    print(f"PASS {len(BYTE_FILES) - 1} byte-identical tuning files; original registrations preserved except reviewed alpha2/alpha5 descriptions/labels, two new sliders and one release checkbox")
+    print(f"PASS {len(BYTE_FILES) - 1} byte-identical tuning files; original registrations preserved except reviewed descriptions/labels through alpha6, two new sliders and one release checkbox")
     print(f"PASS {len(BLOCKS) - len(changed_blocks)} intact RC4 feature blocks; {len(changed_blocks)} blocks with {len(AUTHORIZED_BLOCK_DELTAS)} exact authorized deltas; all historical hashes retained")
+    print(f"PASS {len(NATIVE_STAMINA_INTEGRATION)} native stamina acquisition/cleanup source integrations")
     for feature, relative in locations.items():
         print(f"  {feature}: {relative}")
     if args.self_test:

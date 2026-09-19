@@ -1,5 +1,5 @@
 /*
-    GAIT foundation acceptance recorder: read-only, 10 Hz, one file.
+    GAIT alpha6 foundation acceptance recorder: read-only, 10 Hz, one file.
     Copy into a saved Eden mission. With GAIT and ACE AF enabled, LOCAL EXEC:
       [60, "foundation first hill"] execVM "foundation_capture.sqf";
     Test step-off, W+Turbo, W+A/W+D, pure A/D, stop/restart and the steep hill.
@@ -23,14 +23,16 @@ private _emit = {
 };
 private _seq = 0;
 ["START", [_label, missionNamespace getVariable ["GAIT_versionString", "unknown"], productVersion,
-    "rows: tick,frame,phase,input,animation,gesture,engine,pace,brace,features,uphillBrake,gearInertia,inputHistory",
-    "engine: ground,stance,sprintAllowed,forcedWalk,ACEblock,ACEwalk,life,unconscious",
+    "rows: tick,frame,phase,input,animation,gesture,engine,pace,brace,features,uphillBrake,gearInertia,inputHistory,lockDiagnostics",
+    "engine: ground,stance,sprintAllowed,forcedWalk,ACEblock,ACEwalk,life,unconscious,staminaEnabled,stamina,fatigue",
     "pace: coefficient,horizontalMS,grade,walkCoef,sprintCoef,calibrated,walkTargetMS,sprintTargetMS,loadAbs",
-    "brace: active,configuredDuration,activeDuration,activeCoefficient,factor,plannedCoefficient,momentumProtected,downhillMomentum,animationStage,endTime",
+    "brace: active,configuredDuration,activeDuration,activeCoefficient,factor,plannedCoefficient,momentumProtected,downhillMomentum,endTime",
     "features: GAITenabled,ACEAFenabled,movementEligible,reserveRatio,shiftCoast,exitIssued,exitFailed",
     "uphillBrake: active,severity,target,endTime,readyUntil",
     "gearInertia: loadLbs,responseProfile,coastActive,coastPrearmUntil",
-    "inputHistory: forwardReleaseSerial,canceledBraceEnd,braceFailedUntilRelease"]] call _emit;
+    "inputHistory: forwardReleaseSerial,canceledBraceEnd,turboPressedThisFrame,entrySource,entryTarget,exitSource,exitTarget",
+    "lockDiagnostics: observation,sprintRequested,nativeStaminaOwned,staminaOwnerMatches,staminaPolicyEligible,ACEbridgeInstalled,clearACElocksEnabled,compatibilityMode,backpack,normalizedLoad",
+    "lock observations describe reported state; unassigned engine restrictions do not establish a stamina or load cause"]] call _emit;
 systemChat format ["GAIT foundation capture started for %1 seconds. Stop early with GAIT_foundationCaptureEnabled = false.", _duration];
 private _deadline = diag_tickTime + _duration;
 waitUntil {
@@ -43,9 +45,14 @@ waitUntil {
         if (!isNil "GAIT_fnc_nativeMovementEligible") then {_eligible = [_unit, false] call GAIT_fnc_nativeMovementEligible;};
         private _velocity = velocity _unit;
         private _horizontal = sqrt (((_velocity select 0) ^ 2) + ((_velocity select 1) ^ 2));
-        private _engine = [isTouchingGround _unit, stance _unit, isSprintAllowed _unit, isForcedWalk _unit,
-            _unit getVariable ["ace_common_effect_blockSprint", 0], _unit getVariable ["ace_common_effect_forceWalk", 0],
-            lifeState _unit, _unit getVariable ["ACE_isUnconscious", false]];
+        private _sprintAllowed = isSprintAllowed _unit;
+        private _forcedWalk = isForcedWalk _unit;
+        private _aceSprintMask = _unit getVariable ["ace_common_effect_blockSprint", 0];
+        private _aceWalkMask = _unit getVariable ["ace_common_effect_forceWalk", 0];
+        private _engine = [isTouchingGround _unit, stance _unit, _sprintAllowed, _forcedWalk,
+            _aceSprintMask, _aceWalkMask,
+            lifeState _unit, _unit getVariable ["ACE_isUnconscious", false],
+            isStaminaEnabled _unit, getStamina _unit, getFatigue _unit];
         private _pace = [getAnimSpeedCoef _unit, _horizontal,
             missionNamespace getVariable ["GAIT_smoothedSlopeDegrees", 0],
             missionNamespace getVariable ["GAIT_walkPaceTarget", -1], missionNamespace getVariable ["GAIT_sprintPaceTarget", -1],
@@ -56,7 +63,7 @@ waitUntil {
             missionNamespace getVariable ["GAIT_activeBraceDuration", -1], missionNamespace getVariable ["GAIT_activeBraceSpeed", -1],
             missionNamespace getVariable ["GAIT_slopeBraceFactor", 0], missionNamespace getVariable ["GAIT_plannedMovementCoefficient", -1],
             missionNamespace getVariable ["GAIT_braceMomentumProtected", false], missionNamespace getVariable ["GAIT_downhillMomentum", 0],
-            _unit getVariable ["GAIT_slopeBraceStage", ""], missionNamespace getVariable ["GAIT_braceEndTime", -1]];
+            missionNamespace getVariable ["GAIT_braceEndTime", -1]];
         private _features = [missionNamespace getVariable ["GAIT_ss_enabled", false], missionNamespace getVariable ["ace_advanced_fatigue_enabled", false], _eligible,
             missionNamespace getVariable ["GAIT_observedReserveRatio", -1], missionNamespace getVariable ["GAIT_shiftReleaseRunTaperActive", false],
             _unit getVariable ["GAIT_slopeExitIssued", false], _unit getVariable ["GAIT_slopeExitFailureReported", false]];
@@ -68,9 +75,32 @@ waitUntil {
             missionNamespace getVariable ["GAIT_coastReadyUntil", -1]];
         private _inputHistory = [_unit getVariable ["GAIT_forwardReleaseSerial", 0],
             _unit getVariable ["GAIT_slopeCanceledBraceEndTime", -2],
-            _unit getVariable ["GAIT_slopeBraceFailedUntilRelease", false]];
+            _unit getVariable ["GAIT_turboPressedThisFrame", false],
+            _unit getVariable ["GAIT_slopeEntrySource", ""], _unit getVariable ["GAIT_slopeEntryTarget", ""],
+            _unit getVariable ["GAIT_slopeExitSource", ""], _unit getVariable ["GAIT_slopeExitTarget", ""]];
+        private _sprintRequested = (_input select 0) > 0.05 && {_input select 2};
+        private _lockObservation = "no reported permission restriction";
+        if (!_sprintAllowed || {_forcedWalk}) then {
+            _lockObservation = "engine restriction; source unassigned";
+        };
+        if (_aceSprintMask > 0 || {_aceWalkMask > 0}) then {
+            _lockObservation = "ACE status mask present";
+        };
+        if (_sprintRequested && {_sprintAllowed} && {!_forcedWalk} && {_aceSprintMask <= 0} && {_aceWalkMask <= 0} &&
+            {((toLower animationState _unit) find "mwlk") >= 0}) then {
+            _lockObservation = "walk animation without reported permission restriction";
+        };
+        private _staminaOwnership = missionNamespace getVariable ["GAIT_nativeStaminaOwnership", []];
+        private _ownerMatches = (count _staminaOwnership) > 0 && {(_staminaOwnership select 0) isEqualTo _unit};
+        private _staminaPolicy = false;
+        if (!isNil "GAIT_fnc_ownsNativeStaminaPolicy") then {_staminaPolicy = [_unit] call GAIT_fnc_ownsNativeStaminaPolicy;};
+        private _lockDiagnostics = [_lockObservation, _sprintRequested,
+            missionNamespace getVariable ["GAIT_nativeStaminaOwned", false], _ownerMatches, _staminaPolicy,
+            missionNamespace getVariable ["GAIT_nativeAceBridgeInstalled", false],
+            missionNamespace getVariable ["GAIT_ss_clearAceMovementLocks", true],
+            missionNamespace getVariable ["GAIT_ss_compatibilityMode", -1], backpack _unit, load _unit];
         ["SAMPLE", [diag_tickTime, diag_frameNo, _unit getVariable ["GAIT_locomotionPhase", "native"], _input,
-            animationState _unit, gestureState _unit, _engine, _pace, _brace, _features, _uphillBrake, _gearInertia, _inputHistory]] call _emit;
+            animationState _unit, gestureState _unit, _engine, _pace, _brace, _features, _uphillBrake, _gearInertia, _inputHistory, _lockDiagnostics]] call _emit;
     };
     uiSleep 0.1;
     diag_tickTime >= _deadline || {!(missionNamespace getVariable ["GAIT_foundationCaptureEnabled", false])} ||

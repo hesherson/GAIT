@@ -56,6 +56,66 @@ GAIT_fnc_fatigueMovementContextEligible = {
     true
 };
 
+// Stamina was explicitly suspended by the original 1.6.1 movement controller.
+// An animation coefficient and the ACE source mask do not own Arma's separate
+// stamina gate. In particular, a loaded backpack must not prevent entry into
+// GAIT's sprint family before its continuous load penalty can be applied.
+// Keep this ownership across ordinary animation blends, independently of the
+// coefficient owner. Never disable legacy fatigue: ACE uses that flag itself.
+GAIT_fnc_nativeStaminaSnapshot = {
+    params [["_unit", objNull, [objNull]]];
+    if (isNull _unit || {!local _unit}) exitWith {[]};
+    [isStaminaEnabled _unit]
+};
+
+GAIT_fnc_writeNativeStaminaEnabled = {
+    params ["_unit", "_enabled"];
+    _unit enableStamina _enabled;
+};
+
+GAIT_fnc_ownsNativeStaminaPolicy = {
+    params [["_unit", player, [objNull]]];
+    (call GAIT_fnc_modeAllowsMovement) &&
+        {[_unit] call GAIT_fnc_fatigueMovementContextEligible}
+};
+
+GAIT_fnc_releaseNativeStaminaOwnership = {
+    private _saved = missionNamespace getVariable ["GAIT_nativeStaminaOwnership", []];
+    missionNamespace setVariable ["GAIT_nativeStaminaOwnership", []];
+    missionNamespace setVariable ["GAIT_nativeStaminaOwned", false];
+    if ((count _saved) < 2) exitWith {};
+    _saved params ["_unit", "_wasEnabled"];
+    private _current = [_unit] call GAIT_fnc_nativeStaminaSnapshot;
+    // Restore only a flag GAIT actually changed and still finds disabled.
+    // Leave a pre-existing disable or an externally enabled flag untouched.
+    if (_wasEnabled && {(count _current) > 0} && {!(_current select 0)}) then {
+        [_unit, true] call GAIT_fnc_writeNativeStaminaEnabled;
+    };
+};
+
+GAIT_fnc_updateNativeStaminaOwnership = {
+    params [["_unit", player, [objNull]]];
+    if !([_unit] call GAIT_fnc_ownsNativeStaminaPolicy) exitWith {
+        [] call GAIT_fnc_releaseNativeStaminaOwnership;
+    };
+    private _saved = missionNamespace getVariable ["GAIT_nativeStaminaOwnership", []];
+    if ((count _saved) > 0 && {(_saved select 0) isNotEqualTo _unit}) then {
+        [] call GAIT_fnc_releaseNativeStaminaOwnership;
+        _saved = [];
+    };
+    private _current = [_unit] call GAIT_fnc_nativeStaminaSnapshot;
+    if (_current isEqualTo []) exitWith {
+        [] call GAIT_fnc_releaseNativeStaminaOwnership;
+    };
+    if (_saved isEqualTo []) then {
+        missionNamespace setVariable ["GAIT_nativeStaminaOwnership", [_unit, _current select 0]];
+    };
+    if (_current select 0) then {
+        [_unit, false] call GAIT_fnc_writeNativeStaminaEnabled;
+    };
+    missionNamespace setVariable ["GAIT_nativeStaminaOwned", true];
+};
+
 GAIT_fnc_ownsFatigueMovementPolicy = {
     params [["_unit", player, [objNull]]];
     (call GAIT_fnc_modeAllowsAceLockClearing) &&

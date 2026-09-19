@@ -17,12 +17,18 @@ private _failures = [];
 private _sprint = "AmovPercMevaSrasWrflDf_GAIT";
 private _walk = "AmovPercMrunSrasWrflDf";
 private _idle = "AmovPercMstpSrasWrflDnon";
+private _stop = _idle + "_GAITStop";
 {
     _x params ["_animation", "_source", "_target", "_expected"];
     private _actual = [_animation,_source,_target] call GAIT_fnc_isLocomotionHandoffBlend;
     if (_actual isNotEqualTo _expected) then {_failures pushBack format ["Handoff lease %1: got %2",_animation,_actual];};
 } forEach [
     [_sprint+"_"+_walk,_sprint,_walk,true],
+    [_sprint+"_"+_stop,_sprint,_stop,true],
+    [_stop+"_"+_sprint,_stop,_sprint,true],
+    [_sprint+"_"+_stop,_sprint,_idle,false],
+    [_sprint+"_"+_idle,_sprint,_stop,false],
+    [_sprint+"_"+_walk+"_GAITStop",_sprint,_walk+"_GAITStop",false],
     [_sprint+"_"+_idle,_walk+"_"+_sprint,_idle,true],
     [_walk+"_"+_idle,_walk+"_"+_sprint,_idle,true],
     [_sprint+"_"+_walk,_sprint,_idle,false],
@@ -50,6 +56,28 @@ private _oldExit = _sprint + "_" + _walk;
 // scheduled feature updates. Its unit variables must survive ordinary
 // animation cleanup, or a stale brace/coast can restart after a quick W tap.
 private _testUnit = player;
+// Stop retiming is edge-triggered. Holding no keys cannot repeatedly request
+// idle, and changing directly from W to A remains movement rather than stop.
+_testUnit setVariable ["GAIT_movementInputHeld",true];
+{
+    _x params ["_input","_expectedEdge"];
+    [_testUnit,_input] call GAIT_fnc_observeLocomotionInput;
+    if ((_testUnit getVariable ["GAIT_movementReleasedThisFrame",false]) isNotEqualTo _expectedEdge) then {
+        _failures pushBack "Stop input edge was repeated, dropped, or confused with a live strafe";
+    };
+} forEach [[[0,0,false],true],[[0,0,false],false],[[1,0,false],false],[[0,1,false],false],[[0,0,false],true]];
+// If the feature loop handled release before this render frame, observation
+// must not restart it. A fresh press rearms this latch for the next release.
+_testUnit setVariable ["GAIT_sprintReleaseHandled",true];
+_testUnit setVariable ["GAIT_turboInputHeld",true];
+[_testUnit,[1,0,false]] call GAIT_fnc_observeLocomotionInput;
+if !(_testUnit getVariable ["GAIT_sprintReleaseHandled",false]) then {_failures pushBack "Render release forgot prior feature consumption";};
+[_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput;
+if (_testUnit getVariable ["GAIT_sprintReleaseHandled",true]) then {_failures pushBack "New Turbo press did not rearm release capture";};
+_testUnit setVariable ["GAIT_sprintReleaseHandled",true];
+[_testUnit,[0,0,true]] call GAIT_fnc_observeLocomotionInput;
+[_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput;
+if (_testUnit getVariable ["GAIT_sprintReleaseHandled",true]) then {_failures pushBack "W re-press with held Turbo did not rearm release capture";};
 private _savedGlobals = [];
 {
     _x params ["_name", "_default"];

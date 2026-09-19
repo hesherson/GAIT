@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Protect GAIT's retained RC4 tuning with exact user-authorized deltas through alpha7.
+"""Protect GAIT's retained RC4 tuning with exact user-authorized deltas through alpha9.
 
 Run: python tests/feature_preservation.py [project-root] [--self-test]
 No Arma, third-party packages or adjacent old checkout is required.
@@ -758,7 +758,144 @@ MAIN_FILE = "addons/gait/functions/fn_initSprintSystem.sqf"
 # A missing or altered authorized fragment fails. This is not a wildcard
 # exemption for these blocks and none of the historical hashes are changed.
 # New helpers also require their separate SQF behavior tests.
-AUTHORIZED_BLOCK_DELTAS = [('trip_ragdoll_recovery',
+# Alpha9 permits only these reviewed release/trip integration changes.
+# The downhill helper and graph/stop additions have separate behavior guards.
+AUTHORIZED_ALPHA9_BLOCK_DELTAS = [('step_off_brace_and_sprint_end',
+  'alpha9 new sprint rearms one-shot rendered release capture',
+  '_wasSprinting = true;\nplayer setVariable ["GAIT_sprintReleaseHandled", false];',
+  '_wasSprinting = true;'),
+ ('step_off_brace_and_sprint_end',
+  'alpha9 scheduled release marks its rendered capture consumed',
+  '_lastSprintEndTime = time;\nplayer setVariable ["GAIT_sprintReleaseHandled", true];',
+  '_lastSprintEndTime = time;'),
+ ('hard_landing_and_sprint_tracking',
+  'alpha9 preserve actual high-speed qualification across Shift release',
+  '                private _tripMovementEligible = _movementEligible && {_isOnFoot} && {!_isAceCarrying} && '
+  '{!_isAceDragging} && {_gaitStanceOk} && {_onGroundNow} && {!_externalSprintLock} && '
+  '{!_externalWalkLock};\n'
+  '                private _tripQualification = [[_downhillTripSprintStartTime, '
+  '_downhillTripHighSpeedStartTime], time,\n'
+  '                    _tripMovementEligible, _isSprinting, _actualSpeedKmh, '
+  '_downhillTripSustainedSpeedKmh,\n'
+  '_downhillTripMinSpeedKmh, _downhillTripMinSprintSeconds]\n'
+  '                    call GAIT_fnc_stepDownhillTripQualification;\n'
+  '                _downhillTripSprintStartTime = _tripQualification select 0;\n'
+  '                _downhillTripHighSpeedStartTime = _tripQualification select 1;\n'
+  '                private _tripSustainedSprintSeconds = _tripQualification select 2;\n'
+  '                private _tripSustainedHighSpeedSeconds = _tripQualification select 3;\n'
+  '\n',
+  '                private _tripSustainedSprintSeconds = 0;\n'
+  '                private _tripSustainedHighSpeedSeconds = 0;\n'
+  '                if (_isSprinting && {_isOnFoot} && {!_isAceCarrying} && {!_isAceDragging} && {(stance '
+  'player) isEqualTo "STAND"}) then {\n'
+  '                    if (_downhillTripSprintStartTime < 0) then {\n'
+  '                        _downhillTripSprintStartTime = time;\n'
+  '                    };\n'
+  '                    _tripSustainedSprintSeconds = time - _downhillTripSprintStartTime;\n'
+  '\n'
+  '                    if (_actualSpeedKmh >= (_downhillTripSustainedSpeedKmh max 0)) then {\n'
+  '                        if (_downhillTripHighSpeedStartTime < 0) then {\n'
+  '                            _downhillTripHighSpeedStartTime = time;\n'
+  '                        };\n'
+  '                        _tripSustainedHighSpeedSeconds = time - _downhillTripHighSpeedStartTime;\n'
+  '                    } else {\n'
+  '                        _downhillTripHighSpeedStartTime = -1;\n'
+  '                    };\n'
+  '                } else {\n'
+  '                    _downhillTripSprintStartTime = -1;\n'
+  '                    _downhillTripHighSpeedStartTime = -1;\n'
+  '                };\n'
+  '\n'),
+ ('directional_grade_trips_and_walk_pace',
+  'alpha9 evaluate trip velocity after sprint-only downhill bonus',
+  'call GAIT_fnc_downhillPaceMultiplier);\n};\n};\nprivate _downhillDegForTrip = abs _slopeDegrees;',
+  'call GAIT_fnc_downhillPaceMultiplier);\n};\nprivate _downhillDegForTrip = abs _slopeDegrees;'),
+ ('directional_grade_trips_and_walk_pace',
+  'alpha9 retain trip exit scope after moving velocity evaluation',
+  '_currentSpeed = _effectiveNormalSpeed;\n'
+  '_sprintBraceEndTime = -1;\n'
+  '_wasSprinting = false;\n'
+  '};\n'
+  '};\n'
+  'private _hillWalkSlowdownMultiplier = 1;',
+  '_currentSpeed = _effectiveNormalSpeed;\n'
+  '_sprintBraceEndTime = -1;\n'
+  '_wasSprinting = false;\n'
+  '};\n'
+  '};\n'
+  '};\n'
+  'private _hillWalkSlowdownMultiplier = 1;'),
+ ('directional_grade_trips_and_walk_pace',
+  'alpha9 actual horizontal velocity supplies trip scaling',
+  'private _tripSpeedFactors = [_actualSpeedKmh, _downhillTripMinSpeedKmh,\n'
+  '                        _downhillTripSpeedMaxKmh, _downhillTripSpeedInfluence] call '
+  'GAIT_fnc_downhillTripSpeedFactors;\n'
+  '                    private _tripSpeedSeverity = _tripSpeedFactors select 0;\n'
+  '                    private _speedRiskMultiplier = _tripSpeedFactors select 1;\n'
+  '\n'
+  '                    ',
+  'private _tripSpeedMaxSafe = _downhillTripSpeedMaxKmh max (_downhillTripMinSpeedKmh + 0.1);\n'
+  '                        private _tripSpeedSeverity = if (_actualSpeedKmh >= _downhillTripMinSpeedKmh) '
+  'then {\n'
+  '                            linearConversion [_downhillTripMinSpeedKmh, _tripSpeedMaxSafe, '
+  '_actualSpeedKmh, 0, 1, true]\n'
+  '                        } else {\n'
+  '                            0\n'
+  '                        };\n'
+  '\n'
+  '                        private _speedInfluence = (_downhillTripSpeedInfluence max 0) min 2;\n'
+  '                        private _speedRiskCurve = 0.65 + (0.90 * _tripSpeedSeverity);\n'
+  '                        private _speedRiskMultiplier = 1 + (((_speedRiskCurve max 0.10) - 1) * '
+  '_speedInfluence);\n'
+  '                        _speedRiskMultiplier = _speedRiskMultiplier max 0;\n'
+  '\n'
+  '                        '),
+ ('directional_grade_trips_and_walk_pace',
+  'alpha9 trip eligibility uses qualified physical movement',
+  'private _tripEligible = _downhillTripEnabled && {_tripMovementEligible} && {_slopeDegrees < '
+  '-_downhillTripThresholdDegrees} && {_actualSpeedKmh >= _downhillTripMinSpeedKmh} && '
+  '{_sustainedGateReady};\n'
+  '                    ',
+  'private _tripEligible = _downhillTripEnabled && {_movementEligible} && {!_isAceCarrying} && '
+  '{!_isAceDragging} && {_slopeDegrees < -_downhillTripThresholdDegrees} && {_actualSpeedKmh >= '
+  '_downhillTripMinSpeedKmh} && {_sustainedGateReady};\n'
+  '                        '),
+ ('directional_grade_trips_and_walk_pace',
+  'alpha9 compose per-second trip chance across elapsed time',
+  'if (_tripEligible && {!_tripBlockedByCooldown} && {(random 1) < ([_chancePerSecond, _dt] call '
+  'GAIT_fnc_downhillTripRollChance)}) then {',
+  'if (_tripEligible && {!_tripBlockedByCooldown} && {(random 1) < (_chancePerSecond * _dt)}) then {'),
+ ('step_off_brace_and_sprint_end',
+  'alpha9 consume a rendered sprint release missed between scheduled ticks',
+  'if (!_isSprinting) then {\n'
+  'if (_wasSprinting || {_renderReleasedSinceTick}) then {\n'
+  '_lastSprintEndTime = time;',
+  'if (!_isSprinting) then {\nif (_wasSprinting) then {\n_lastSprintEndTime = time;'),
+ ('step_off_brace_and_sprint_end',
+  'alpha9 snapshot currently applied release pace once',
+  'private _releasePace = [_renderReleaseSnapshot, time, _currentSpeed, _horizontalSpeedMS]\n'
+  'call GAIT_fnc_releasePaceSnapshot;\n'
+  '_lastShiftReleaseTime = _releasePace select 0;\n'
+  '_shiftReleaseTaperStartSpeed = _releasePace select 1;\n'
+  '_shiftReleaseTaperStartKmh = (_releasePace select 2) * 3.6;\n'
+  '_currentSpeed = _shiftReleaseTaperStartSpeed;',
+  '_lastShiftReleaseTime = time;\n'
+  'private _shiftReleaseHVel = velocity player;\n'
+  'private _shiftReleaseHSpeedMS = sqrt (((_shiftReleaseHVel select 0) * (_shiftReleaseHVel select 0)) + '
+  '(((_shiftReleaseHVel select 1) * (_shiftReleaseHVel select 1))));\n'
+  '_shiftReleaseTaperStartKmh = (_shiftReleaseHSpeedMS * 3.6) max 0;\n'
+  '_shiftReleaseTaperStartSpeed = _currentSpeed;'),
+ ('step_off_brace_and_sprint_end',
+  'alpha9 deadline starts from rendered release time',
+  '_shiftReleaseTaperActiveUntil = _lastShiftReleaseTime + _activeCoastHold + _activeCoastDuration;',
+  '_shiftReleaseTaperActiveUntil = time + _activeCoastHold + _activeCoastDuration;'),
+ ('shift_release_hold_and_taper',
+  'alpha9 resume ordinary smooth acceleration if release has no excess pace',
+  '&& {_isForwardHeld} && {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0} &&\n'
+  '{[_shiftReleaseTaperStartSpeed, _targetSpeed] call GAIT_fnc_hasReleaseExcess}) then {',
+  '&& {_isForwardHeld} && {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0}) then {')]
+
+AUTHORIZED_BLOCK_DELTAS = AUTHORIZED_ALPHA9_BLOCK_DELTAS + [('trip_ragdoll_recovery',
   'alpha7 clear intermittent visuals before trip',
   '[] call GAIT_fnc_releaseFatigueVisuals;\n'
   '[] call GAIT_fnc_releaseNativeStaminaOwnership;\n'
@@ -1164,7 +1301,59 @@ AUTHORIZED_BLOCK_DELTAS = [('trip_ragdoll_recovery',
     """),
 ]
 
-AUTHORIZED_SETTINGS_DELTAS = [('alpha7 retire sway category',
+AUTHORIZED_SETTINGS_DELTAS = [('alpha9 trip description 11',
+  '"Downhill angle where the slope component reaches its configured maximum, before speed and weight '
+  'scaling. Default: 45 degrees."',
+  '"Downhill angle where trip chance reaches its configured maximum. Default: 45 degrees."'),
+ ('alpha9 trip description 10',
+  '"Downhill angle in degrees where trip risk begins during eligible travel above the actual speed minimum. '
+  'The decline must be steeper than this value. Default: 28 degrees."',
+  '"Downhill angle in degrees where trip risk begins. The player must be sprinting down a slope steeper than '
+  'this value. Default: 28 degrees."'),
+ ('alpha9 trip description 9',
+  '"Allows a chance to stumble/ragdoll during fast grounded travel down a steep hill, including sprint '
+  'deceleration. This does not apply damage by itself. Default: enabled."',
+  '"Allows a chance to stumble/ragdoll briefly when sprinting down a steep enough hill. This does not apply '
+  'damage by itself. Default: enabled."'),
+ ('alpha9 trip description 8',
+  '["GAIT_ss_downhillTripMaxDegrees", "Trip max-risk decline", "Downhill angle where trip chance reaches its '
+  'configured maximum. Default: 45 degrees.", _categorySlope, 10.00, 80.00, 45.00, 1] call _addSlider;',
+  '["GAIT_ss_downhillTripMaxDegrees", "Trip max-risk decline", "Downhill angle where trip chance reaches its '
+  'configured maximum. Default: 32 degrees.", _categorySlope, 10.00, 80.00, 45.00, 1] call _addSlider;'),
+ ('alpha9 trip description 7',
+  '"Seconds of continuous sprinting required for trip qualification. Earned qualification persists through '
+  'deceleration while actual speed remains above the trip minimum. Default: 5 seconds."',
+  '"Seconds of continuous sprinting required before downhill trip rolls can affect the player. Default: 5 '
+  'seconds."'),
+ ('alpha9 trip description 6',
+  '"Per-second trip probability at or beyond the max-risk decline, before current speed and weight scaling. '
+  '0.10 means 10% per second before scaling. Default: 0.10."',
+  '"Chance per second to trip at or beyond the max-risk decline. 0.10 means about 10% per second. Default: '
+  '0.10."'),
+ ('alpha9 trip description 5',
+  '"Per-second trip probability near the minimum decline, before current speed and weight scaling. 0.005 '
+  'means 0.5% per second before scaling. Default: 0.005."',
+  '"Chance per second to trip at the trip threshold. 0.005 means about 0.5% per second. Default: 0.005."'),
+ ('alpha9 trip description 4',
+  '"Seconds of actual horizontal movement at or above the high-speed gate. Releasing sprint preserves this '
+  'history while speed stays high. Default: 4 seconds."',
+  '"Seconds at or above the high-speed gate required before downhill trip rolls can affect the player. '
+  'Default: 4 seconds."'),
+ ('alpha9 trip description 3',
+  '"Minimum actual horizontal speed for downhill trip checks. With speed scaling enabled, risk rises '
+  'smoothly from zero above this speed. Default: 20 km/h."',
+  '"Minimum actual movement speed in km/h required before downhill trip checks can happen. Prevents stumbles '
+  'while barely moving. Default: 20 km/h."'),
+ ('alpha9 trip description 2',
+  '"Trip risk curve for actual horizontal speed above the minimum. 0 disables speed scaling; 1 is linear; 2 '
+  'uses a quadratic curve. Default: 1."',
+  '"How strongly real movement speed scales downhill trip chance. 0 ignores speed; 1 is normal; 2 doubles '
+  'the influence. Default: 1."'),
+ ('alpha9 trip description 1',
+  '"Trip reference speed", "Horizontal speed in km/h used to calibrate trip risk. Risk continues rising '
+  'above this speed. Default: 34 km/h."',
+  '"Trip max-risk speed", "Horizontal speed in km/h where speed reaches full trip-risk scaling. Default: 34 '
+  'km/h."')] + [('alpha7 retire sway category',
   'private _categoryBrace = ["GAIT", "06 Brace Step and Momentum"];\n'
   'private _categoryAudio = ["GAIT", "08 Audio and Hearing"];',
   'private _categoryBrace = ["GAIT", "06 Brace Step and Momentum"];\n'
@@ -1314,6 +1503,8 @@ AUTHORIZED_PRESET_DELTAS = [('alpha7 retired preset entries group 1',
 NATIVE_STAMINA_INTEGRATION = [
     (MAIN_FILE, "native stamina acquisition before active-context and permission gates", """
         [player] call GAIT_fnc_updateNativeStaminaOwnership;
+        missionNamespace setVariable ["GAIT_tripEligible", false];
+        missionNamespace setVariable ["GAIT_tripChancePerSecond", 0];
         if (alive player && {call GAIT_fnc_modeIsActive} && {!(call GAIT_fnc_isSuspendedContext)}) then {
     """),
     (MAIN_FILE, "native stamina release before trip ownership", """
@@ -1421,7 +1612,7 @@ def verify(root: Path) -> tuple[list[str], dict[str, str]]:
                 settings = reverse_exact_delta(settings, current, old,
                                                f"{SETTINGS_FILE}: {label}", failures)
             if token_digest(settings) != SETTINGS_RC4_TOKEN_SHA256:
-                failures.append(f"Registration code differs beyond exact authorized settings deltas through alpha7: {relative}")
+                failures.append(f"Registration code differs beyond exact authorized settings deltas through alpha9: {relative}")
         else:
             data = path.read_bytes()
             if relative == PRESETS_FILE:
@@ -1478,6 +1669,16 @@ def self_test(root: Path) -> None:
     if baseline_failures:
         raise AssertionError("Mutation self-test requires a passing project first")
     mutations = [
+        ("step_off_brace_and_sprint_end", 'player setVariable ["GAIT_sprintReleaseHandled", false];', 'player setVariable ["GAIT_sprintReleaseHandled", true];'),
+        ("step_off_brace_and_sprint_end", 'player setVariable ["GAIT_sprintReleaseHandled", true];', 'player setVariable ["GAIT_sprintReleaseHandled", false];'),
+        ("shift_release_hold_and_taper", "[_shiftReleaseTaperStartSpeed, _targetSpeed] call GAIT_fnc_hasReleaseExcess", "true"),
+        ("hard_landing_and_sprint_tracking", "&& {_gaitStanceOk} && {_onGroundNow} && {!_externalSprintLock}", "&& {_gaitStanceOk} && {!_externalSprintLock}"),
+        ("hard_landing_and_sprint_tracking", "_tripMovementEligible, _isSprinting, _actualSpeedKmh, _downhillTripSustainedSpeedKmh", "_tripMovementEligible && {_isSprinting}, _isSprinting, _actualSpeedKmh, _downhillTripSustainedSpeedKmh"),
+        ("directional_grade_trips_and_walk_pace", "private _tripSpeedFactors = [_actualSpeedKmh,", "private _tripSpeedFactors = [_sprintFullSpeed,"),
+        ("directional_grade_trips_and_walk_pace", "_cooldownRemaining > 0) || {_immunityRemaining > 0}", "_cooldownRemaining > 0) || {false}"),
+        ("directional_grade_trips_and_walk_pace", "[_chancePerSecond, _dt] call GAIT_fnc_downhillTripRollChance", "[_chancePerSecond, 0.05] call GAIT_fnc_downhillTripRollChance"),
+        ("step_off_brace_and_sprint_end", "_wasSprinting || {_renderReleasedSinceTick}", "_wasSprinting || {false}"),
+        ("step_off_brace_and_sprint_end", "_lastShiftReleaseTime = _releasePace select 0;", "_lastShiftReleaseTime = time;"),
         ("step_off_brace_and_sprint_end", "max 0.08", "max 0.10"),
         ("step_off_brace_and_sprint_end", "_reserveRatioForBrace >= _braceMinReserveRatio", "_reserveRatioForBrace > _braceMinReserveRatio"),
         ("shift_release_hold_and_taper", "_targetSpeed = (_releaseCurve select 0) min _currentSpeed;", "_targetSpeed = (_releaseCurve select 0) max _currentSpeed;"),
@@ -1548,7 +1749,7 @@ def self_test(root: Path) -> None:
         assert not verify(copy)[0], "Intact extraction should preserve the feature"
         extracted_path.write_text("/*\n" + extracted + "\n*/", encoding="utf-8")
         assert any(feature["name"] in f for f in verify(copy)[0]), "A comment cannot preserve executable code"
-    print("PASS mutation checks: unauthorized brace dip/duration, gear-relief anchors/scale, reserve gate, forward release target/gate/endpoint, sprint gate, ramp timing/direct response, momentum veto, release-resume veto, brake target direction, downhill integration, setting default, missing stamina acquisition/reset, missing vignette watchdog/update/cleanup, and reintroduced aim/fatigue/recoil writers are rejected; intact extraction is accepted")
+    print("PASS mutation checks: current-velocity trip scaling, high-speed qualification across release, ground/lock gates, immunity, composed roll interval, rendered release capture/deadline, unauthorized brace dip/duration, gear-relief anchors/scale, reserve gate, forward release target/gate/endpoint, sprint gate, ramp timing/direct response, momentum veto, release-resume veto, brake target direction, downhill integration, setting default, missing stamina acquisition/reset, missing vignette watchdog/update/cleanup, and reintroduced aim/fatigue/recoil writers are rejected; intact extraction is accepted")
 
 
 def main() -> int:
@@ -1563,7 +1764,7 @@ def main() -> int:
             print("FAIL " + failure)
         return 1
     changed_blocks = {delta[0] for delta in AUTHORIZED_BLOCK_DELTAS}
-    print("PASS original slope pace bytes; preset bytes match after eight exact retired-entry restorations; original registrations match after exact reviewed deltas through alpha7")
+    print("PASS original slope pace bytes; preset bytes match after eight exact retired-entry restorations; original registrations match after exact reviewed deltas through alpha9")
     print(f"PASS {len(BLOCKS) - len(changed_blocks)} intact RC4 feature blocks; {len(changed_blocks)} blocks with {len(AUTHORIZED_BLOCK_DELTAS)} exact authorized deltas; all historical hashes retained")
     print(f"PASS {len(NATIVE_STAMINA_INTEGRATION)} stamina and {len(FATIGUE_VISUAL_INTEGRATION)} visual lifecycle source integrations; no GAIT aim/fatigue/recoil writers")
     for feature, relative in locations.items():

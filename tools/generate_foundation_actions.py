@@ -43,6 +43,10 @@ def custom(family, direction):
     return native(family, direction) + "_GAIT"
 
 
+def stop_target(family):
+    return native(family, "Dnon") + "_GAITStop"
+
+
 def ordinary_states(family):
     """Existing entry/release endpoints, not destinations for held-sprint input.
 
@@ -104,6 +108,11 @@ def render():
  * Custom-state variants are empty to avoid automatic native idle/fidget
  * variants leaving the family. No ConnectTo self-loop is forced. Animation
  * files, speed, duty, collision and other pose properties inherit unchanged.
+ * Four native-action stop targets double idle interpolationSpeed from the
+ * captured native value 4 to 8. They shorten the outgoing run blend without
+ * scaling its clip playback or adding forward movement. They do not belong
+ * to the sprint family and accept new movement immediately through native
+ * actions. In-game distance reduction still depends on engine blending.
  * Transition weights are graph costs, not fixed blend durations in seconds.
  *
  * Sources for native names/selectors and preserving explicit action exits:
@@ -126,12 +135,12 @@ class CfgMovesBasic
                 lines.append(f'            {pace}{selector} = "{custom(family, direction)}";')
         lines += ["        };", ""]
     lines += ["    };", "};", "", "class CfgMovesMaleSdr: CfgMovesBasic", "{", "    class States", "    {"]
-    for family, actions, _ in FAMILIES:
+    for family, actions, native_actions in FAMILIES:
         directions = ("Dnon", *DIRECTIONS)
         for direction in directions:
             lines.append(f"        class {native(family, direction)};")
         lines.append("")
-        ordinary = ordinary_states(family)
+        ordinary = ordinary_states(family) + [stop_target(family)]
         members = [custom(family, other) for other in directions]
         for direction in directions:
             name = custom(family, direction)
@@ -155,6 +164,19 @@ class CfgMovesBasic
             internal = [other for other in members if other != name]
             append_edges(lines, "InterpolateTo", internal + ordinary)
             lines += ["        };", ""]
+        # A separate native-pose endpoint confines the faster blend to stops.
+        # Changing sprint interpolationSpeed would also change launch/retaps.
+        lines += [
+            f"        class {stop_target(family)}: {native(family, 'Dnon')}", "        {",
+            f'            actions = "{native_actions}";',
+            "            interpolationSpeed = 8;",
+            "            equivalentTo = \"\";",
+            "            variantsPlayer[] = {};",
+            "            variantsAI[] = {};",
+        ]
+        append_edges(lines, "InterpolateFrom", members + ordinary_states(family))
+        append_edges(lines, "InterpolateTo", members + ordinary_states(family))
+        lines += ["        };", ""]
     lines += ["    };", "};", ""]
     return "\n".join(lines)
 
@@ -171,7 +193,7 @@ def main():
         print("Foundation graph generator matches the checked-in config.")
         return
     args.output.write_text(expected)
-    print(f"Wrote {args.output}: 36 states, 4 action families, 284 mapped selectors.")
+    print(f"Wrote {args.output}: 36 locomotion states, 4 stop targets, 4 action families, 284 mapped selectors.")
 
 
 if __name__ == "__main__":

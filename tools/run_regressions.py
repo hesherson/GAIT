@@ -28,6 +28,7 @@ SUITES = {
     "uphill_brake_handoff": ("slopeLocomotion",),
     "brace_momentum": ("braceMomentum",),
     "downhill_pace": ("slopePaceModel", "downhillPace"),
+    "downhill_trip": ("downhillPace",),
     "locomotion_state_machine": ("traversalHelpers", "slopeLocomotion", "nativeController"),
     "locomotion_handoff": ("traversalHelpers", "slopeLocomotion"),
     "release_and_blend": ("traversalHelpers", "slopeLocomotion", "nativeController"),

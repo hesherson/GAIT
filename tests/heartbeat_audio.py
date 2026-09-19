@@ -27,15 +27,15 @@ class HeartbeatAudioContract(unittest.TestCase):
                          ["ACE_heartbeat_" + variant for variant in VARIANTS])
         self.assertEqual(list((ROOT / "addons/heartbeat").rglob("*.sqf")), [])
 
-    def test_all_variants_keep_samples_and_pitch_at_half_original_gain(self):
+    def test_all_variants_keep_samples_and_pitch_at_twenty_percent_original_gain(self):
         entries = re.findall(r'class (ACE_heartbeat_\w+)\s*\{\s*sound\[\]\s*=\s*'
                              r'\{"([^"]+)",\s*([0-9.]+),\s*([0-9.]+)\};\s*\};', self.source)
         self.assertEqual(len(entries), len(VARIANTS))
-        half_original_gain = 0.5 * 10 ** (1 / 20)
+        target_original_gain = 0.2 * 10 ** (1 / 20)
         for (name, path, gain, pitch), variant in zip(entries, VARIANTS):
             self.assertEqual(name, "ACE_heartbeat_" + variant)
             self.assertEqual(path, "\\z\\ace\\addons\\medical_feedback\\sounds\\" + variant + ".wav")
-            self.assertTrue(math.isclose(float(gain), half_original_gain, rel_tol=1e-8))
+            self.assertTrue(math.isclose(float(gain), target_original_gain, rel_tol=1e-8))
             self.assertEqual(float(pitch), 1)
 
     def test_ace_owns_playback_and_addon_is_optional(self):

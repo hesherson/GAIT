@@ -143,7 +143,7 @@ param(
         Run-Git diff --cached --check
         $ChangedFiles = @(Run-Git diff --cached --name-only)
         if ($ChangedFiles.Count -gt 0) {
-            Run-Git commit -m 'Fix GAIT PBO prefix collision and validate deployment'
+            Run-Git commit -m 'Refine movement transitions, downhill velocity risk and heartbeat volume'
         }
         if (-not $NoPush) { Run-Git push -u origin $Branch }
         Write-Host "Built $Branch. Load local mod: $RepoPath\.hemttout\build"

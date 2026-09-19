@@ -1,48 +1,45 @@
-# GAIT 1.8.0-alpha8: PBO path repair
+# GAIT 1.8.0-alpha9: movement transitions and downhill velocity
 
-Alpha8 fixes the missing settings-script error without changing alpha7 gameplay tuning. Requires Arma 3 2.18+, CBA_A3 and ACE3. Build/deploy commands are in README_HEMTT.md. Load only the new GAIT copy and start a fresh mission.
-
-## Packaging correction
-
-With BI Tools configured, HEMTT created a temporary heartbeat link inside the main addon because its virtual prefix was nested under `gait`. The nested prefix marker then changed the main PBO's prefix to `gait\heartbeat`. The settings script was included but could no longer be found at `\gait\functions\fn_registerSettings.sqf`.
-
-The heartbeat addon now uses the separate standard prefix `z\gait\addons\heartbeat`. The installer removes the known generated link without following it, preserves unexpected nested folders outside the checkout, and validates both PBOs before committing or pushing. The ZIP also includes a verified standalone mod under `ready_to_load/GAIT`.
-
-The following alpha7 gameplay changes remain intact.
+Requires Arma 3 2.18+, CBA_A3 and ACE3. Build/deploy commands are in README_HEMTT.md. Load only the new GAIT copy and start a fresh mission.
 
 ## Changes
 
-- ACE heartbeat gain is halved for all seven variants. Original samples, pitch, selection, heart-rate timing and physiology remain unchanged. These sounds belong to ACE Medical Feedback and can play for exertion or medical reasons. Other audio is unchanged. The optional heartbeat PBO applies this setting while loaded, independently of GAIT's runtime enable switch.
-- Heavy-gear acceleration after the brief brace is 2% faster. The adjustment blends smoothly into the existing lighter-load rates. Brace duration, depth, release response, maximum speeds, slope behavior and animation graph remain as in alpha6.
-- GAIT's weapon-sway controller is removed, including its startup, disabled-state and reset writes. Old sway options cannot reactivate it. Native fatigue writes are also removed because they can affect aim; GAIT still uses its reserve for movement and feedback. ACE/native weapon handling and ACE physiology remain active.
-- A subtle vignette appears only in short fatigue pulses. The center stays clear; edge darkening is capped at 14%. Each pulse fades in, briefly holds and fades out over 1.3 seconds, followed by 5-12 seconds with no GAIT screen effect.
+- Stopping from GAIT sprint or ordinary standing movement controlled by GAIT uses a faster, blended stop target. The stop interpolation rate is doubled to target half the previous blend time. Movement input remains live so a new direction or sprint press can interrupt the stop. Releasing W during an unfinished jog transition now redirects into the stop immediately.
+- Releasing Shift while holding W starts its short speed taper from the current release state. Repeated taps must continue from partially decayed speed rather than restoring a full-speed starting value. There is no stationary full-speed hold or extra exponential tail after the taper.
+- Heavy gear gains a little more speed during a sustained downhill run. Light and medium loads through 55 displayed lb keep their previous downhill bonus. The original overall weight penalty, uphill pace and sprint/ordinary pace floor remain intact.
+- Downhill trip risk follows current horizontal velocity, including during deceleration. At the default speed influence, risk starts at zero at the configured minimum speed, rises linearly above it and keeps rising past the reference speed. The original slope, sustained-travel, cooldown, immunity and medical restrictions remain.
+- ACE heartbeat gain is now 20% of the original for all seven variants, down from 50% in alpha8. Original samples, pitch, selection, heart-rate timing and physiology are unchanged. Other audio is unchanged. The optional heartbeat PBO applies this setting while loaded, independently of GAIT's runtime enable switch.
 
-## Fatigue visual ownership
+The brief launch brace remains on every gear tier, with the previous modest heavy-gear acceleration improvement. GAIT still does not write weapon sway, native fatigue or recoil coefficients. The alpha8 PBO path fix and deployment repair remain included.
 
-While the new **Intermittent fatigue vignette** option is enabled, GAIT replaces only ACE Advanced Fatigue's blackout effect with these pulses. That prevents the two fatigue effects from stacking or the ACE fatigue blackout becoming continuous at high exhaustion. ACE pain, injury and unconsciousness effects remain under ACE control.
+## Fatigue visuals retained
 
-The effect handle is destroyed after each pulse. Recovery, disabling the option/mod, death, unconsciousness, trips, player changes, spectator/remote control and reset clear it. An independent frame watchdog expires the request within 0.75 seconds if the scheduled update loop stops. The minimum clear interval survives brief threshold crossings and quick restarts.
+The subtle fatigue vignette appears only in short pulses. The center stays clear; edge darkening is capped at 14%. Each pulse fades in and out over 1.3 seconds, followed by 5-12 seconds with no GAIT screen effect.
 
-Turning this option off restores ACE's previous fatigue-effect enabled state. It does not disable unrelated medical screen effects. No permanent blur, chromatic aberration or resting vignette is added.
+While **Intermittent fatigue vignette** is enabled, GAIT replaces only ACE Advanced Fatigue's blackout effect with these pulses. ACE pain, injury and unconsciousness effects remain under ACE control. Turning the option off restores the previous ACE fatigue-effect enabled state.
 
-The new option defaults on, so the old disabled visual-effect setting does not silently suppress it. Existing exhaustion threshold and maximum visual-strength options control the new pulses, with the hard opacity and duration caps always enforced.
+Recovery, disabling the option/mod, death, unconsciousness, trips, player changes, spectator/remote control and reset clear the pulse. An independent frame watchdog expires stale requests within 0.75 seconds. Brief threshold crossings and quick restarts preserve the minimum clear interval.
 
 ## In-game checks
 
-1. Compare the ACE heartbeat with alpha6 at similar heart rates and audio settings. Check both fast and slow variants when available; all should be quieter without changing their rhythm.
-2. Aim down sights while rested, moving and recovering from sprint. GAIT should no longer alternate sway coefficients. Confirm ACE's own sway and breath-hold behavior remain available.
-3. Sprint until fatigued. Observe brief, subtle edge darkening with fully clear gaps, including at high exhaustion. Rest and confirm the vignette clears.
-4. During a pulse, disable the new vignette option, disable GAIT, use Reset GAIT Effects, switch player or enter spectator. Confirm GAIT's overlay disappears. Other ACE medical effects may still appear when medically appropriate.
-5. With a heavy backpack, compare acceleration out of the brace. The change should be small. Confirm light gear still braces, sprint taps still blend, W release cancels forward coast and steep slopes retain their movement behavior.
+1. At light, medium and heavy loads, build a full sprint and release both W and Shift. Compare stop time and forward travel with alpha8. Repeat after jogging and on downhill terrain. Confirm the shorter stop remains blended, and A/D/S or a fresh W press takes effect promptly.
+2. Hold W and release Shift at early acceleration, full sprint, exhausted sprint and halfway down an earlier release taper. Speed should start decreasing from its current value without a bump. Retap Shift repeatedly, including entirely between scheduled speed updates. Check uphill braking and downhill release too.
+3. Verify the light-tier brace remains visible and a heavy backpack can still sprint immediately into its brace and acceleration. Repeat W+A > A > D > W+D at steep grades around 32 degrees. Check crouch/prone, reload and weapon switching while stopping.
+4. On the same descent, compare full-momentum heavy gear speeds with alpha8. At 100 displayed lb the target increase is about 2% near the peak downhill angle, with a smaller benefit on extreme slopes. Light/medium speeds through 55 lb should match alpha8.
+5. Observe the trip-risk capture at different actual speeds on the same steep descent. Releasing Shift should not erase risk while still moving fast; risk should fall with velocity. Check cooldown and post-trip recovery, and verify no trip rolls in vehicles, midair or during medical/carry restrictions.
+6. Compare ACE heartbeat at similar heart rates and audio settings. The configured gain is 40% of alpha8's already reduced gain, or 20% of the ACE original. Rhythm and pitch should match.
+7. Check ADS while rested and after sprinting. Exhaust the reserve and confirm vignette pulses have fully clear gaps. Disabling GAIT or becoming unconscious mid-pulse must clear GAIT's effect.
 
 For diagnostics, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
 
 ```sqf
-[90, "alpha8 loading and fatigue feedback"] execVM "foundation_capture.sqf";
+[90, "alpha9 release transitions and downhill velocity"] execVM "foundation_capture.sqf";
 ```
 
-The read-only capture includes fatigue intensity, vignette opacity/handle, pulse timing and ACE fatigue visual ownership alongside existing movement diagnostics. Send the RPT after STOP with the approximate event time.
+The read-only capture records movement coefficients, observed speed, input, animation, trip risk and fatigue visual ownership. Send the RPT after STOP with approximate event times for any remaining issue.
 
-## Validation limits
+## Packaging and validation
 
-Build and regression results are in tests/VALIDATION_FOUNDATION.txt. Automated tests check gain values, source ownership, timing and cleanup, but cannot render Arma's post processing, measure perceived loudness, or confirm ADS and movement feel. Those require the game checks above.
+The main PBO retains prefix `gait`; the heartbeat PBO uses `z\gait\addons\heartbeat`. The installer repairs the obsolete nested heartbeat link and validates both PBOs before committing/pushing. The ZIP includes a verified standalone mod under `ready_to_load/GAIT`.
+
+Automated build and regression results are in tests/VALIDATION_FOUNDATION.txt. They validate source logic, timing, graph definitions, gain values and cleanup. Arma's actual blend duration, travel distance, physical speed, perceived loudness and visual feel still need the in-game checks above. No measured clip-speed profiles or velocity-forcing workaround are added.

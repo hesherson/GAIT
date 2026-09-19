@@ -298,7 +298,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha8"];
+missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha9"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -840,6 +840,9 @@ GAIT_fnc_setTunnelVisionFX = {
         // This also restores its saved flag when movement is disabled or the
         // player enters a context owned by another system.
         [player] call GAIT_fnc_updateNativeStaminaOwnership;
+        // Scope exits must not display risk from the previous active tick.
+        missionNamespace setVariable ["GAIT_tripEligible", false];
+        missionNamespace setVariable ["GAIT_tripChancePerSecond", 0];
         if (alive player && {call GAIT_fnc_modeIsActive} && {!(call GAIT_fnc_isSuspendedContext)}) then {
             private _pickupActive = player getVariable ["MAV_fastCarry_pickupActive", false];
             private _gaitMovementEnabled = call GAIT_fnc_modeAllowsMovement;
@@ -920,26 +923,15 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _horizontalSpeedMS = sqrt (((_velSample select 0) * (_velSample select 0)) + (((_velSample select 1) * (_velSample select 1))));
                 private _actualSpeedKmh = _horizontalSpeedMS * 3.6;
 
-                private _tripSustainedSprintSeconds = 0;
-                private _tripSustainedHighSpeedSeconds = 0;
-                if (_isSprinting && {_isOnFoot} && {!_isAceCarrying} && {!_isAceDragging} && {(stance player) isEqualTo "STAND"}) then {
-                    if (_downhillTripSprintStartTime < 0) then {
-                        _downhillTripSprintStartTime = time;
-                    };
-                    _tripSustainedSprintSeconds = time - _downhillTripSprintStartTime;
-
-                    if (_actualSpeedKmh >= (_downhillTripSustainedSpeedKmh max 0)) then {
-                        if (_downhillTripHighSpeedStartTime < 0) then {
-                            _downhillTripHighSpeedStartTime = time;
-                        };
-                        _tripSustainedHighSpeedSeconds = time - _downhillTripHighSpeedStartTime;
-                    } else {
-                        _downhillTripHighSpeedStartTime = -1;
-                    };
-                } else {
-                    _downhillTripSprintStartTime = -1;
-                    _downhillTripHighSpeedStartTime = -1;
-                };
+                private _tripMovementEligible = _movementEligible && {_isOnFoot} && {!_isAceCarrying} && {!_isAceDragging} && {_gaitStanceOk} && {_onGroundNow} && {!_externalSprintLock} && {!_externalWalkLock};
+                private _tripQualification = [[_downhillTripSprintStartTime, _downhillTripHighSpeedStartTime], time,
+                    _tripMovementEligible, _isSprinting, _actualSpeedKmh, _downhillTripSustainedSpeedKmh,
+                    _downhillTripMinSpeedKmh, _downhillTripMinSprintSeconds]
+                    call GAIT_fnc_stepDownhillTripQualification;
+                _downhillTripSprintStartTime = _tripQualification select 0;
+                _downhillTripHighSpeedStartTime = _tripQualification select 1;
+                private _tripSustainedSprintSeconds = _tripQualification select 2;
+                private _tripSustainedHighSpeedSeconds = _tripQualification select 3;
 
                 missionNamespace setVariable ["GAIT_tripSustainedSprintSeconds", _tripSustainedSprintSeconds];
                 missionNamespace setVariable ["GAIT_tripSustainedHighSpeedSeconds", _tripSustainedHighSpeedSeconds];
@@ -988,6 +980,14 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _forwardReleaseSerial = player getVariable ["GAIT_forwardReleaseSerial", 0];
                 private _forwardReleasedSinceTick = _forwardReleaseSerial isNotEqualTo _lastForwardReleaseSerial;
                 _lastForwardReleaseSerial = _forwardReleaseSerial;
+                // Draw3D samples the applied pace before its graph release.
+                // Consume it once; holding or re-tapping Shift cannot replay
+                // an old release after the next feature update.
+                private _renderReleaseSnapshot = player getVariable ["GAIT_sprintReleaseSnapshot", []];
+                player setVariable ["GAIT_sprintReleaseSnapshot", []];
+                private _renderReleasedSinceTick = (count _renderReleaseSnapshot) isEqualTo 4 &&
+                    {time >= (_renderReleaseSnapshot select 0)} &&
+                    {time - (_renderReleaseSnapshot select 0) <= 0.25};
                 // Raw input can cancel a launch between feature ticks. Only
                 // retire that exact token; a later genuine brace remains valid.
                 if (_sprintBraceEndTime >= 0 && {_sprintBraceEndTime isEqualTo (player getVariable ["GAIT_slopeCanceledBraceEndTime", -2])}) then {
@@ -1047,73 +1047,67 @@ GAIT_fnc_setTunnelVisionFX = {
                                 call GAIT_fnc_downhillPaceMultiplier);
                         };
 
-                        private _downhillDegForTrip = abs _slopeDegrees;
-                        private _downhillTripMaxDegSafe = _downhillTripMaxDegrees max (_downhillTripThresholdDegrees + 0.1);
-                        private _gearTripSeverity = linearConversion [_lightWeightMax, 110, _gearLbs, 0, 1, true];
-                        private _tripSlopeSeverity = if (_slopeDegrees < -_downhillTripThresholdDegrees) then {
-                            linearConversion [_downhillTripThresholdDegrees, _downhillTripMaxDegSafe, _downhillDegForTrip, 0, 1, true]
-                        } else {
-                            0
-                        };
+                    };
 
-                        private _tripSpeedMaxSafe = _downhillTripSpeedMaxKmh max (_downhillTripMinSpeedKmh + 0.1);
-                        private _tripSpeedSeverity = if (_actualSpeedKmh >= _downhillTripMinSpeedKmh) then {
-                            linearConversion [_downhillTripMinSpeedKmh, _tripSpeedMaxSafe, _actualSpeedKmh, 0, 1, true]
-                        } else {
-                            0
-                        };
+                    private _downhillDegForTrip = abs _slopeDegrees;
+                    private _downhillTripMaxDegSafe = _downhillTripMaxDegrees max (_downhillTripThresholdDegrees + 0.1);
+                    private _gearTripSeverity = linearConversion [_lightWeightMax, 110, _gearLbs, 0, 1, true];
+                    private _tripSlopeSeverity = if (_slopeDegrees < -_downhillTripThresholdDegrees) then {
+                        linearConversion [_downhillTripThresholdDegrees, _downhillTripMaxDegSafe, _downhillDegForTrip, 0, 1, true]
+                    } else {
+                        0
+                    };
 
-                        private _speedInfluence = (_downhillTripSpeedInfluence max 0) min 2;
-                        private _speedRiskCurve = 0.65 + (0.90 * _tripSpeedSeverity);
-                        private _speedRiskMultiplier = 1 + (((_speedRiskCurve max 0.10) - 1) * _speedInfluence);
-                        _speedRiskMultiplier = _speedRiskMultiplier max 0;
+                    private _tripSpeedFactors = [_actualSpeedKmh, _downhillTripMinSpeedKmh,
+                        _downhillTripSpeedMaxKmh, _downhillTripSpeedInfluence] call GAIT_fnc_downhillTripSpeedFactors;
+                    private _tripSpeedSeverity = _tripSpeedFactors select 0;
+                    private _speedRiskMultiplier = _tripSpeedFactors select 1;
 
-                        private _weightInfluence = (_downhillTripWeightInfluence max 0) min 2;
-                        private _weightRiskCurve = 0.75 + (0.85 * _gearTripSeverity);
-                        private _weightRiskMultiplier = 1 + (((_weightRiskCurve max 0.10) - 1) * _weightInfluence);
-                        _weightRiskMultiplier = _weightRiskMultiplier max 0;
+                    private _weightInfluence = (_downhillTripWeightInfluence max 0) min 2;
+                    private _weightRiskCurve = 0.75 + (0.85 * _gearTripSeverity);
+                    private _weightRiskMultiplier = 1 + (((_weightRiskCurve max 0.10) - 1) * _weightInfluence);
+                    _weightRiskMultiplier = _weightRiskMultiplier max 0;
 
-                        private _sustainedGateReady = true;
-                        if (_downhillTripRequireSustainedMovement) then {
-                            _sustainedGateReady = (_tripSustainedSprintSeconds >= (_downhillTripMinSprintSeconds max 0)) || {_tripSustainedHighSpeedSeconds >= (_downhillTripSustainedSpeedSeconds max 0)};
-                        };
+                    private _sustainedGateReady = true;
+                    if (_downhillTripRequireSustainedMovement) then {
+                        _sustainedGateReady = (_tripSustainedSprintSeconds >= (_downhillTripMinSprintSeconds max 0)) || {_tripSustainedHighSpeedSeconds >= (_downhillTripSustainedSpeedSeconds max 0)};
+                    };
 
-                        private _lastTripTime = missionNamespace getVariable ["GAIT_lastTripTime", -999];
-                        private _cooldownRemaining = ((_downhillTripCooldown - (time - _lastTripTime)) max 0);
-                        private _immunityRemaining = ((_downhillTripPostFallImmunity - (time - _lastTripTime)) max 0);
-                        private _tripBlockedByCooldown = (_cooldownRemaining > 0) || {_immunityRemaining > 0};
-                        private _tripEligible = _downhillTripEnabled && {_movementEligible} && {!_isAceCarrying} && {!_isAceDragging} && {_slopeDegrees < -_downhillTripThresholdDegrees} && {_actualSpeedKmh >= _downhillTripMinSpeedKmh} && {_sustainedGateReady};
-                        private _chancePerSecond = 0;
+                    private _lastTripTime = missionNamespace getVariable ["GAIT_lastTripTime", -999];
+                    private _cooldownRemaining = ((_downhillTripCooldown - (time - _lastTripTime)) max 0);
+                    private _immunityRemaining = ((_downhillTripPostFallImmunity - (time - _lastTripTime)) max 0);
+                    private _tripBlockedByCooldown = (_cooldownRemaining > 0) || {_immunityRemaining > 0};
+                    private _tripEligible = _downhillTripEnabled && {_tripMovementEligible} && {_slopeDegrees < -_downhillTripThresholdDegrees} && {_actualSpeedKmh >= _downhillTripMinSpeedKmh} && {_sustainedGateReady};
+                    private _chancePerSecond = 0;
 
-                        if (_tripEligible) then {
-                            _chancePerSecond = _downhillTripBaseChancePerSecond + ((_downhillTripMaxChancePerSecond - _downhillTripBaseChancePerSecond) * _tripSlopeSeverity);
-                            _chancePerSecond = _chancePerSecond * _speedRiskMultiplier * _weightRiskMultiplier;
-                            _chancePerSecond = _chancePerSecond max 0 min 1;
-                        };
+                    if (_tripEligible) then {
+                        _chancePerSecond = _downhillTripBaseChancePerSecond + ((_downhillTripMaxChancePerSecond - _downhillTripBaseChancePerSecond) * _tripSlopeSeverity);
+                        _chancePerSecond = _chancePerSecond * _speedRiskMultiplier * _weightRiskMultiplier;
+                        _chancePerSecond = _chancePerSecond max 0 min 1;
+                    };
 
-                        missionNamespace setVariable ["GAIT_tripEligible", _tripEligible];
-                        missionNamespace setVariable ["GAIT_tripAngleDegrees", _downhillDegForTrip];
-                        missionNamespace setVariable ["GAIT_tripEffectiveThreshold", _downhillTripThresholdDegrees];
-                        missionNamespace setVariable ["GAIT_tripEffectiveMax", _downhillTripMaxDegSafe];
-                        missionNamespace setVariable ["GAIT_tripCooldownRemaining", _cooldownRemaining];
-                        missionNamespace setVariable ["GAIT_tripImmunityRemaining", _immunityRemaining];
-                        missionNamespace setVariable ["GAIT_tripSpeedKmh", _actualSpeedKmh];
-                        missionNamespace setVariable ["GAIT_tripSlopeSeverity", _tripSlopeSeverity];
-                        missionNamespace setVariable ["GAIT_tripSpeedSeverity", _tripSpeedSeverity];
-                        missionNamespace setVariable ["GAIT_tripWeightSeverity", _gearTripSeverity];
-                        missionNamespace setVariable ["GAIT_tripSpeedMultiplier", _speedRiskMultiplier];
-                        missionNamespace setVariable ["GAIT_tripWeightMultiplier", _weightRiskMultiplier];
-                        missionNamespace setVariable ["GAIT_tripSustainedGateReady", _sustainedGateReady];
-                        missionNamespace setVariable ["GAIT_tripGetUpThresholdKmh", _downhillTripGetUpSpeedKmh];
-                        missionNamespace setVariable ["GAIT_tripMaxRagdollDuration", _downhillTripMaxRagdollDuration];
-                        missionNamespace setVariable ["GAIT_tripChancePerSecond", _chancePerSecond];
+                    missionNamespace setVariable ["GAIT_tripEligible", _tripEligible];
+                    missionNamespace setVariable ["GAIT_tripAngleDegrees", _downhillDegForTrip];
+                    missionNamespace setVariable ["GAIT_tripEffectiveThreshold", _downhillTripThresholdDegrees];
+                    missionNamespace setVariable ["GAIT_tripEffectiveMax", _downhillTripMaxDegSafe];
+                    missionNamespace setVariable ["GAIT_tripCooldownRemaining", _cooldownRemaining];
+                    missionNamespace setVariable ["GAIT_tripImmunityRemaining", _immunityRemaining];
+                    missionNamespace setVariable ["GAIT_tripSpeedKmh", _actualSpeedKmh];
+                    missionNamespace setVariable ["GAIT_tripSlopeSeverity", _tripSlopeSeverity];
+                    missionNamespace setVariable ["GAIT_tripSpeedSeverity", _tripSpeedSeverity];
+                    missionNamespace setVariable ["GAIT_tripWeightSeverity", _gearTripSeverity];
+                    missionNamespace setVariable ["GAIT_tripSpeedMultiplier", _speedRiskMultiplier];
+                    missionNamespace setVariable ["GAIT_tripWeightMultiplier", _weightRiskMultiplier];
+                    missionNamespace setVariable ["GAIT_tripSustainedGateReady", _sustainedGateReady];
+                    missionNamespace setVariable ["GAIT_tripGetUpThresholdKmh", _downhillTripGetUpSpeedKmh];
+                    missionNamespace setVariable ["GAIT_tripMaxRagdollDuration", _downhillTripMaxRagdollDuration];
+                    missionNamespace setVariable ["GAIT_tripChancePerSecond", _chancePerSecond];
 
-                        if (_tripEligible && {!_tripBlockedByCooldown} && {(random 1) < (_chancePerSecond * _dt)}) then {
-                            [_downhillTripDuration] call GAIT_fnc_tripPlayer;
-                            _currentSpeed = _effectiveNormalSpeed;
-                            _sprintBraceEndTime = -1;
-                            _wasSprinting = false;
-                        };
+                    if (_tripEligible && {!_tripBlockedByCooldown} && {(random 1) < ([_chancePerSecond, _dt] call GAIT_fnc_downhillTripRollChance)}) then {
+                        [_downhillTripDuration] call GAIT_fnc_tripPlayer;
+                        _currentSpeed = _effectiveNormalSpeed;
+                        _sprintBraceEndTime = -1;
+                        _wasSprinting = false;
                     };
                 };
 
@@ -1234,6 +1228,7 @@ GAIT_fnc_setTunnelVisionFX = {
 
                 if (_isSprinting && {!_wasSprinting}) then {
                     _wasSprinting = true;
+                    player setVariable ["GAIT_sprintReleaseHandled", false];
 
                     _preSprintAnimation = _lastNonSprintAnimation;
                     if (_preSprintAnimation isEqualTo "") then {
@@ -1320,23 +1315,25 @@ GAIT_fnc_setTunnelVisionFX = {
                 };
 
                 if (!_isSprinting) then {
-                    if (_wasSprinting) then {
+                    if (_wasSprinting || {_renderReleasedSinceTick}) then {
                         _lastSprintEndTime = time;
+                        player setVariable ["GAIT_sprintReleaseHandled", true];
 
                         // v1.1.49: Shift-release carry is separate from W-release coast.
                         // If Shift is released while W remains held, preserve the actual
                         // running speed briefly, then taper toward W-only speed. This fixes
                         // the exhausted snap from ~16 km/h to walk speed.
                         if (_isForwardHeld && {!_isBackHeld} && {!_forwardReleasedSinceTick} && {_movementEligible}) then {
-                            _lastShiftReleaseTime = time;
-                            private _shiftReleaseHVel = velocity player;
-                            private _shiftReleaseHSpeedMS = sqrt (((_shiftReleaseHVel select 0) * (_shiftReleaseHVel select 0)) + (((_shiftReleaseHVel select 1) * (_shiftReleaseHVel select 1))));
-                            _shiftReleaseTaperStartKmh = (_shiftReleaseHSpeedMS * 3.6) max 0;
-                            _shiftReleaseTaperStartSpeed = _currentSpeed;
+                            private _releasePace = [_renderReleaseSnapshot, time, _currentSpeed, _horizontalSpeedMS]
+                                call GAIT_fnc_releasePaceSnapshot;
+                            _lastShiftReleaseTime = _releasePace select 0;
+                            _shiftReleaseTaperStartSpeed = _releasePace select 1;
+                            _shiftReleaseTaperStartKmh = (_releasePace select 2) * 3.6;
+                            _currentSpeed = _shiftReleaseTaperStartSpeed;
                             private _coastWindow = [_shiftReleaseRunTaperHoldDuration, _shiftReleaseRunTaperDuration, _coastScale] call GAIT_fnc_gearCoastWindow;
                             _activeCoastHold = _coastWindow select 0;
                             _activeCoastDuration = _coastWindow select 1;
-                            _shiftReleaseTaperActiveUntil = time + _activeCoastHold + _activeCoastDuration;
+                            _shiftReleaseTaperActiveUntil = _lastShiftReleaseTime + _activeCoastHold + _activeCoastDuration;
 
                         } else {
                             _lastShiftReleaseTime = -999;
@@ -1576,7 +1573,8 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _shiftReleaseTaperHoldActiveNow = false;
                 private _shiftReleaseTaperKeepNow = 0;
                 private _shiftReleaseTaperTargetKmhNow = 0;
-                if (_shiftReleaseRunTaperEnabled && {!_isSprinting} && {_movementEligible} && {!_externalWalkLock} && {!_externalSprintLock} && {_isForwardHeld} && {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0}) then {
+                if (_shiftReleaseRunTaperEnabled && {!_isSprinting} && {_movementEligible} && {!_externalWalkLock} && {!_externalSprintLock} && {_isForwardHeld} && {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0} &&
+                    {[_shiftReleaseTaperStartSpeed, _targetSpeed] call GAIT_fnc_hasReleaseExcess}) then {
                     private _releaseCurve = [_shiftReleaseTaperStartSpeed, _targetSpeed,
                         (time - _lastShiftReleaseTime) max 0, _activeCoastDuration, _shiftReleaseRunTaperCurve]
                         call GAIT_fnc_forwardCoastPace;
@@ -1630,6 +1628,15 @@ GAIT_fnc_setTunnelVisionFX = {
                     _shiftReleaseTaperActiveUntil = -999;
                     // Speed ownership must not slow the native stop blend.
                     // Render input chooses the body exit independently.
+                    if (_gaitMovementEnabled && {!_hasMovementInput} && {_gaitStanceOk} && {_movementEligible} &&
+                        {player isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull])} &&
+                        {abs ((getAnimSpeedCoef player) - (missionNamespace getVariable ["GAIT_nativeLastWritten", -1])) < 0.001}) then {
+                        // A scheduled tick can relinquish the coefficient
+                        // before Draw3D sees this same stop edge. Hand over
+                        // only this owned release, with a short-lived lease.
+                        player setVariable ["GAIT_nativeStopPaceLease", [diag_tickTime + 0.15, currentWeapon player,
+                            missionNamespace getVariable ["GAIT_nativePreviousCoef", 1]]];
+                    };
                     [] call GAIT_fnc_releaseSpeedCoefficient;
                 };
                 // A remaining shallow-slope coast may hold only the speed
@@ -1674,7 +1681,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 if (_debugHudEnabled && {(time - _lastDebugHudTime) >= ((_debugHudInterval max 0.05) min 1)}) then {
                     _lastDebugHudTime = time;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha8<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13<br/>Foundation: %14 | Measured pace profile: %15</t>",
+                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha9<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13<br/>Foundation: %14 | Measured pace profile: %15</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,
@@ -1690,6 +1697,8 @@ GAIT_fnc_setTunnelVisionFX = {
                 };
             } else {
                 // Fast Carry pickup/lift owns its animation.
+                _downhillTripSprintStartTime = -1;
+                _downhillTripHighSpeedStartTime = -1;
                 _uphillBrakeState = [];
                 missionNamespace setVariable ["GAIT_uphillBrakeActive", false];
                 missionNamespace setVariable ["GAIT_uphillBrakeEndTime", -1];
@@ -1706,6 +1715,8 @@ GAIT_fnc_setTunnelVisionFX = {
                 [] call GAIT_fnc_releaseNativeMovement;
             };
         } else {
+            _downhillTripSprintStartTime = -1;
+            _downhillTripHighSpeedStartTime = -1;
             _uphillBrakeState = [];
             missionNamespace setVariable ["GAIT_uphillBrakeActive", false];
             missionNamespace setVariable ["GAIT_uphillBrakeEndTime", -1];

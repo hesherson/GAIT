@@ -1,0 +1,247 @@
+[
+  {
+    "suite": "uphill_brake",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L449|C0|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/uphill_brake.sqf]\t[DIAG_LOG] GAIT TEST PASS: uphill release edge, signed grade, slope strength, re-tap cancellation, continuous coast and bounded braking (544 checks)"
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_traversalHelpers.sqf": "ef39e3a9e8c0b43f7db7ac8a12a4ea1252e42db68fb18405ca3aefb045843b32",
+      "addons/gait/functions/fn_uphillBrake.sqf": "c1f5cbb5e529a55ebb19b4e9989ae966aa83236210210edfc23f7120f0745ef3",
+      "tests/uphill_brake.sqf": "d9dbe149341b6610d315bc58f029579cc40e549dc7a0feac76cfe0b784d15f39"
+    }
+  },
+  {
+    "suite": "uphill_brake_handoff",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L637|C0|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/uphill_brake_handoff.sqf]\t[DIAG_LOG] GAIT TEST PASS: numerical uphill brake releases animation immediately; safe edge re-press and medical handoff"
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_slopeLocomotion.sqf": "17ff8b0a30352ae6bb77c7d0094626c0813ed1c15e383f2b2137f14f77b7e7b5",
+      "tests/uphill_brake_handoff.sqf": "d262436d2688c3534c335a2ab4e8331b8e62a2308dcb95b0fc2f3dd0d5e88736"
+    }
+  },
+  {
+    "suite": "brace_momentum",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L152|C0|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/brace_momentum.sqf]\t[DIAG_LOG] GAIT TEST PASS: walking and settled native-jog brace, moving re-tap veto, continuing uphill protection, crouch veto, stop/rearm, grace and unsafe contexts"
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_braceMomentum.sqf": "77e69ce3499c6a4c99f508119ccab92011b8bde0104560dfe41de83fdbb090d9",
+      "tests/brace_momentum.sqf": "20134cff8b9581f5b6a73efac9ed4d87460ec75331bfeba088884b59e4797e13"
+    }
+  },
+  {
+    "suite": "downhill_pace",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L321|C0|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/downhill_pace.sqf]\t[DIAG_LOG] GAIT TEST PASS: downhill pace, load order, slope bounds and time-based momentum (814 checks)"
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_slopePaceModel.sqf": "13cd0a00860a4ad0e178c3f2148ccff3712ad8783f95df7932bc2bf34861f69c",
+      "addons/gait/functions/fn_downhillPace.sqf": "bf364e07cc8d149f40334571b434bc667ce86410cbcc6f7b5a6a664f6b0738ca",
+      "tests/downhill_pace.sqf": "ed55bc48bf281468dadea9f36499006c547891546713dbf419e601f510db7cf1"
+    }
+  },
+  {
+    "suite": "downhill_trip",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L227|C0|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/downhill_trip.sqf]\t[DIAG_LOG] GAIT TEST PASS: downhill velocity risk, smooth threshold, no speed plateau, timestep probability and release qualification (4096 checks)"
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_downhillPace.sqf": "bf364e07cc8d149f40334571b434bc667ce86410cbcc6f7b5a6a664f6b0738ca",
+      "tests/downhill_trip.sqf": "08126132dcc7c082101013e4b0d95e121dc951619010acd0b38efd787f0baf35"
+    }
+  },
+  {
+    "suite": "locomotion_state_machine",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L1185|C4|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/locomotion_state_machine.sqf]\t[DIAG_LOG] GAIT locomotion state machine tests PASS: 27 policy cases; held W/A/D/idle and release sequence; blocked/late-entry/medical sequence; 10 blend-name cases."
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_traversalHelpers.sqf": "ef39e3a9e8c0b43f7db7ac8a12a4ea1252e42db68fb18405ca3aefb045843b32",
+      "addons/gait/functions/fn_slopeLocomotion.sqf": "17ff8b0a30352ae6bb77c7d0094626c0813ed1c15e383f2b2137f14f77b7e7b5",
+      "addons/gait/functions/fn_nativeController.sqf": "a6da58e8038ee759af00fffeca827065a1c8f713ce5947cc51c2ee7a3c796488",
+      "tests/locomotion_state_machine.sqf": "9d28f9c47ef587f87863a6ecf7594e3765e9eb5ba9e9ba04841c6353e01781fc"
+    }
+  },
+  {
+    "suite": "locomotion_handoff",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L951|C4|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/locomotion_handoff.sqf]\t[DIAG_LOG] GAIT locomotion handoff tests PASS: immediate sprint launch, exact entry/exit blend leases, raw W/Turbo brace cancellation and persistent release serial."
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_traversalHelpers.sqf": "ef39e3a9e8c0b43f7db7ac8a12a4ea1252e42db68fb18405ca3aefb045843b32",
+      "addons/gait/functions/fn_slopeLocomotion.sqf": "17ff8b0a30352ae6bb77c7d0094626c0813ed1c15e383f2b2137f14f77b7e7b5",
+      "tests/locomotion_handoff.sqf": "d0035d216c56b5b3914e0df7fdc11c87f3e249832d2d4032497a970439716330"
+    }
+  },
+  {
+    "suite": "release_and_blend",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L1122|C4|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/release_and_blend.sqf]\t[DIAG_LOG] GAIT cleanup and blend tests PASS: inherited arguments, coefficient-only cleanup, expected/unsafe transitions and strict native _ver2 brace handoffs."
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_traversalHelpers.sqf": "ef39e3a9e8c0b43f7db7ac8a12a4ea1252e42db68fb18405ca3aefb045843b32",
+      "addons/gait/functions/fn_slopeLocomotion.sqf": "17ff8b0a30352ae6bb77c7d0094626c0813ed1c15e383f2b2137f14f77b7e7b5",
+      "addons/gait/functions/fn_nativeController.sqf": "a6da58e8038ee759af00fffeca827065a1c8f713ce5947cc51c2ee7a3c796488",
+      "tests/release_and_blend.sqf": "0df2235a32b9873552697e349e3dc08a2d64717dd1257286d1b6794f88fd1f32"
+    }
+  },
+  {
+    "suite": "input_and_ramp",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L241|C0|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/input_and_ramp.sqf]\t[DIAG_LOG] GAIT TEST PASS: input cancellation, reversal, diagonals, analog input and time-based ramp"
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_traversalHelpers.sqf": "ef39e3a9e8c0b43f7db7ac8a12a4ea1252e42db68fb18405ca3aefb045843b32",
+      "tests/input_and_ramp.sqf": "c72b3afa0841f57a2af89b523b30d6a5356b43e604d47e64830deb8626d6584a"
+    }
+  },
+  {
+    "suite": "ace_status_bridge",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L367|C4|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/ace_status_bridge.sqf]\t[DIAG_LOG] GAIT ACE status bridge PASS: initialization order; reset idempotence; effects function preserved; synchronous nested dispatch; medical owner masks; master/mode/AF/context gates; ownership independent of transient animation eligibility."
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_nativeController.sqf": "a6da58e8038ee759af00fffeca827065a1c8f713ce5947cc51c2ee7a3c796488",
+      "tests/ace_status_bridge.sqf": "96c384900f612a85b45822adcfde5ffbe8f36a0af63f23cc6ecad0fcf7a890ba"
+    }
+  },
+  {
+    "suite": "native_stamina_ownership",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L319|C4|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/native_stamina_ownership.sqf]\t[DIAG_LOG] GAIT native stamina ownership PASS: acquisition; unchanged injury masks; animation-independent policy; idempotent restore; mode/context release; player switch; pre-disabled state; external enable; locality loss; null owner."
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_nativeController.sqf": "a6da58e8038ee759af00fffeca827065a1c8f713ce5947cc51c2ee7a3c796488",
+      "tests/native_stamina_ownership.sqf": "dfed0f398e3818191480d3359f3115d65d665580c7d0d03497210167e06550d7"
+    }
+  },
+  {
+    "suite": "fatigue_visuals",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L348|C4|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/fatigue_visuals.sqf]\t[DIAG_LOG] GAIT fatigue visuals PASS: bounded smooth pulse; 5-12 s zero-effect gaps; low-fatigue scaling; capped opacity; missed-frame recovery; no residual baseline; stalled-caller expiry; zero-strength ACE policy lease; context and player replacement cleanup; idempotent destroy; safe allocation failure."
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_fatigueVisuals.sqf": "69f48cb4a28093beacb07d9636dbc6713b9433de63a46b795bbf13f29055056d",
+      "tests/fatigue_visuals.sqf": "2d2f74912c846aff53a32e53939366018f9da12cfba5be473b3f5c3a8211bccc"
+    }
+  },
+  {
+    "suite": "ace_fatigue_visual_bridge",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L201|C4|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/ace_fatigue_visual_bridge.sqf]\t[DIAG_LOG] GAIT ACE fatigue visual bridge PASS: single-handle disable; original-state restoration; idempotent cleanup; ACE/context gates; player and locality change; handle recreation and disappearance; pre-disabled/external enable; malformed handles; unrelated medical effects preserved."
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_aceFatigueVisualBridge.sqf": "118279db035f4969198d3197ead415edc406e2fb0ea3c95bd28a45c6450bd456",
+      "tests/ace_fatigue_visual_bridge.sqf": "85dadc4337f2b04d3a000e35a7f520b7c7e8b4cf9fbfe8c9b5a2051cbfc976f8"
+    }
+  },
+  {
+    "suite": "slope_direction",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L644|C4|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/slope_direction.sqf]\t[DIAG_LOG] GAIT slope direction tests PASS (16 selections and reversal/release sequence)."
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_slopeLocomotion.sqf": "17ff8b0a30352ae6bb77c7d0094626c0813ed1c15e383f2b2137f14f77b7e7b5",
+      "tests/slope_direction.sqf": "9e4809494603221c46e7989b3d9abef55734eff8aa2ccfd9a308b194b771937d"
+    }
+  },
+  {
+    "suite": "slope_state_selection",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L642|C4|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/slope_state_selection.sqf]\t[DIAG_LOG] GAIT sprint state selection tests PASS: 12 real sprint entries and 20 side/rear run entries preserve their weapon family."
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_slopeLocomotion.sqf": "17ff8b0a30352ae6bb77c7d0094626c0813ed1c15e383f2b2137f14f77b7e7b5",
+      "tests/slope_state_selection.sqf": "8181df489deb343840ddc3a4af651be15238bcc227db50966eb1ece57b297265"
+    }
+  },
+  {
+    "suite": "locomotion_pace",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L288|C0|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/locomotion_pace.sqf]\t[DIAG_LOG] GAIT TEST PASS: physical pace adapter; 39 exact legacy fallback cases, 60 conversion roundtrips, physical floor, partial profiles and invalid calibration rejection"
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_slopePaceModel.sqf": "13cd0a00860a4ad0e178c3f2148ccff3712ad8783f95df7932bc2bf34861f69c",
+      "addons/gait/functions/fn_locomotionPace.sqf": "e64b872577b9878854f96488cbe818e908ecabe7123fc3f437903aff04b61bc5",
+      "tests/locomotion_pace.sqf": "4ae0f188d1fb3efb50916d7d22e34fc18427b60bd0645716e4f7dfce91aeffdb"
+    }
+  },
+  {
+    "suite": "gear_inertia",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L597|C0|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/gear_inertia.sqf]\t[DIAG_LOG] GAIT TEST PASS: original tier brace relief and duration; modest acceleration; finite forward and diagonal release; no hold or tail; late tick completion; stop/retap cancellation; uphill priority"
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_gearInertia.sqf": "00edc794593ee050537f9ed01ff01116699972b311eb4f95f3506d50bf92e10f",
+      "addons/gait/functions/fn_traversalHelpers.sqf": "ef39e3a9e8c0b43f7db7ac8a12a4ea1252e42db68fb18405ca3aefb045843b32",
+      "addons/gait/functions/fn_uphillBrake.sqf": "c1f5cbb5e529a55ebb19b4e9989ae966aa83236210210edfc23f7120f0745ef3",
+      "tests/gear_inertia.sqf": "d36dd860597ee3746261741867651f53bb78bc53fb8b373c5bebb514b42a9707"
+    }
+  },
+  {
+    "suite": "locomotion_coast",
+    "status": "PASS",
+    "completion_seen": true,
+    "evidence": [
+      "[INF] [L933|C0|/workspace/scratch/65fe9a929edc/tools/alpha9_final_regressions/locomotion_coast.sqf]\t[DIAG_LOG] GAIT TEST PASS: prompt graph release/re-tap reversal; immediate stop/strafe priority; bounded pending-entry cancellation"
+    ],
+    "diagnostics": [],
+    "sources": {
+      "addons/gait/functions/fn_traversalHelpers.sqf": "ef39e3a9e8c0b43f7db7ac8a12a4ea1252e42db68fb18405ca3aefb045843b32",
+      "addons/gait/functions/fn_slopeLocomotion.sqf": "17ff8b0a30352ae6bb77c7d0094626c0813ed1c15e383f2b2137f14f77b7e7b5",
+      "tests/locomotion_coast.sqf": "f97a69acd7de1400fced9ec789a80428b08017475052ce06fc88c691120da926"
+    }
+  }
+]

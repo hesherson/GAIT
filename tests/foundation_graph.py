@@ -46,6 +46,7 @@ class FoundationGraph(unittest.TestCase):
             cls.text, re.M | re.S,
         )
         cls.states = {name: (base, body) for name, base, body in blocks if name.endswith("_GAIT")}
+        cls.stops = {name: (base, body) for name, base, body in blocks if name.endswith("_GAITStop")}
         cls.actions = {name: (base, body) for name, base, body in blocks if name.startswith("GAIT_Slope")}
 
     def test_real_native_clip_parents_and_controller_markers(self):
@@ -91,6 +92,24 @@ class FoundationGraph(unittest.TestCase):
                     self.assertEqual(p[pace + selector], f"AmovPerc{expected_pace}{family}{direction}_GAIT")
             # Medical, stance, weapon and vehicle selectors remain inherited.
             self.assertEqual(len(p), 71)
+
+    def test_stop_targets_only_accelerate_interpolation(self):
+        self.assertEqual(len(self.stops), 4)
+        for family, (_, native_actions) in FAMILIES.items():
+            native_idle = f"AmovPercMstp{family}Dnon"
+            stop = native_idle + "_GAITStop"
+            parent, body = self.stops[stop]
+            self.assertEqual(parent, native_idle)
+            self.assertEqual(properties(body)["actions"], native_actions)
+            self.assertRegex(body, r"\binterpolationSpeed\s*=\s*8;")
+            self.assertNotRegex(body, r"\b(?:speed|file|GAIT_slopeState|GAIT_slopeFamily)\s*=")
+            for name, (_, move_body) in self.states.items():
+                if properties(move_body)["GAIT_slopeFamily"] != family:
+                    continue
+                self.assertIn(stop, dict(edges(move_body, "InterpolateTo")))
+                self.assertIn(stop, dict(edges(move_body, "InterpolateFrom")))
+                self.assertIn(name, dict(edges(body, "InterpolateTo")))
+                self.assertIn(name, dict(edges(body, "InterpolateFrom")))
 
     def test_idle_recovery_and_direction_reversals_have_direct_edges(self):
         for family in FAMILIES:

@@ -66,6 +66,26 @@ GAIT_fnc_forwardCoastPace = {
     [_walk + ((_start - _walk) * _keep), _keep, _t < 1]
 };
 
+// Capture/consume one rendered release, in the pre-vegetation coefficient
+// space used by the feature loop. The measured velocity labels that instant;
+// it is never divided by a guessed clip speed or fed back against collision.
+GAIT_fnc_releasePaceSnapshot = {
+    params ["_snapshot", "_now", "_fallbackCoefficient", "_fallbackMS", ["_maximumAge", 0.25, [0]]];
+    if ((count _snapshot) isNotEqualTo 4) exitWith {[_now, _fallbackCoefficient, _fallbackMS]};
+    _snapshot params ["_capturedAt", "_appliedCoefficient", "_speedMS", "_drag"];
+    if (_capturedAt > _now || {_now - _capturedAt > _maximumAge} ||
+        {_appliedCoefficient <= 0} || {_speedMS < 0}) exitWith {[_now, _fallbackCoefficient, _fallbackMS]};
+    private _coefficient = _appliedCoefficient / (1 - (_drag max 0 min 0.75));
+    [_capturedAt, _coefficient min _fallbackCoefficient, _speedMS]
+};
+
+// A release during the brace can be below ordinary movement pace. There is
+// no excess speed to dissipate then: resume the normal smooth ramp at once.
+GAIT_fnc_hasReleaseExcess = {
+    params ["_start", "_ordinaryTarget"];
+    _start > (_ordinaryTarget + 0.00001)
+};
+
 // Keep numeric coast only for the finite curve while W stays held.
 // W+A/D are valid forward movement; pure strafe/back/stop are not coasting.
 // Compatibility arguments retain old call sites without any residual tail.

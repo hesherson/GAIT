@@ -1,4 +1,4 @@
 name = "GAIT";
 author = "mavis";
-tooltip = "GAIT 1.8.0-alpha8";
+tooltip = "GAIT 1.8.0-alpha9";
 overview = "GAIT rebuilt locomotion foundation with preserved brace and momentum tuning. Requires CBA_A3 and ACE3.";

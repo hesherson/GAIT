@@ -26,6 +26,11 @@
  * Custom-state variants are empty to avoid automatic native idle/fidget
  * variants leaving the family. No ConnectTo self-loop is forced. Animation
  * files, speed, duty, collision and other pose properties inherit unchanged.
+ * Four native-action stop targets double idle interpolationSpeed from the
+ * captured native value 4 to 8. They shorten the outgoing run blend without
+ * scaling its clip playback or adding forward movement. They do not belong
+ * to the sprint family and accept new movement immediately through native
+ * actions. In-game distance reduction still depends on engine blending.
  * Transition weights are graph costs, not fixed blend durations in seconds.
  *
  * Sources for native names/selectors and preserving explicit action exits:
@@ -395,7 +400,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -427,7 +433,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -464,7 +471,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -496,7 +504,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -533,7 +542,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -565,7 +575,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -602,7 +613,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -634,7 +646,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -671,7 +684,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -703,7 +717,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -740,7 +755,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -772,7 +788,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -809,7 +826,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -841,7 +859,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -878,7 +897,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -910,7 +930,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -947,7 +968,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -960,6 +982,80 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMrunSrasWrflDb_GAIT", 0.02,
                 "AmovPercMrunSrasWrflDbr_GAIT", 0.02,
                 "AmovPercMrunSrasWrflDr_GAIT", 0.02,
+                "AmovPercMstpSrasWrflDnon", 0.02,
+                "AmovPercMrunSrasWrflDf", 0.02,
+                "AmovPercMrunSrasWrflDfl", 0.02,
+                "AmovPercMrunSrasWrflDl", 0.02,
+                "AmovPercMrunSrasWrflDbl", 0.02,
+                "AmovPercMrunSrasWrflDb", 0.02,
+                "AmovPercMrunSrasWrflDbr", 0.02,
+                "AmovPercMrunSrasWrflDr", 0.02,
+                "AmovPercMrunSrasWrflDfr", 0.02,
+                "AmovPercMwlkSrasWrflDf", 0.02,
+                "AmovPercMwlkSrasWrflDfl", 0.02,
+                "AmovPercMwlkSrasWrflDl", 0.02,
+                "AmovPercMwlkSrasWrflDbl", 0.02,
+                "AmovPercMwlkSrasWrflDb", 0.02,
+                "AmovPercMwlkSrasWrflDbr", 0.02,
+                "AmovPercMwlkSrasWrflDr", 0.02,
+                "AmovPercMwlkSrasWrflDfr", 0.02,
+                "AmovPercMevaSrasWrflDf", 0.025,
+                "AmovPercMevaSrasWrflDfl", 0.025,
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMstpSrasWrflDnon_GAITStop: AmovPercMstpSrasWrflDnon
+        {
+            actions = "RifleStandActions";
+            interpolationSpeed = 8;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMstpSrasWrflDnon_GAIT", 0.02,
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAIT", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAIT", 0.02,
+                "AmovPercMrunSrasWrflDb_GAIT", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAIT", 0.02,
+                "AmovPercMrunSrasWrflDr_GAIT", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWrflDnon", 0.02,
+                "AmovPercMrunSrasWrflDf", 0.02,
+                "AmovPercMrunSrasWrflDfl", 0.02,
+                "AmovPercMrunSrasWrflDl", 0.02,
+                "AmovPercMrunSrasWrflDbl", 0.02,
+                "AmovPercMrunSrasWrflDb", 0.02,
+                "AmovPercMrunSrasWrflDbr", 0.02,
+                "AmovPercMrunSrasWrflDr", 0.02,
+                "AmovPercMrunSrasWrflDfr", 0.02,
+                "AmovPercMwlkSrasWrflDf", 0.02,
+                "AmovPercMwlkSrasWrflDfl", 0.02,
+                "AmovPercMwlkSrasWrflDl", 0.02,
+                "AmovPercMwlkSrasWrflDbl", 0.02,
+                "AmovPercMwlkSrasWrflDb", 0.02,
+                "AmovPercMwlkSrasWrflDbr", 0.02,
+                "AmovPercMwlkSrasWrflDr", 0.02,
+                "AmovPercMwlkSrasWrflDfr", 0.02,
+                "AmovPercMevaSrasWrflDf", 0.025,
+                "AmovPercMevaSrasWrflDfl", 0.025,
+                "AmovPercMevaSrasWrflDfr", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMstpSrasWrflDnon_GAIT", 0.02,
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAIT", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAIT", 0.02,
+                "AmovPercMrunSrasWrflDb_GAIT", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAIT", 0.02,
+                "AmovPercMrunSrasWrflDr_GAIT", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025,
                 "AmovPercMstpSrasWrflDnon", 0.02,
                 "AmovPercMrunSrasWrflDf", 0.02,
                 "AmovPercMrunSrasWrflDfl", 0.02,
@@ -1042,7 +1138,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -1090,7 +1187,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -1143,7 +1241,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -1191,7 +1290,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -1244,7 +1344,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -1292,7 +1393,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -1345,7 +1447,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -1393,7 +1496,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -1446,7 +1550,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -1494,7 +1599,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -1547,7 +1653,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -1595,7 +1702,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -1648,7 +1756,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -1696,7 +1805,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -1749,7 +1859,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -1797,7 +1908,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -1850,7 +1962,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -1863,6 +1976,112 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMrunSlowWrflDb_GAIT", 0.02,
                 "AmovPercMrunSlowWrflDbr_GAIT", 0.02,
                 "AmovPercMrunSlowWrflDr_GAIT", 0.02,
+                "AmovPercMstpSlowWrflDnon", 0.02,
+                "AmovPercMrunSlowWrflDf", 0.02,
+                "AmovPercMrunSlowWrflDfl", 0.02,
+                "AmovPercMrunSlowWrflDl", 0.02,
+                "AmovPercMrunSlowWrflDbl", 0.02,
+                "AmovPercMrunSlowWrflDb", 0.02,
+                "AmovPercMrunSlowWrflDbr", 0.02,
+                "AmovPercMrunSlowWrflDr", 0.02,
+                "AmovPercMrunSlowWrflDfr", 0.02,
+                "AmovPercMwlkSlowWrflDf", 0.02,
+                "AmovPercMwlkSlowWrflDfl", 0.02,
+                "AmovPercMwlkSlowWrflDl", 0.02,
+                "AmovPercMwlkSlowWrflDbl", 0.02,
+                "AmovPercMwlkSlowWrflDb", 0.02,
+                "AmovPercMwlkSlowWrflDbr", 0.02,
+                "AmovPercMwlkSlowWrflDr", 0.02,
+                "AmovPercMwlkSlowWrflDfr", 0.02,
+                "AmovPercMevaSlowWrflDf", 0.025,
+                "AmovPercMevaSlowWrflDfl", 0.025,
+                "AmovPercMevaSlowWrflDfr", 0.025,
+                "AmovPercMwlkSlowWrflDf_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDb_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDf_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDb_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMstpSlowWrflDnon_GAITStop: AmovPercMstpSlowWrflDnon
+        {
+            actions = "RifleLowStandActions";
+            interpolationSpeed = 8;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMstpSlowWrflDnon_GAIT", 0.02,
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAIT", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAIT", 0.02,
+                "AmovPercMrunSlowWrflDb_GAIT", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAIT", 0.02,
+                "AmovPercMrunSlowWrflDr_GAIT", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWrflDnon", 0.02,
+                "AmovPercMrunSlowWrflDf", 0.02,
+                "AmovPercMrunSlowWrflDfl", 0.02,
+                "AmovPercMrunSlowWrflDl", 0.02,
+                "AmovPercMrunSlowWrflDbl", 0.02,
+                "AmovPercMrunSlowWrflDb", 0.02,
+                "AmovPercMrunSlowWrflDbr", 0.02,
+                "AmovPercMrunSlowWrflDr", 0.02,
+                "AmovPercMrunSlowWrflDfr", 0.02,
+                "AmovPercMwlkSlowWrflDf", 0.02,
+                "AmovPercMwlkSlowWrflDfl", 0.02,
+                "AmovPercMwlkSlowWrflDl", 0.02,
+                "AmovPercMwlkSlowWrflDbl", 0.02,
+                "AmovPercMwlkSlowWrflDb", 0.02,
+                "AmovPercMwlkSlowWrflDbr", 0.02,
+                "AmovPercMwlkSlowWrflDr", 0.02,
+                "AmovPercMwlkSlowWrflDfr", 0.02,
+                "AmovPercMevaSlowWrflDf", 0.025,
+                "AmovPercMevaSlowWrflDfl", 0.025,
+                "AmovPercMevaSlowWrflDfr", 0.025,
+                "AmovPercMwlkSlowWrflDf_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDb_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDf_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDb_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMstpSlowWrflDnon_GAIT", 0.02,
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAIT", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAIT", 0.02,
+                "AmovPercMrunSlowWrflDb_GAIT", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAIT", 0.02,
+                "AmovPercMrunSlowWrflDr_GAIT", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025,
                 "AmovPercMstpSlowWrflDnon", 0.02,
                 "AmovPercMrunSlowWrflDf", 0.02,
                 "AmovPercMrunSlowWrflDfl", 0.02,
@@ -1945,7 +2164,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -1977,7 +2197,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
         };
 
@@ -2014,7 +2235,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2046,7 +2268,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
         };
 
@@ -2083,7 +2306,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2115,7 +2339,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
         };
 
@@ -2152,7 +2377,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2184,7 +2410,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
         };
 
@@ -2221,7 +2448,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2253,7 +2481,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
         };
 
@@ -2290,7 +2519,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2322,7 +2552,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
         };
 
@@ -2359,7 +2590,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2391,7 +2623,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
         };
 
@@ -2428,7 +2661,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2460,7 +2694,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
         };
 
@@ -2497,7 +2732,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2510,6 +2746,80 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMrunSrasWpstDb_GAIT", 0.02,
                 "AmovPercMrunSrasWpstDbr_GAIT", 0.02,
                 "AmovPercMrunSrasWpstDr_GAIT", 0.02,
+                "AmovPercMstpSrasWpstDnon", 0.02,
+                "AmovPercMrunSrasWpstDf", 0.02,
+                "AmovPercMrunSrasWpstDfl", 0.02,
+                "AmovPercMrunSrasWpstDl", 0.02,
+                "AmovPercMrunSrasWpstDbl", 0.02,
+                "AmovPercMrunSrasWpstDb", 0.02,
+                "AmovPercMrunSrasWpstDbr", 0.02,
+                "AmovPercMrunSrasWpstDr", 0.02,
+                "AmovPercMrunSrasWpstDfr", 0.02,
+                "AmovPercMwlkSrasWpstDf", 0.02,
+                "AmovPercMwlkSrasWpstDfl", 0.02,
+                "AmovPercMwlkSrasWpstDl", 0.02,
+                "AmovPercMwlkSrasWpstDbl", 0.02,
+                "AmovPercMwlkSrasWpstDb", 0.02,
+                "AmovPercMwlkSrasWpstDbr", 0.02,
+                "AmovPercMwlkSrasWpstDr", 0.02,
+                "AmovPercMwlkSrasWpstDfr", 0.02,
+                "AmovPercMevaSrasWpstDf", 0.025,
+                "AmovPercMevaSrasWpstDfl", 0.025,
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMstpSrasWpstDnon_GAITStop: AmovPercMstpSrasWpstDnon
+        {
+            actions = "PistolStandActions";
+            interpolationSpeed = 8;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMstpSrasWpstDnon_GAIT", 0.02,
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAIT", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAIT", 0.02,
+                "AmovPercMrunSrasWpstDb_GAIT", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAIT", 0.02,
+                "AmovPercMrunSrasWpstDr_GAIT", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWpstDnon", 0.02,
+                "AmovPercMrunSrasWpstDf", 0.02,
+                "AmovPercMrunSrasWpstDfl", 0.02,
+                "AmovPercMrunSrasWpstDl", 0.02,
+                "AmovPercMrunSrasWpstDbl", 0.02,
+                "AmovPercMrunSrasWpstDb", 0.02,
+                "AmovPercMrunSrasWpstDbr", 0.02,
+                "AmovPercMrunSrasWpstDr", 0.02,
+                "AmovPercMrunSrasWpstDfr", 0.02,
+                "AmovPercMwlkSrasWpstDf", 0.02,
+                "AmovPercMwlkSrasWpstDfl", 0.02,
+                "AmovPercMwlkSrasWpstDl", 0.02,
+                "AmovPercMwlkSrasWpstDbl", 0.02,
+                "AmovPercMwlkSrasWpstDb", 0.02,
+                "AmovPercMwlkSrasWpstDbr", 0.02,
+                "AmovPercMwlkSrasWpstDr", 0.02,
+                "AmovPercMwlkSrasWpstDfr", 0.02,
+                "AmovPercMevaSrasWpstDf", 0.025,
+                "AmovPercMevaSrasWpstDfl", 0.025,
+                "AmovPercMevaSrasWpstDfr", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMstpSrasWpstDnon_GAIT", 0.02,
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAIT", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAIT", 0.02,
+                "AmovPercMrunSrasWpstDb_GAIT", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAIT", 0.02,
+                "AmovPercMrunSrasWpstDr_GAIT", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025,
                 "AmovPercMstpSrasWpstDnon", 0.02,
                 "AmovPercMrunSrasWpstDf", 0.02,
                 "AmovPercMrunSrasWpstDfl", 0.02,
@@ -2576,7 +2886,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2608,7 +2919,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
         };
 
@@ -2645,7 +2957,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2677,7 +2990,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
         };
 
@@ -2714,7 +3028,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2746,7 +3061,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
         };
 
@@ -2783,7 +3099,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2815,7 +3132,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
         };
 
@@ -2852,7 +3170,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2884,7 +3203,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
         };
 
@@ -2921,7 +3241,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -2953,7 +3274,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
         };
 
@@ -2990,7 +3312,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -3022,7 +3345,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
         };
 
@@ -3059,7 +3383,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -3091,7 +3416,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
         };
 
@@ -3128,7 +3454,8 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
             // Complete direct idle/direction routes preserve the slope family.
             InterpolateTo[] +=
@@ -3141,6 +3468,80 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMrunSnonWnonDb_GAIT", 0.02,
                 "AmovPercMrunSnonWnonDbr_GAIT", 0.02,
                 "AmovPercMrunSnonWnonDr_GAIT", 0.02,
+                "AmovPercMstpSnonWnonDnon", 0.02,
+                "AmovPercMrunSnonWnonDf", 0.02,
+                "AmovPercMrunSnonWnonDfl", 0.02,
+                "AmovPercMrunSnonWnonDl", 0.02,
+                "AmovPercMrunSnonWnonDbl", 0.02,
+                "AmovPercMrunSnonWnonDb", 0.02,
+                "AmovPercMrunSnonWnonDbr", 0.02,
+                "AmovPercMrunSnonWnonDr", 0.02,
+                "AmovPercMrunSnonWnonDfr", 0.02,
+                "AmovPercMwlkSnonWnonDf", 0.02,
+                "AmovPercMwlkSnonWnonDfl", 0.02,
+                "AmovPercMwlkSnonWnonDl", 0.02,
+                "AmovPercMwlkSnonWnonDbl", 0.02,
+                "AmovPercMwlkSnonWnonDb", 0.02,
+                "AmovPercMwlkSnonWnonDbr", 0.02,
+                "AmovPercMwlkSnonWnonDr", 0.02,
+                "AmovPercMwlkSnonWnonDfr", 0.02,
+                "AmovPercMevaSnonWnonDf", 0.025,
+                "AmovPercMevaSnonWnonDfl", 0.025,
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMstpSnonWnonDnon_GAITStop: AmovPercMstpSnonWnonDnon
+        {
+            actions = "CivilStandActions";
+            interpolationSpeed = 8;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMstpSnonWnonDnon_GAIT", 0.02,
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAIT", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAIT", 0.02,
+                "AmovPercMrunSnonWnonDb_GAIT", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAIT", 0.02,
+                "AmovPercMrunSnonWnonDr_GAIT", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025,
+                "AmovPercMstpSnonWnonDnon", 0.02,
+                "AmovPercMrunSnonWnonDf", 0.02,
+                "AmovPercMrunSnonWnonDfl", 0.02,
+                "AmovPercMrunSnonWnonDl", 0.02,
+                "AmovPercMrunSnonWnonDbl", 0.02,
+                "AmovPercMrunSnonWnonDb", 0.02,
+                "AmovPercMrunSnonWnonDbr", 0.02,
+                "AmovPercMrunSnonWnonDr", 0.02,
+                "AmovPercMrunSnonWnonDfr", 0.02,
+                "AmovPercMwlkSnonWnonDf", 0.02,
+                "AmovPercMwlkSnonWnonDfl", 0.02,
+                "AmovPercMwlkSnonWnonDl", 0.02,
+                "AmovPercMwlkSnonWnonDbl", 0.02,
+                "AmovPercMwlkSnonWnonDb", 0.02,
+                "AmovPercMwlkSnonWnonDbr", 0.02,
+                "AmovPercMwlkSnonWnonDr", 0.02,
+                "AmovPercMwlkSnonWnonDfr", 0.02,
+                "AmovPercMevaSnonWnonDf", 0.025,
+                "AmovPercMevaSnonWnonDfl", 0.025,
+                "AmovPercMevaSnonWnonDfr", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMstpSnonWnonDnon_GAIT", 0.02,
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAIT", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAIT", 0.02,
+                "AmovPercMrunSnonWnonDb_GAIT", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAIT", 0.02,
+                "AmovPercMrunSnonWnonDr_GAIT", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025,
                 "AmovPercMstpSnonWnonDnon", 0.02,
                 "AmovPercMrunSnonWnonDf", 0.02,
                 "AmovPercMrunSnonWnonDfl", 0.02,

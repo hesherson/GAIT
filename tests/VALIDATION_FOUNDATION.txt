@@ -1,95 +1,84 @@
-GAIT 1.8.0-alpha8 validation
+GAIT 1.8.0-alpha9 validation
 
-Packaging repair, with alpha7 gameplay retained.
-
-Reproduced the reported missing fn_registerSettings.sqf error's cause using
-HEMTT 1.21.0 with BI Tools staging enabled. Alpha7's gait\heartbeat prefix
-creates a nested source link and overwrites the core PBO prefix. The SQF
-exists in the PBO but is unreachable under its expected gait virtual path.
-Alpha8 retains core prefix gait and moves the optional heartbeat addon to
-z\gait\addons\heartbeat. The same staging path now builds correct PBOs.
-
-HEMTT 1.21.0: PASS; config 1.8.0.8, 16 compiled SQF files, 2 PBOs.
-All 16 embedded raw SQF files match the final source. Both PBO SHA1 footers,
-virtual prefixes, config.bin entries and heartbeat sample/gain data pass.
-Prefix layout contracts: 4/4 PASS, including built payload verification.
-Preservation and mutation checks: PASS, freshly rerun for alpha8.
-
-PowerShell 7.4.7 verifier: 10 fixture checks PASS. Valid source and standalone
-builds pass; wrong prefixes, missing/empty/stale scripts, truncated PBOs,
-corrupt checksums, missing heartbeat and extra PBOs are rejected.
-Deployment cleanup tests pass for the known generated link, an unrelated
-link and a real folder. Link targets remain intact; unexpected contents are
-preserved outside the checkout. Cleanup precedes Git status/stash and runs
-again after branch switching. Build verification precedes commit/push.
-
-Scripts use PowerShell 5.1-compatible syntax. These checks executed under
-PowerShell 7.4.7 on Linux; actual Windows junction handling and Arma startup
-still require target-platform verification. No Arma runtime was available.
-
-Reproduce alpha8 checks from the project root:
-  hemtt build
-  python tests/pbo_prefix_layout.py
-  python tests/feature_preservation.py --self-test
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/verify_build.ps1 -BuildPath .hemttout/build -SourceRoot .
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File VERIFY_READY.ps1
-
-The final ZIP includes a verified standalone build under ready_to_load/GAIT,
-the complete HEMTT source, and a SHA256 file manifest.
-
-Inherited alpha7 gameplay validation record follows. These behavioral suites
-were run for alpha7; alpha8 retains the same helper bytes and only changes
-the main controller's version labels. No gameplay tuning is changed here.
-
-GAIT 1.8.0-alpha7 validation (prior build)
-
-HEMTT 1.21.0: PASS; config 1.8.0.7, 16 compiled SQF files, 2 PBOs.
+HEMTT 1.21.0 build: PASS, with BI Tools staging enabled.
+Config version 1.8.0.9; 16 compiled SQF files; 2 PBOs.
 Nonblocking style advisories remain. No Arma runtime was available.
-Both PBO prefixes and all 16 embedded scripts match source. The compiled
-heartbeat config contains all 7 original sample paths, unchanged pitch and
-half-gain values of 0.561009227. ZIP integrity and source manifest pass.
 
-All 17 actual-helper SQF-VM suites: PASS, zero diagnostics.
-Recorded source hashes match the final checkout. All 15 alpha6 suites remain.
-New coverage:
-- fatigue_visuals: 1.30-second pulse, 14% opacity cap, 5-12-second clear gaps,
-  smooth rise/fall, late-frame completion, recovery, cooldown retention through
-  brief zero/rebound input, owned-handle cleanup, 0.75-second stale request
-  expiry, setting/context/player cleanup, and ACE visual bridge dispatch.
-- ace_fatigue_visual_bridge: acquisition and restoration of only the published
-  ACE Advanced Fatigue blackout handle, original enabled flag preservation,
-  pre-disabled handles, external enable, ACE disable, player replacement,
-  handle replacement/removal, and avoiding commands to stale numeric IDs.
-Engine post-processing access is mocked; tests do not render pixels.
-The gear suite checks heavy acceleration 1.02, lighter maximum 1.06, and
-unchanged brace duration, release curve, endpoints and input cancellation.
+All 18 actual-helper SQF-VM suites: PASS, zero diagnostics.
+Recorded source hashes match the final source. Portable evidence is in
+VALIDATION_RESULTS.json. The runner compiles each suite from current source;
+engine boundary mocks do not simulate animation rendering or physical travel.
 
-Graph contracts: 5/5 PASS; 36 states and 4 maps unchanged from alpha6.
-Heartbeat contracts: 3/3 PASS; all 7 variants use half the original gain,
-unchanged samples/pitch, and an optional ACE Medical Feedback dependency.
+Movement coverage includes:
+- current release coefficient/velocity/time snapshots, captured vegetation
+  attenuation removal, stale snapshot rejection and repeated partial releases;
+- both render/main release processing orders, single-consumption tracking,
+  fresh Shift presses and W re-presses while Shift stays held;
+- early brace releases below the ordinary target skip deceleration coast and
+  continue the normal smooth ramp without a low-speed hold;
+- live stop/direction redirection during unfinished jog/stop handoffs;
+- an edge-only ordinary-movement stop, including a short ownership lease for
+  the main-before-render case, exact weapon/restored coefficient matching,
+  setting/context/medical/reload/foreign-coefficient exclusions;
+- existing brace history, uphill braking, input handling, slope state selection,
+  ACE status/native stamina ownership and intermittent fatigue cleanup.
 
-Preservation and mutation checks: PASS. All 25 historical RC4 block hashes
-remain: 14 intact blocks and 11 blocks with 26 exact authorized reversals.
-The original slope model remains byte-identical. Exact preset reversals
-restore 8 retired sway/native-fatigue entries; all other preset bytes remain
-protected. Settings permit only reviewed changes.
-Four stamina and nine visual integration assertions protect call ordering,
-per-tick updates, watchdog installation, context guards and cleanup. Mutations
-that add aim, native-fatigue or recoil writers fail. Existing brace, reserve,
-ramp, momentum and uphill regression mutations continue to fail.
+Downhill pace: 814 checks PASS. Default peak downhill targets rise about 1.97%
+at 100 displayed lb and 3.29% at 150 lb; loads through 55 lb are unchanged.
+Overall weight penalties, flat/uphill targets, sprint/ordinary pace floor and
+extreme-slope bonus taper remain. The immutable slope model is unchanged.
 
-Package comparison confirms that the alpha6 locomotion controller, input
-helpers, brace history, uphill/downhill helpers, slope model, generated graph
-and existing PAA/OGG assets are byte-identical. The gear adjustment is limited
-to a 2% faster heavy acceleration rate, blended into lighter-load ordering.
+Downhill trip: 4096 checks PASS. Default risk scales linearly with actual
+horizontal speed above its minimum and continues rising above reference
+speed, within the final probability bound. Per-second probability composes
+across regular/irregular time intervals. Sustained high-speed history and
+already-earned sprint qualification survive Shift release while still fast.
+Unqualified sprint history cannot accrue sprint time after release. Stops,
+invalid movement context and speed dropping below the relevant gate clear
+qualification. Existing slope, weight, cooldown, immunity and recovery rules
+remain; current diagnostics clear before invalid scope branches.
+
+Animation graph: 6 tests PASS. Original 36 slope states/four action maps remain,
+with four additional native-action idle targets. Stop interpolationSpeed is 8,
+versus the native idle value 4 in the supplied gait32 RPT. Native animation
+playback speed and root-motion data are inherited unchanged. Graph checks
+verify blend routes and absence of forced switchMove resets/walk staging.
+
+Heartbeat config: 3 tests PASS. All seven samples and pitches are unchanged.
+Gain is 0.224403691, 20% of ACE's original db+1 amplitude, or 40% of alpha8.
+The optional addon still patches only ACE Medical Feedback heartbeat sounds.
+Compiled config entries are checked again during final packaging.
+
+Preservation and mutation self-tests: PASS. All 25 historical RC4 block hashes
+and original file reference hashes remain. Only exact authorized alpha9
+movement and trip fragments/description edits are reversed before comparison.
+Defaults, ranges, presets, base brace tuning, fatigue/visual ownership and
+unrelated feature blocks remain protected. No GAIT aim/native-fatigue/recoil
+writers were introduced.
+
+PBO prefix layout: 4 tests PASS. Core prefix gait and heartbeat prefix
+z\gait\addons\heartbeat remain disjoint. Both PBO SHA1 footers and all 16 raw
+embedded scripts match final source. PowerShell build verification passes.
+Alpha8 deployment cleanup/build-verification behavior is retained.
+
+The ZIP contains full HEMTT source and ready_to_load/GAIT. VERIFY_READY.ps1
+validates that standalone build against the bundled source. A SHA256 manifest
+covers packaged source and build files; ZIP integrity is checked on creation.
 
 Reproduce from the project root:
+  hemtt build
   python tests/feature_preservation.py --self-test
   python tests/foundation_graph.py
   python tests/heartbeat_audio.py
+  python tests/pbo_prefix_layout.py
   python tools/run_regressions.py --sqfvm /path/to/sqfvm --output /tmp/gait-tests
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/verify_build.ps1 -BuildPath .hemttout/build -SourceRoot .
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File VERIFY_READY.ps1
 
-Limitations: automated checks cannot render Arma post processing, simulate
-engine aim/animation behavior or measure perceived loudness. Heavy gear feel,
-ADS sway, vignette appearance and coexistence with medical effects require
-in-game verification. Windows deployment remains a target-platform check.
+Limitations: half-duration stopping is the nominal blend-rate target, not a
+measured guarantee that travel distance is exactly halved. Actual stopping
+distance, cross-clip physical velocity continuity, animation appearance,
+perceived loudness and post-processing appearance require Arma acceptance.
+No measured clip-speed profiles or forced-velocity workaround are included.
+Windows deployment/junction behavior remains a target-platform check;
+PowerShell verification here ran under 7.4.7 on Linux.

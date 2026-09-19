@@ -54,6 +54,28 @@ private _malformed = [-85, -50, 99, 90, -10, -1, -1, -10, -20] call GAIT_fnc_dow
 private _oldMax = [-18, 0, 1, 4, 18, 0.06] call GAIT_fnc_downhillPaceMultiplier;
 [abs (_oldMax - 1.06) < 0.00001, "existing explicit 6 percent setting is honored"] call _assert;
 
+// Light/medium pace is exact; the requested heavy change is deliberately
+// limited to the downhill bonus before the original total-load penalty.
+{
+    private _oldPace = 1 + (0.18 / (1 + (_x / 75)));
+    private _newPace = [-18, _x, 1] call GAIT_fnc_downhillPaceMultiplier;
+    [abs (_newPace - _oldPace) < 0.000001, "light and medium downhill target remains exact"] call _assert;
+} forEach [0, 10, 20, 35, 45, 55];
+{
+    private _oldPace = 1 + (0.18 / (1 + (_x / 75)));
+    private _newPace = [-18, _x, 1] call GAIT_fnc_downhillPaceMultiplier;
+    private _gain = (_newPace / _oldPace) - 1;
+    [_gain > 0.019 && {_gain < 0.034}, "100 to 150 lb heavy downhill target gains about 2 to 3.3 percent"] call _assert;
+    [([-18, _x, 0] call GAIT_fnc_downhillPaceMultiplier) isEqualTo 1, "heavy gain requires built momentum"] call _assert;
+    [([-18, _x, 1, 4, 18, 0] call GAIT_fnc_downhillPaceMultiplier) isEqualTo 1, "heavy gain respects disabled bonus"] call _assert;
+} forEach [100, 125, 150];
+private _atMediumEnd = [-18, 55, 1] call GAIT_fnc_downhillPaceMultiplier;
+private _justHeavy = [-18, 55.001, 1] call GAIT_fnc_downhillPaceMultiplier;
+[_justHeavy < _atMediumEnd && {abs (_atMediumEnd - _justHeavy) < 0.00001}, "heavy bonus joins without a pace jump"] call _assert;
+private _peakHeavy = [-18, 100, 1] call GAIT_fnc_downhillPaceMultiplier;
+private _steepHeavy = [-75, 100, 1] call GAIT_fnc_downhillPaceMultiplier;
+[abs ((_peakHeavy - 1) * 0.25 - (_steepHeavy - 1)) < 0.000001, "existing steep-descent control scales the heavy gain"] call _assert;
+
 private _riseResults = [];
 private _fallResults = [];
 {

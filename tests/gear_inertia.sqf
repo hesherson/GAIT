@@ -6,6 +6,33 @@ private _assert = {
     if (!_condition) then {throw format ["FAIL: %1", _label];};
 };
 private _epsilon = 0.00001;
+[!([0.4,0.8] call GAIT_fnc_hasReleaseExcess),"sub-walk brace release has no deceleration coast"] call _assert;
+[!([0.8,0.8] call GAIT_fnc_hasReleaseExcess),"already settled movement does not start a coast"] call _assert;
+[[1.2,0.8] call GAIT_fnc_hasReleaseExcess,"built sprint keeps finite deceleration"] call _assert;
+private _earlyReleaseRamp = [0.4,0.8,0.05,0.05] call GAIT_fnc_stepSpeedCoefficient;
+[_earlyReleaseRamp > 0.4 && {_earlyReleaseRamp < 0.8},"early brace release resumes ordinary movement smoothly with no hold or snap"] call _assert;
+// Every release starts from the latest rendered sample, including partially
+// accelerated, exhausted and downhill sprint. Vegetation was already applied
+// when the sample was read: undo it once before the normal writer reapplies it.
+{
+    _x params ["_applied", "_drag", "_planned", "_actualMS", "_expected"];
+    private _sample = [[10, _applied, _actualMS, _drag], 10.05, _planned, 99] call GAIT_fnc_releasePaceSnapshot;
+    [abs ((_sample select 1) - _expected) < _epsilon, "release preserves consistent coefficient space"] call _assert;
+    [(_sample select 0) isEqualTo 10 && {(_sample select 2) isEqualTo _actualMS}, "release keeps input-edge time and actual velocity"] call _assert;
+    private _start = [_sample select 1, 0.8, 0, 0.3, 1.45] call GAIT_fnc_forwardCoastPace;
+    [abs ((_start select 0) - _expected) < _epsilon, "release begins at current pace without promoting to full sprint"] call _assert;
+} forEach [[0.4,0,0.4,1.2,0.4], [0.85,0,0.85,3,0.85], [1.6,0.2,2,7,2], [1.1,0,0.9,4,0.9]];
+{
+    private _sample = [_x, 10, 0.75, 3] call GAIT_fnc_releasePaceSnapshot;
+    [_sample isEqualTo [10,0.75,3], "missing/stale/future sample falls back to current pace"] call _assert;
+} forEach [[],[9,2,8,0],[11,2,8,0],[10,0,8,0],[10,2,-1,0]];
+// A second release during a retap ramps from the pace actually retained at
+// that second release. It cannot revive the first release's faster origin.
+private _firstRelease = [1.8,0.8,0.12,0.3,1.45] call GAIT_fnc_forwardCoastPace;
+private _resumed = [_firstRelease select 0,2,0.05,0.05] call GAIT_fnc_stepSpeedCoefficient;
+private _secondRelease = [[11,_resumed,5,0],11,_resumed,5] call GAIT_fnc_releasePaceSnapshot;
+private _secondStart = [_secondRelease select 1,0.8,0,0.3,1.45] call GAIT_fnc_forwardCoastPace;
+[abs ((_secondStart select 0)-_resumed) < _epsilon && {_resumed < 1.8},"retap hysteresis never resurrects earlier sprint pace"] call _assert;
 {
     _x params ["_weight", "_relief"];
     private _response = [_weight] call GAIT_fnc_gearInertia;

@@ -58,11 +58,14 @@ GAIT_fnc_isStandingLocomotionBlend = {
         if ((count _parts) < 1 || {(count _parts) > 2}) exitWith {""};
         private _base = _parts select 0;
         private _suffix = _parts param [1, ""];
-        if !(_suffix in ["", "gait", "ver2"]) exitWith {""};
+        if !(_suffix in ["", "gait", "gaitstop", "ver2"]) exitWith {""};
         if (!((_base select [0, 8]) isEqualTo "amovperc") ||
             {!((_base select [8, 4]) in ["mstp", "mwlk", "mrun", "mtac", "meva", "mspr"])} ||
             {!((_base select [12, 8]) in ["sraswrfl", "slowwrfl", "sraswpst", "snonwnon"])} ||
             {!((_base select [20]) in ["dnon", "df", "dfl", "dl", "dbl", "db", "dbr", "dr", "dfr"])}) exitWith {""};
+        if (_suffix isEqualTo "gaitstop") exitWith {
+            if ((_base select [8, 4]) isEqualTo "mstp" && {(_base select [20]) isEqualTo "dnon"}) then {_base + "_gaitstop"} else {""}
+        };
         if (_suffix isEqualTo "ver2") exitWith {
             if ((_base select [12, 8]) isEqualTo "slowwrfl" &&
                 {(_base select [8, 4]) in ["mwlk", "mtac"]} &&

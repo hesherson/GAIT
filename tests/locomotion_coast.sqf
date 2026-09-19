@@ -5,6 +5,34 @@ private _assert = {
     params ["_condition", "_label"];
     if (!_condition) then {throw format ["FAIL: %1", _label];};
 };
+// Stop, re-press and strafing do not wait for the prior graph exit to finish.
+// The target is updated by the actual service before returning, so holding
+// the same direction cannot issue a second request on subsequent frames.
+private _stopTarget = "AmovPercMstpSrasWrflDnon_GAITStop";
+[[true,true,true,true,true] call GAIT_fnc_nativeStopDecision,"fresh owned native jogging stop gets short blend"] call _assert;
+for "_gate" from 0 to 4 do {
+    private _gates = [true,true,true,true,true];
+    _gates set [_gate,false];
+    [!(_gates call GAIT_fnc_nativeStopDecision),"held stop, foreign pace, prior handoff, idle and unsafe contexts do not issue stop"] call _assert;
+};
+{
+    _x params ["_lease","_now","_weapon","_coefficient","_expected"];
+    [([_lease,_now,_weapon,_coefficient] call GAIT_fnc_nativeStopLeaseValid) isEqualTo _expected,"scheduled-to-render stop lease stays scoped to time, weapon and restored coefficient"] call _assert;
+} forEach [
+    [[10.15,"rifle",1],10.05,"rifle",1,true],
+    [[10.15,"rifle",1],10.16,"rifle",1,false],
+    [[10.15,"rifle",1],10.05,"pistol",1,false],
+    [[10.15,"rifle",1],10.05,"rifle",0.8,false],
+    [[],10.05,"rifle",1,false]
+];
+{
+    _x params ["_target","_direction","_expected"];
+    [([_target,_direction] call GAIT_fnc_locomotionStopRedirect) isEqualTo _expected,"exit redirect only on changed movement intent"] call _assert;
+} forEach [
+    [_stopTarget,"Dnon",false],[_stopTarget,"Df",true],[_stopTarget,"Dl",true],[_stopTarget,"Dr",true],
+    ["AmovPercMrunSrasWrflDf","Df",false],["AmovPercMrunSrasWrflDf","Dnon",true],
+    ["AmovPercMrunSrasWrflDl","Dr",true],["AmovPercMrunSrasWrflDr","Dr",false],["","Df",false]
+];
 // The numerical coast never prolongs the sprint animation. Live input wins
 // on first release frame, even before the feature loop refreshes its envelope.
 {

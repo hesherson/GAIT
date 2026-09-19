@@ -1,4 +1,47 @@
-GAIT 1.8.0-alpha7 validation
+GAIT 1.8.0-alpha8 validation
+
+Packaging repair, with alpha7 gameplay retained.
+
+Reproduced the reported missing fn_registerSettings.sqf error's cause using
+HEMTT 1.21.0 with BI Tools staging enabled. Alpha7's gait\heartbeat prefix
+creates a nested source link and overwrites the core PBO prefix. The SQF
+exists in the PBO but is unreachable under its expected gait virtual path.
+Alpha8 retains core prefix gait and moves the optional heartbeat addon to
+z\gait\addons\heartbeat. The same staging path now builds correct PBOs.
+
+HEMTT 1.21.0: PASS; config 1.8.0.8, 16 compiled SQF files, 2 PBOs.
+All 16 embedded raw SQF files match the final source. Both PBO SHA1 footers,
+virtual prefixes, config.bin entries and heartbeat sample/gain data pass.
+Prefix layout contracts: 4/4 PASS, including built payload verification.
+Preservation and mutation checks: PASS, freshly rerun for alpha8.
+
+PowerShell 7.4.7 verifier: 10 fixture checks PASS. Valid source and standalone
+builds pass; wrong prefixes, missing/empty/stale scripts, truncated PBOs,
+corrupt checksums, missing heartbeat and extra PBOs are rejected.
+Deployment cleanup tests pass for the known generated link, an unrelated
+link and a real folder. Link targets remain intact; unexpected contents are
+preserved outside the checkout. Cleanup precedes Git status/stash and runs
+again after branch switching. Build verification precedes commit/push.
+
+Scripts use PowerShell 5.1-compatible syntax. These checks executed under
+PowerShell 7.4.7 on Linux; actual Windows junction handling and Arma startup
+still require target-platform verification. No Arma runtime was available.
+
+Reproduce alpha8 checks from the project root:
+  hemtt build
+  python tests/pbo_prefix_layout.py
+  python tests/feature_preservation.py --self-test
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/verify_build.ps1 -BuildPath .hemttout/build -SourceRoot .
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File VERIFY_READY.ps1
+
+The final ZIP includes a verified standalone build under ready_to_load/GAIT,
+the complete HEMTT source, and a SHA256 file manifest.
+
+Inherited alpha7 gameplay validation record follows. These behavioral suites
+were run for alpha7; alpha8 retains the same helper bytes and only changes
+the main controller's version labels. No gameplay tuning is changed here.
+
+GAIT 1.8.0-alpha7 validation (prior build)
 
 HEMTT 1.21.0: PASS; config 1.8.0.7, 16 compiled SQF files, 2 PBOs.
 Nonblocking style advisories remain. No Arma runtime was available.

@@ -1,4 +1,4 @@
-// GAIT 1.8.0-alpha7: reduce ACE heartbeat playback gain by exactly half.
+// GAIT 1.8.0-alpha8: reduce ACE heartbeat playback gain by exactly half.
 // ACE owns the playback loop, heart rate, sound selection and every other sound.
 // This optional addon is skipped when ACE Medical Feedback is not installed.
 class CfgPatches

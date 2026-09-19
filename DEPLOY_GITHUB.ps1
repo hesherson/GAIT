@@ -15,6 +15,7 @@ param(
         if ($RemoteUrl -notin @('https://github.com/hesherson/GAIT.git', 'https://github.com/hesherson/GAIT', 'git@github.com:hesherson/GAIT.git')) {
             throw "Unexpected origin in ${Path}: $RemoteUrl"
         }
+        Repair-NestedHeartbeatLink $Path
         $DirtyFiles = @(Run-Git -C $Path status --porcelain)
         if ($DirtyFiles.Count -gt 0) {
             if (-not $StashChanges) {
@@ -34,6 +35,37 @@ param(
             if (Test-Path -LiteralPath $BackupPath) { throw "Backup already exists: $BackupPath" }
             Move-Item -LiteralPath $Path -Destination $BackupPath
             Write-Host "Previous folder preserved at $BackupPath"
+        }
+    }
+    function Repair-NestedHeartbeatLink([string]$CheckoutPath) {
+        # Alpha7's nested virtual prefix could make HEMTT's Windows staging
+        # junction land inside the core source tree. Never recurse through it.
+        $NestedPath = Join-Path $CheckoutPath 'addons\gait\heartbeat'
+        $NestedItem = Get-Item -LiteralPath $NestedPath -Force -ErrorAction SilentlyContinue
+        if ($null -eq $NestedItem) { return }
+        $KnownGeneratedLink = $false
+        if (($NestedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -and $null -ne $NestedItem.PSObject.Properties['Target']) {
+            $Targets = @($NestedItem.Target)
+            if ($Targets.Count -eq 1 -and -not [string]::IsNullOrEmpty($Targets[0])) {
+                $TargetPath = [string]$Targets[0]
+                if ($TargetPath.StartsWith('\\?\')) { $TargetPath = $TargetPath.Substring(4) }
+                if (-not [IO.Path]::IsPathRooted($TargetPath)) {
+                    $TargetPath = Join-Path (Split-Path -Parent $NestedPath) $TargetPath
+                }
+                $ExpectedTarget = [IO.Path]::GetFullPath((Join-Path $CheckoutPath 'addons\heartbeat')).TrimEnd('\')
+                $KnownGeneratedLink = [IO.Path]::GetFullPath($TargetPath).TrimEnd('\') -eq $ExpectedTarget
+            }
+        }
+        if ($KnownGeneratedLink) {
+            # Nonrecursive Directory.Delete removes this directory link only.
+            [IO.Directory]::Delete($NestedPath)
+            Write-Host 'Removed the obsolete HEMTT heartbeat staging link from the core addon.'
+        } else {
+            $BackupPath = $CheckoutPath + '_packaging_backup_' + (Get-Date -Format 'yyyyMMdd_HHmmss')
+            if (Test-Path -LiteralPath $BackupPath) { throw "Backup already exists: $BackupPath" }
+            New-Item -ItemType Directory -Path $BackupPath | Out-Null
+            Move-Item -LiteralPath $NestedPath -Destination (Join-Path $BackupPath 'heartbeat')
+            Write-Host "Preserved the existing nested heartbeat folder outside the addon tree: $BackupPath"
         }
     }
 
@@ -88,6 +120,7 @@ param(
             New-Item -ItemType Directory -Path 'addons' -Force | Out-Null
             Run-Git mv -- source/gait addons/gait
         }
+        Repair-NestedHeartbeatLink $RepoPath
         foreach ($Folder in @('addons', '.hemtt', 'tests', 'tools')) {
             Copy-Item -LiteralPath (Join-Path $PackagePath $Folder) -Destination $RepoPath -Recurse -Force
         }
@@ -105,11 +138,12 @@ param(
         if (-not (Get-Command hemtt -ErrorAction SilentlyContinue)) { throw 'HEMTT must be on PATH before deployment. Source was copied; no new commit or push was made.' }
         & hemtt build
         if ($LASTEXITCODE -ne 0) { throw 'HEMTT build failed. Source remains available for inspection; no new commit or push was made.' }
+        & (Join-Path $RepoPath 'tools\verify_build.ps1') -BuildPath (Join-Path $RepoPath '.hemttout\build') -SourceRoot $RepoPath
         Run-Git add -- addons .hemtt tests tools mod.cpp .gitignore README_HEMTT.md README_TEST_BUILD.md README_SPEED_REFERENCE.md DEPLOY_GITHUB.ps1
         Run-Git diff --cached --check
         $ChangedFiles = @(Run-Git diff --cached --name-only)
         if ($ChangedFiles.Count -gt 0) {
-            Run-Git commit -m 'Refine fatigue feedback and remove GAIT weapon sway in alpha7'
+            Run-Git commit -m 'Fix GAIT PBO prefix collision and validate deployment'
         }
         if (-not $NoPush) { Run-Git push -u origin $Branch }
         Write-Host "Built $Branch. Load local mod: $RepoPath\.hemttout\build"

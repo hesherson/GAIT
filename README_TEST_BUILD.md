@@ -1,6 +1,14 @@
-# GAIT 1.8.0-alpha7: fatigue feedback and weapon handling
+# GAIT 1.8.0-alpha8: PBO path repair
 
-Complete source based on alpha6. Requires Arma 3 2.18+, CBA_A3 and ACE3. Build/deploy commands are in README_HEMTT.md. Load only the new GAIT copy and start a fresh mission.
+Alpha8 fixes the missing settings-script error without changing alpha7 gameplay tuning. Requires Arma 3 2.18+, CBA_A3 and ACE3. Build/deploy commands are in README_HEMTT.md. Load only the new GAIT copy and start a fresh mission.
+
+## Packaging correction
+
+With BI Tools configured, HEMTT created a temporary heartbeat link inside the main addon because its virtual prefix was nested under `gait`. The nested prefix marker then changed the main PBO's prefix to `gait\heartbeat`. The settings script was included but could no longer be found at `\gait\functions\fn_registerSettings.sqf`.
+
+The heartbeat addon now uses the separate standard prefix `z\gait\addons\heartbeat`. The installer removes the known generated link without following it, preserves unexpected nested folders outside the checkout, and validates both PBOs before committing or pushing. The ZIP also includes a verified standalone mod under `ready_to_load/GAIT`.
+
+The following alpha7 gameplay changes remain intact.
 
 ## Changes
 
@@ -30,7 +38,7 @@ The new option defaults on, so the old disabled visual-effect setting does not s
 For diagnostics, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
 
 ```sqf
-[90, "alpha7 fatigue feedback"] execVM "foundation_capture.sqf";
+[90, "alpha8 loading and fatigue feedback"] execVM "foundation_capture.sqf";
 ```
 
 The read-only capture includes fatigue intensity, vignette opacity/handle, pulse timing and ACE fatigue visual ownership alongside existing movement diagnostics. Send the RPT after STOP with the approximate event time.

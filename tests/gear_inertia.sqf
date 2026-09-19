@@ -1,128 +1,123 @@
-// Run after fn_gearInertia.sqf, fn_traversalHelpers.sqf and fn_uphillBrake.sqf.
-// Tests response behavior across loads, custom thresholds, scheduler rates,
-// long coasts and uphill precedence. Helpers cannot write animation or input.
+/* Load actual gearInertia, traversalHelpers and uphillBrake helpers first.
+   Verify restored brace settings and finite response across loads, targets
+   and scheduler rates. This does not simulate engine root motion. */
 private _assert = {
     params ["_condition", "_label"];
     if (!_condition) then {throw format ["FAIL: %1", _label];};
 };
 private _epsilon = 0.00001;
+{
+    _x params ["_weight", "_relief"];
+    private _response = [_weight] call GAIT_fnc_gearInertia;
+    [abs ((_response select 4) - _relief) < _epsilon, format ["original brace relief at %1 lb", _weight]] call _assert;
+    [(_response select 3) isEqualTo 1, "original launch duration unchanged"] call _assert;
+    [(_response select 1) isEqualTo 1, "no added load deceleration filter"] call _assert;
+} forEach [[0,0.55],[35,0.55],[35.001,0.35],[55,0.35],[55.001,0.18],[75,0.18],[75.001,0],[125,0],[2000,0]];
+{
+    _x params ["_weight", "_relief"];
+    private _custom = [_weight,[0.6,0.4,0.2,0.1],[20,40,90]] call GAIT_fnc_gearInertia;
+    [abs ((_custom select 4) - _relief) < _epsilon,"custom tiers preserve inclusive original boundaries"] call _assert;
+} forEach [[20,0.6],[20.001,0.4],[40,0.4],[40.001,0.2],[90,0.2],[90.001,0.1]];
+private _invalid = [80,[8,-1],[75,35,0]] call GAIT_fnc_gearInertia;
+[count _invalid isEqualTo 5 && {(_invalid select 4) >= 0} && {(_invalid select 4) <= 1},"invalid settings remain bounded"] call _assert;
+private _lastAcceleration = 2;
+private _lastDuration = 0;
+private _maximum = [125] call GAIT_fnc_gearInertia;
+for "_weight" from 0 to 200 do {
+    private _response = [_weight] call GAIT_fnc_gearInertia;
+    private _acceleration = _response select 0;
+    [_acceleration >= 0.8999 && {_acceleration <= 1},"gear only modestly slows sprint buildup"] call _assert;
+    [_acceleration <= (_lastAcceleration + _epsilon),"heavier gear does not accelerate faster"] call _assert;
+    _lastAcceleration = _acceleration;
+    private _window = [1,0.85,_response select 2] call GAIT_fnc_gearCoastWindow;
+    [(_window select 0) isEqualTo 0,"saved sustain does not delay slowdown"] call _assert;
+    [(_window select 1) > 0.38 && {(_window select 1) < 0.50},"default release settles within half a second for all loads"] call _assert;
+    [(_window select 1) >= (_lastDuration - _epsilon),"heavier release is slightly longer"] call _assert;
+    _lastDuration = _window select 1;
+};
+[[2000] call GAIT_fnc_gearInertia isEqualTo _maximum,"extreme gear cannot add unbounded delay"] call _assert;
+[[0] call GAIT_fnc_gearInertia isEqualTo ([-200] call GAIT_fnc_gearInertia),"negative load uses unloaded response"] call _assert;
+{
+    private _window = _x call GAIT_fnc_gearCoastWindow;
+    [(_window select 0) isEqualTo 0,"all hold settings are ignored"] call _assert;
+    [(_window select 1) >= 0.20 && {(_window select 1) <= 0.65},"custom response stays bounded and noninstant"] call _assert;
+} forEach [[0,0.05,0.9],[3,4,1.15],[1000,1000,1000],[-100,-100,-100],[1,0.85,1]];
+
 private _light = [15] call GAIT_fnc_gearInertia;
 private _medium = [55] call GAIT_fnc_gearInertia;
 private _heavy = [100] call GAIT_fnc_gearInertia;
-private _maximum = [125] call GAIT_fnc_gearInertia;
-private _previous = [0] call GAIT_fnc_gearInertia;
-for "_lbs" from 1 to 200 do {
-    private _response = [_lbs] call GAIT_fnc_gearInertia;
-    [(_response select 0) <= ((_previous select 0) + _epsilon), "more gear never accelerates faster"] call _assert;
-    [(_response select 1) <= ((_previous select 1) + _epsilon), "more gear never decelerates faster"] call _assert;
-    [(_response select 2) >= ((_previous select 2) - _epsilon), "more gear never gets a shorter coast"] call _assert;
-    [(_response select 3) >= ((_previous select 3) - _epsilon), "more gear never gets a shorter launch brace"] call _assert;
-    [(_response select 4) <= ((_previous select 4) + _epsilon), "more gear never gets extra brace relief"] call _assert;
-    [(_response select 0) >= 0.619 && {(_response select 1) >= 0.599}, "extreme load retains a useful response"] call _assert;
-    [(_response select 2) <= 1.451 && {(_response select 3) <= 1.281}, "extreme load cannot extend delay indefinitely"] call _assert;
-    _previous = _response;
-};
-{
-    private _below = [_x - 0.0001] call GAIT_fnc_gearInertia;
-    private _above = [_x + 0.0001] call GAIT_fnc_gearInertia;
-    for "_index" from 0 to 4 do {
-        [abs ((_below select _index) - (_above select _index)) < 0.00002, "crossing a gear tier has no response jump"] call _assert;
-    };
-} forEach [35,55,75,100,125];
-[[2000] call GAIT_fnc_gearInertia isEqualTo _maximum, "oversized load clamps at the heavy endpoint"] call _assert;
-[[0] call GAIT_fnc_gearInertia isEqualTo ([-200] call GAIT_fnc_gearInertia), "negative load uses the unloaded endpoint"] call _assert;
-private _custom = [90, [0.6,0.4,0.2,0.1], [20,40,90]] call GAIT_fnc_gearInertia;
-[abs ((_custom select 4) - 0.1) < _epsilon, "custom heavy threshold preserves configured heavy brace relief"] call _assert;
-private _customMedium = [40, [0.6,0.4,0.2,0.1], [20,40,90]] call GAIT_fnc_gearInertia;
-[abs ((_customMedium select 4) - 0.2) < _epsilon, "custom middle threshold shifts relief with gear tiers"] call _assert;
-private _invalid = [80, [8,-1], [75,35,0]] call GAIT_fnc_gearInertia;
-[count _invalid isEqualTo 5 && {(_invalid select 4) >= 0} && {(_invalid select 4) <= 1}, "malformed thresholds and relief remain bounded"] call _assert;
-[( [0,0.7] call GAIT_fnc_scaleInertiaRamp) isEqualTo 0, "zero response is preserved"] call _assert;
-[( [1,0.7] call GAIT_fnc_scaleInertiaRamp) isEqualTo 1, "instant response is preserved"] call _assert;
-
 private _accelerated = [];
-private _decelerated = [];
 {
-    private _accelRamp = [0.05, _x select 0] call GAIT_fnc_scaleInertiaRamp;
-    private _decelRamp = [0.05, _x select 1] call GAIT_fnc_scaleInertiaRamp;
-    private _accelValue = 0.65;
-    private _decelValue = 1.3;
-    for "_i" from 1 to 20 do {
-        _accelValue = [_accelValue,1.3,_accelRamp,0.05] call GAIT_fnc_stepSpeedCoefficient;
-        _decelValue = [_decelValue,0.65,_decelRamp,0.05] call GAIT_fnc_stepSpeedCoefficient;
-    };
-    _accelerated pushBack _accelValue;
-    _decelerated pushBack _decelValue;
-    [_accelValue > 0.65 && {_accelValue < 1.3}, "one-second acceleration approaches without overshoot"] call _assert;
-    [_decelValue > 0.65 && {_decelValue < 1.3}, "one-second deceleration approaches without overshoot"] call _assert;
+    private _ramp = [0.05,_x select 0] call GAIT_fnc_scaleInertiaRamp;
+    private _speed = 0.65;
+    for "_i" from 1 to 20 do {_speed = [_speed,1.3,_ramp,0.05] call GAIT_fnc_stepSpeedCoefficient;};
+    [_speed > 0.65 && {_speed < 1.3},"all loads continue building toward sprint"] call _assert;
+    _accelerated pushBack _speed;
 } forEach [_light,_medium,_heavy];
-[(_accelerated select 0) > (_accelerated select 1) && {(_accelerated select 1) > (_accelerated select 2)}, "same start/target produces light then medium then heavy acceleration"] call _assert;
-[(_decelerated select 0) < (_decelerated select 1) && {(_decelerated select 1) < (_decelerated select 2)}, "same sprint release sheds light momentum first and heavy momentum last"] call _assert;
-
-private _frameResults = [];
-private _heavyRamp = [0.05, _heavy select 0] call GAIT_fnc_scaleInertiaRamp;
+[(_accelerated select 0) > (_accelerated select 1) && {(_accelerated select 1) > (_accelerated select 2)},"load preserves modest buildup differences"] call _assert;
+private _frames = [];
+private _heavyRamp = [0.05,_heavy select 0] call GAIT_fnc_scaleInertiaRamp;
 {
     private _dt = _x;
     private _speed = 0.65;
     for "_i" from 1 to round (1 / _dt) do {_speed = [_speed,1.3,_heavyRamp,_dt] call GAIT_fnc_stepSpeedCoefficient;};
-    _frameResults pushBack _speed;
+    _frames pushBack _speed;
 } forEach [0.01,0.02,0.05,0.1,0.2];
-{[abs (_x - (_frameResults select 0)) < _epsilon, "load response is independent of normal tick interval"] call _assert;} forEach _frameResults;
+{[abs (_x - (_frames select 0)) < _epsilon,"buildup is independent of scheduler rate"] call _assert;} forEach _frames;
 
-private _lightWindow = [1,0.85,_light select 2] call GAIT_fnc_gearCoastWindow;
-private _heavyWindow = [1,0.85,_heavy select 2] call GAIT_fnc_gearCoastWindow;
-[(_lightWindow select 0) < (_heavyWindow select 0) && {(_lightWindow select 1) < (_heavyWindow select 1)}, "heavy release coast lasts longer than light"] call _assert;
-[( [0,0.85,_heavy select 2] call GAIT_fnc_gearCoastWindow select 0) isEqualTo 0, "disabled hold is not reintroduced by gear"] call _assert;
-private _extremeWindow = [1000,1000,1000] call GAIT_fnc_gearCoastWindow;
-[_extremeWindow isEqualTo [3,4], "coast remains bounded under oversized settings"] call _assert;
-
-// Use the actual exponential response after the actual finite taper target.
-// A 125 lb kit must eventually reach walking pace without fabricated thrust.
-private _window = [1,0.85,_maximum select 2] call GAIT_fnc_gearCoastWindow;
-private _walk = 0.8;
-private _releaseSpeed = 1.3;
-private _speed = _releaseSpeed;
-private _ramp = [0.05,_maximum select 1] call GAIT_fnc_scaleInertiaRamp;
-for "_i" from 1 to 300 do {
-    private _now = _i * 0.05;
-    private _elapsedTaper = ((_now - (_window select 0)) / (_window select 1)) max 0 min 1;
-    private _target = _walk + ((_releaseSpeed - _walk) * ((1 - _elapsedTaper) ^ 1.45));
-    private _next = [_speed,_target,_ramp,0.05] call GAIT_fnc_stepSpeedCoefficient;
-    [_next <= (_speed + _epsilon) && {_next >= (_walk - _epsilon)}, "long heavy coast monotonically settles without acceleration or overshoot"] call _assert;
-    _speed = _next;
-};
-[abs (_speed - _walk) < 0.001, "even the heaviest coast returns to walking pace"] call _assert;
-private _shallow = [0, _window select 0, _window select 1] call GAIT_fnc_uphillBrakeCoastWindow;
-private _steep = [1, _window select 0, _window select 1] call GAIT_fnc_uphillBrakeCoastWindow;
-[abs ((_shallow select 1) - ((_window select 0) + (_window select 1))) < _epsilon, "zero uphill brake preserves the gear coast"] call _assert;
-[(_steep select 1) isEqualTo 0, "full uphill brake removes even the heaviest coast"] call _assert;
-
-// A heavy release still has scalar momentum when its target taper finishes.
-// It must keep the current family through that decay, including the next
-// possible re-tap frame, but raw direction/stop changes remain authoritative.
-private _tail = [true,false,true,false,true,true,1.12,0.8,13,12.68,false];
-[_tail call GAIT_fnc_gearCoastActive, "heavy residual after the taper retains its existing sprint family"] call _assert;
+// Test the actual direct curve, including release during a sub-walk brace.
 {
-    private _cancelled = +_tail;
-    _cancelled set [_x select 0, _x select 1];
-    [!(_cancelled call GAIT_fnc_gearCoastActive), _x select 2] call _assert;
+    private _response = [_x] call GAIT_fnc_gearInertia;
+    private _duration = ([1,0.85,_response select 2] call GAIT_fnc_gearCoastWindow) select 1;
+    {
+        _x params ["_start","_walk"];
+        private _goal = _start min _walk;
+        private _previous = _start;
+        private _first = [_start,_walk,_duration / 20,_duration,1.45] call GAIT_fnc_forwardCoastPace;
+        if (_start > (_goal + 0.01)) then {
+            [(_first select 0) < _start && {(_first select 0) > _goal},"first sample eases down without snapping"] call _assert;
+        };
+        for "_i" from 0 to 25 do {
+            private _curve = [_start,_walk,(_i / 20) * _duration,_duration,1.45] call GAIT_fnc_forwardCoastPace;
+            private _next = _curve select 0;
+            [_next <= (_previous + _epsilon) && {_next >= (_goal - _epsilon)},"curve never accelerates or undershoots"] call _assert;
+            if (_i >= 20) then {
+                [abs (_next - _goal) < _epsilon && {!(_curve select 2)},"exact endpoint has no residual tail"] call _assert;
+            };
+            _previous = _next;
+        };
+        {
+            private _dt = _x;
+            private _late = (ceil (_duration / _dt)) * _dt;
+            private _curve = [_start,_walk,_late + 0.001,_duration,1.45] call GAIT_fnc_forwardCoastPace;
+            [abs ((_curve select 0) - _goal) < _epsilon && {!(_curve select 2)},"late tick consumes endpoint"] call _assert;
+        } forEach [0.01,0.02,0.05,0.1,0.2];
+    } forEach [[1.35,0.85],[0.4,0.75],[0.2,0.1],[0,0],[2,1.4]];
+} forEach [0,15,35,35.001,55,55.001,75,100,125,2000];
+
+// Old brace history and speed cannot keep a family after its finite curve.
+private _active = [true,false,true,false,true,true,1.12,0.8,10.2,10.49,true];
+[_active call GAIT_fnc_gearCoastActive,"forward curve retains current family"] call _assert;
+private _diagonal = +_active;
+_diagonal set [3,true];
+[_diagonal call GAIT_fnc_gearCoastActive,"W with A or D keeps response and direction"] call _assert;
+{
+    private _cancelled = +_active;
+    _cancelled set [_x select 0,_x select 1];
+    [!(_cancelled call GAIT_fnc_gearCoastActive),_x select 2] call _assert;
 } forEach [
-    [0,false,"disabled coast cannot retain a family"],
-    [1,true,"sprint re-tap resumes sprint ownership immediately"],
-    [2,false,"forward release cannot use residual coast"],
-    [3,true,"strafe intent cannot use residual coast"],
-    [4,false,"walking without established sprint history cannot coast"],
-    [5,false,"actual stop cannot retain a family"],
-    [6,0.83,"settled walking coefficient ends family retention"],
-    [8,18.69,"bounded residual tail expires even with remaining scalar momentum"],
-    [9,-999,"cancelled taper cannot restart from an old coefficient"]
+    [0,false,"disabled taper cannot retain family"],
+    [1,true,"sprint re-tap resumes sprint immediately"],
+    [2,false,"released W cannot retain coast"],
+    [5,false,"actual stop cannot retain coast"],
+    [8,10.49,"exact deadline ends retention"],
+    [8,10.50,"residual speed cannot extend deadline"],
+    [9,-999,"cancelled curve cannot revive from history"],
+    [10,false,"history without live curve cannot coast"]
 ];
-private _staleTaper = +_tail;
-_staleTaper set [9,-999];
-_staleTaper set [10,true];
-[!(_staleTaper call GAIT_fnc_gearCoastActive), "stale active flag cannot revive a cancelled taper"] call _assert;
-private _finished = +_tail;
-_finished set [6,_speed];
-_finished set [8,16];
-[!(_finished call GAIT_fnc_gearCoastActive), "actual simulated coast releases after settling"] call _assert;
-diag_log "GAIT TEST PASS: continuous gear response, tunable thresholds, heavy acceleration/bracing, finite coast, residual re-tap continuity, live stop/strafe priority and uphill priority";
+private _window = [1,0.85,_maximum select 2] call GAIT_fnc_gearCoastWindow;
+private _flat = [0,_window select 0,_window select 1] call GAIT_fnc_uphillBrakeCoastWindow;
+private _steep = [1,_window select 0,_window select 1] call GAIT_fnc_uphillBrakeCoastWindow;
+[abs ((_flat select 1) - (_window select 1)) < _epsilon,"flat release keeps short curve"] call _assert;
+[(_steep select 1) isEqualTo 0,"full uphill brake removes coast"] call _assert;
+diag_log "GAIT TEST PASS: original tier brace relief and duration; modest acceleration; finite forward and diagonal release; no hold or tail; late tick completion; stop/retap cancellation; uphill priority";

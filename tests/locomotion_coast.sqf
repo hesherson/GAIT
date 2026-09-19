@@ -18,6 +18,7 @@ private _assert = {
     [["active",false,true,true,1],false,"replacement player ignores old coast"],
     [["active",true,false,false,1],false,"expired coast releases normally"],
     [["active",true,true,true,0],false,"stop and pure strafe override cached inertia"],
+    [["active",true,true,true,0.707],true,"held W diagonal retains scalar coast while changing direction"],
     [["active",true,true,true,-1],false,"backward input overrides forward inertia"]
 ];
 
@@ -56,6 +57,7 @@ private _releases = 0;
     [[true,true,false,0,true,true],false,"stop wins even with Turbo and stale brake/taper"],
     [[true,false,true,0,true,true],false,"released sprint and lateral input exits immediately"],
     [[true,false,true,-1,true,true],false,"backpedal cannot retain forward brake/taper"],
+    [[true,false,true,0.707,false,true],true,"forward diagonal keeps short taper without inventing input"],
     [[true,true,true,0,false,false],true,"held sprint still supports custom pure strafing"],
     [[true,false,true,1,true,false],true,"uphill forward release retains its tuned brake"],
     [[false,true,true,1,true,true],false,"feature gate still controls entry"]
@@ -73,22 +75,29 @@ private _releases = 0;
 ];
 // Exercise the real render dispatcher with exit service deliberately deferred.
 // This replaces only the body-effect boundary; no engine movement is mocked.
-// Even a new fresh sprint submission cannot reach input/entry handling while
-// cancellation retains ownership of an as-yet unobserved entry command.
+// A new fresh sprint submission cannot reach entry handling while cleanup
+// owns an unobserved entry. Read-only input observation must still record W
+// and Turbo edges during that safe deferral.
 private _actualExitService = GAIT_fnc_serviceLocomotionExit;
 private _actualInput = GAIT_fnc_getMovementInput;
+private _actualDecision = GAIT_fnc_locomotionDecision;
 private _exitCalls = 0;
 GAIT_fnc_serviceLocomotionExit = {_exitCalls = _exitCalls + 1; false};
-GAIT_fnc_getMovementInput = {throw "Deferred exit was overtaken by movement/entry handling";};
+GAIT_fnc_getMovementInput = {[0,0,false]};
+GAIT_fnc_locomotionDecision = {throw "Deferred exit was overtaken by movement/entry handling";};
 missionNamespace setVariable ["GAIT_slopeOwner",player];
 missionNamespace setVariable ["GAIT_locomotionRequest",[player,true,false,diag_tickTime]];
 player setVariable ["GAIT_locomotionPhase","exiting"];
+player setVariable ["GAIT_forwardInputHeld",true];
+private _releaseSerial = player getVariable ["GAIT_forwardReleaseSerial",0];
 [] call GAIT_fnc_tickLocomotion;
 [] call GAIT_fnc_tickLocomotion;
 [_exitCalls isEqualTo 2,"render dispatcher services each deferred exit frame"] call _assert;
 [(player getVariable ["GAIT_locomotionPhase",""]) isEqualTo "exiting","native source cannot discard deferred entry cancellation"] call _assert;
+[(player getVariable ["GAIT_forwardReleaseSerial",0]) isEqualTo (_releaseSerial+1),"deferred cleanup still observes W release exactly once"] call _assert;
 GAIT_fnc_serviceLocomotionExit = _actualExitService;
 GAIT_fnc_getMovementInput = _actualInput;
+GAIT_fnc_locomotionDecision = _actualDecision;
 [player] call GAIT_fnc_clearSlopeLocomotionState;
 missionNamespace setVariable ["GAIT_locomotionRequest",[]];
 diag_log "GAIT TEST PASS: forward coast/re-tap continuity; immediate stop/strafe priority; bounded pending-entry cancellation";

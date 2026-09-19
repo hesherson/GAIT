@@ -296,7 +296,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha4"];
+missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha5"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -741,10 +741,11 @@ GAIT_fnc_setTunnelVisionFX = {
     private _shiftReleaseTaperActiveUntil = -999;
     private _shiftReleaseTaperStartKmh = _normalSpeed * 18;
     private _shiftReleaseTaperStartSpeed = _normalSpeed;
-    // Snapshot the load-scaled window at release, so inventory changes cannot
-    // move a running coast deadline or restart its hold phase.
+    // Snapshot the short release duration, so inventory changes cannot
+    // move its deadline. Hold remains zero even with older saved settings.
     private _activeCoastHold = 0;
     private _activeCoastDuration = 0.05;
+    private _lastForwardReleaseSerial = -1;
     private _slopeSmoothInitialized = false;
     private _smoothedSlopeDegrees = 0;
     private _uphillFatigueDrainEnabled = missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainEnabled", true];
@@ -1084,14 +1085,37 @@ GAIT_fnc_setTunnelVisionFX = {
 
                 private _gearLbs = (loadAbs player) / (_loadAbsPerLb max 0.01);
                 private _weightSpeedMult = [_gearLbs, [_lightWeightMax, _mediumWeightMax, _moderateWeightMax], [_lightSpeedBonus, _mediumSpeedBonus, _moderateSpeedBonus, _heavySpeedBonus], missionNamespace getVariable ["GAIT_ss_extraHeavyPenaltyPer50Lb", 0.18]] call GAIT_fnc_continuousLoadMultiplier;
-                private _gearInertia = [_gearLbs,
-                    [_lightBraceRelief, _mediumBraceRelief, _moderateBraceRelief, _heavyBraceRelief],
-                    [_lightWeightMax, _mediumWeightMax, _moderateWeightMax]] call GAIT_fnc_gearInertia;
-                _gearInertia params ["_accelerationScale", "_decelerationScale", "_coastScale", "_launchDurationScale", "_braceRelief"];
-                missionNamespace setVariable ["GAIT_gearInertia", _gearInertia];
+                private _braceRelief = _heavyBraceRelief;
+
+                if (_gearLbs <= _lightWeightMax) then {
+                    _braceRelief = _lightBraceRelief;
+                } else {
+                    if (_gearLbs <= _mediumWeightMax) then {
+                        _braceRelief = _mediumBraceRelief;
+                    } else {
+                        if (_gearLbs <= _moderateWeightMax) then {
+                            _braceRelief = _moderateBraceRelief;
+                        };
+                    };
+                };
 
                 private _effectiveNormalSpeed = _normalSpeed * _weightSpeedMult;
                 private _effectiveBraceSpeed = (_sprintStartBraceSpeed + ((_normalSpeed - _sprintStartBraceSpeed) * _braceRelief)) * _weightSpeedMult;
+
+                private _gearInertia = [_gearLbs,
+                    [_lightBraceRelief, _mediumBraceRelief, _moderateBraceRelief, _heavyBraceRelief],
+                    [_lightWeightMax, _mediumWeightMax, _moderateWeightMax]] call GAIT_fnc_gearInertia;
+                private _accelerationScale = _gearInertia select 0;
+                private _coastScale = _gearInertia select 2;
+                missionNamespace setVariable ["GAIT_gearInertia", _gearInertia];
+                private _forwardReleaseSerial = player getVariable ["GAIT_forwardReleaseSerial", 0];
+                private _forwardReleasedSinceTick = _forwardReleaseSerial isNotEqualTo _lastForwardReleaseSerial;
+                _lastForwardReleaseSerial = _forwardReleaseSerial;
+                // Raw input can cancel a launch between feature ticks. Only
+                // retire that exact token; a later genuine brace remains valid.
+                if (_sprintBraceEndTime >= 0 && {_sprintBraceEndTime isEqualTo (player getVariable ["GAIT_slopeCanceledBraceEndTime", -2])}) then {
+                    _sprintBraceEndTime = -1;
+                };
 
                 // =====================================================
                 // TERRAIN / SLOPE MODIFIER
@@ -1240,12 +1264,25 @@ GAIT_fnc_setTunnelVisionFX = {
                 missionNamespace setVariable ["GAIT_hillWalkSlowdownMultiplier", _hillWalkSlowdownMultiplier];
                 missionNamespace setVariable ["GAIT_hillWalkSlowdownSeverity", _hillWalkSlowdownSeverity];
 
+                private _inputReleasePace = _effectiveNormalSpeed * _hillWalkSlowdownMultiplier;
+                if (_isAceCarrying && {!isNull _carriedObject}) then {
+                    _inputReleasePace = _carryWalkSpeed * _weightSpeedMult * _hillWalkSlowdownMultiplier;
+                };
+                // A forward release cancels scalar coast even if W was pressed
+                // again between scheduled updates. History may suppress a second
+                // launch dip, but cannot restore the cancelled speed or hill bonus.
+                if (!_isForwardHeld || {_forwardReleasedSinceTick}) then {
+                    _currentSpeed = _inputReleasePace;
+                    _shiftReleaseTaperActiveUntil = -999;
+                    _downhillMomentum = 0;
+                };
+
                 // Sample established motion BEFORE processing a new sprint
                 // press. Holding Turbo against a wall cannot establish it.
                 // A transient animation blend does not clear physical history.
                 private _momentumContextOk = _gaitMovementEnabled && {!_isAceCarrying} && {!_isAceDragging} &&
                     {!_externalSprintLock} && {!_externalWalkLock} && {[player] call GAIT_fnc_fatigueMovementContextEligible};
-                private _continuingSprint = _isSprinting && {_wasSprinting} && {_sprintBraceEndTime <= time};
+                private _continuingSprint = _isSprinting && {_wasSprinting} && {_sprintBraceEndTime <= time} && {!_forwardReleasedSinceTick};
                 private _motion = [_braceMomentumState, _continuingSprint, _momentumContextOk,
                     _horizontalSpeedMS, _currentSpeed, _effectiveNormalSpeed * _hillWalkSlowdownMultiplier,
                     time, _dt, _braceRecentSprintCooldown, _braceRequiredWalkTime, _braceNoMomentumThreshold]
@@ -1254,7 +1291,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _hasRetainedSprintMomentum = _motion select 1;
                 missionNamespace setVariable ["GAIT_braceMomentumProtected", _hasRetainedSprintMomentum];
 
-                if (!_momentumContextOk || {(_braceMomentumState select 3) >= 0.15}) then {
+                if (!_momentumContextOk || {!_isForwardHeld} || {_forwardReleasedSinceTick} || {(_braceMomentumState select 3) >= 0.15}) then {
                     _downhillMomentum = 0;
                 } else {
                     private _momentumTarget = 0;
@@ -1264,7 +1301,7 @@ GAIT_fnc_setTunnelVisionFX = {
                         if (_hasRetainedSprintMomentum) then {_momentumTarget = _downhillMomentum;};
                     };
                     _downhillMomentum = [_downhillMomentum, _momentumTarget, _dt,
-                        (missionNamespace getVariable ["GAIT_ss_downhillMomentumBuildSeconds", 2.5]) / _accelerationScale, 1.5 / _decelerationScale]
+                        missionNamespace getVariable ["GAIT_ss_downhillMomentumBuildSeconds", 2.5], 1.5]
                         call GAIT_fnc_stepDownhillMomentum;
                 };
                 missionNamespace setVariable ["GAIT_downhillMomentum", _downhillMomentum];
@@ -1273,7 +1310,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 // from launch-brace eligibility and retained-momentum vetoes.
                 private _uphillBrakeEnabled = _slopeHandlingEnabled && {_slopeStopBraceEnabled} &&
                     {missionNamespace getVariable ["GAIT_ss_uphillReleaseBraceEnabled", true]};
-                private _uphillBrakeContext = _momentumContextOk && {_movementEligible} && {_gaitStanceOk} && {isTouchingGround player};
+                private _uphillBrakeContext = _momentumContextOk && {_movementEligible} && {_gaitStanceOk} && {_isForwardHeld} && {!_forwardReleasedSinceTick} && {isTouchingGround player};
                 if ((missionNamespace getVariable ["GAIT_uphillBrakeUnit", objNull]) isNotEqualTo player) then {_uphillBrakeState = [];};
                 private _uphillBrake = [_uphillBrakeState, _turboHeld && {_isForwardHeld},
                     _isSprinting && {_sprintBraceEndTime <= time}, _isForwardHeld,
@@ -1387,7 +1424,7 @@ GAIT_fnc_setTunnelVisionFX = {
                         _isCrouched, _braceArmedFromCrouch, _normalBraceReady, _zeroMomentumBraceReady, _slopeBraceReady]
                         call GAIT_fnc_shouldBrace;
 
-                    private _braceDurationNow = (_sprintStartBraceDuration * _launchDurationScale) + (((_slopeStopBraceExtraDuration max 0) min 2.0) * _slopeBraceFactor);
+                    private _braceDurationNow = _sprintStartBraceDuration + (((_slopeStopBraceExtraDuration max 0) min 2.0) * _slopeBraceFactor);
                     private _braceDipNow = ((_slopeStopBraceExtraDip max 0) min 0.90) * _slopeBraceFactor;
                     _activeBraceSpeed = (_effectiveBraceSpeed * (1 - _braceDipNow)) max 0.08;
 
@@ -1413,7 +1450,7 @@ GAIT_fnc_setTunnelVisionFX = {
                         // If Shift is released while W remains held, preserve the actual
                         // running speed briefly, then taper toward W-only speed. This fixes
                         // the exhausted snap from ~16 km/h to walk speed.
-                        if (_isForwardHeld && {!_isBackHeld} && {!_isLateralHeld} && {_movementEligible}) then {
+                        if (_isForwardHeld && {!_isBackHeld} && {!_forwardReleasedSinceTick} && {_movementEligible}) then {
                             _lastShiftReleaseTime = time;
                             private _shiftReleaseHVel = velocity player;
                             private _shiftReleaseHSpeedMS = sqrt (((_shiftReleaseHVel select 0) * (_shiftReleaseHVel select 0)) + (((_shiftReleaseHVel select 1) * (_shiftReleaseHVel select 1))));
@@ -1677,34 +1714,25 @@ GAIT_fnc_setTunnelVisionFX = {
                     missionNamespace setVariable ["GAIT_paceCalibrated", _resolved select 4];
                 };
 
-                // v1.1.49: releasing Shift while still holding W should not snap from
-                // run speed to walk speed, especially at max exhaustion. Hold the last
-                // real run speed for a short sustain window, then taper toward W-only speed.
+                // One finite response while W remains held. Apply the curve
+                // directly below; layering an exponential filter would extend it.
                 private _shiftReleaseTaperActiveNow = false;
                 private _shiftReleaseTaperHoldActiveNow = false;
                 private _shiftReleaseTaperKeepNow = 0;
                 private _shiftReleaseTaperTargetKmhNow = 0;
-                if (_shiftReleaseRunTaperEnabled && {!_isSprinting} && {_movementEligible} && {!_externalWalkLock} && {!_externalSprintLock} && {!_isLateralHeld} && {_isForwardHeld} && {!_isBackHeld} && {time <= _shiftReleaseTaperActiveUntil}) then {
-                    private _holdDuration = _activeCoastHold;
-                    private _taperDuration = _activeCoastDuration;
-                    private _elapsedSinceShift = (time - _lastShiftReleaseTime) max 0;
-                    private _taperKeep = 1;
-                    if (_elapsedSinceShift <= _holdDuration) then {
-                        _shiftReleaseTaperHoldActiveNow = true;
-                    } else {
-                        private _taperRaw = ((_elapsedSinceShift - _holdDuration) / _taperDuration) max 0 min 1;
-                        private _taperCurve = (_shiftReleaseRunTaperCurve max 0.25) min 5.0;
-                        _taperKeep = (1 - _taperRaw) ^ _taperCurve;
-                    };
-                    private _taperStart = _shiftReleaseTaperStartSpeed max _targetSpeed;
-                    _targetSpeed = _targetSpeed max (_targetSpeed + ((_taperStart - _targetSpeed) * _taperKeep));
+                if (_shiftReleaseRunTaperEnabled && {!_isSprinting} && {_movementEligible} && {!_externalWalkLock} && {!_externalSprintLock} && {_isForwardHeld} && {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0}) then {
+                    private _releaseCurve = [_shiftReleaseTaperStartSpeed, _targetSpeed,
+                        (time - _lastShiftReleaseTime) max 0, _activeCoastDuration, _shiftReleaseRunTaperCurve]
+                        call GAIT_fnc_forwardCoastPace;
+                    _targetSpeed = (_releaseCurve select 0) min _currentSpeed;
                     _shiftReleaseTaperActiveNow = true;
-                    _shiftReleaseTaperKeepNow = _taperKeep;
-                    _shiftReleaseTaperTargetKmhNow = _actualSpeedKmh; // measured speed
+                    _shiftReleaseTaperKeepNow = _releaseCurve select 1;
+                    _shiftReleaseTaperTargetKmhNow = _actualSpeedKmh;
+                    // Consume the endpoint once even if a delayed tick crosses
+                    // the deadline; no residual speed or animation tail remains.
+                    if !(_releaseCurve select 2) then {_shiftReleaseTaperActiveUntil = -999;};
                 } else {
-                    if (!_isForwardHeld || {_isBackHeld} || {_isLateralHeld} || {_isSprinting} || {!_movementEligible} || {_externalWalkLock} || {_externalSprintLock}) then {
-                        _shiftReleaseTaperActiveUntil = -999;
-                    };
+                    _shiftReleaseTaperActiveUntil = -999;
                 };
                 missionNamespace setVariable ["GAIT_shiftReleaseRunTaperActive", _shiftReleaseTaperActiveNow];
                 missionNamespace setVariable ["GAIT_shiftReleaseRunTaperHoldActive", _shiftReleaseTaperHoldActiveNow];
@@ -1722,12 +1750,16 @@ GAIT_fnc_setTunnelVisionFX = {
                     private _rampTarget = if (_uphillBrakeActive) then {_uphillBrakeTarget min _currentSpeed} else {
                         if (_isSprinting && {_sprintBraceEndTime > time}) then {_activeBraceSpeed min _targetSpeed} else {_targetSpeed}
                     };
-                    // Load changes response time, never requested direction.
-                    // Launch/braking steps retain their own calibrated snap rate.
-                    if (!_isAceCarrying && {!_uphillBrakeActive} && {!(_isSprinting && {_sprintBraceEndTime > time})}) then {
-                        _ramp = [_ramp, [_decelerationScale, _accelerationScale] select (_rampTarget > _currentSpeed)] call GAIT_fnc_scaleInertiaRamp;
+                    // A modest load effect applies only while building sprint.
+                    // Braces, uphill braking and ordinary movement keep their rates.
+                    if (!_isAceCarrying && {_isSprinting} && {!_uphillBrakeActive} && {_sprintBraceEndTime <= time} && {_rampTarget > _currentSpeed}) then {
+                        _ramp = [_ramp, _accelerationScale] call GAIT_fnc_scaleInertiaRamp;
                     };
-                    _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
+                    if (_shiftReleaseTaperActiveNow && {!_uphillBrakeActive} && {!_isAceCarrying}) then {
+                        _currentSpeed = _rampTarget;
+                    } else {
+                        _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
+                    };
                     // Honor walk/injury locks and avoid carrying a sprint boost sideways.
                     private _coef = _currentSpeed;
                     if (!_isForwardHeld || {_externalSprintLock} || {_externalWalkLock}) then {
@@ -1736,31 +1768,13 @@ GAIT_fnc_setTunnelVisionFX = {
                     [player, _coef, _isAceCarrying] call GAIT_fnc_applyNativeMovement;
 
                 } else {
-                    // Keep internal momentum through a short W release while
-                    // the body is still moving. No velocity is added or forced.
-                    if (_uphillBrakeActive) then {
-                        _currentSpeed = [_currentSpeed, _uphillBrakeTarget min _currentSpeed, _uphillBrakeRamp, _dt] call GAIT_fnc_stepSpeedCoefficient;
-                    } else {
-                        if (_hasRetainedSprintMomentum) then {
-                            // No-input history decays too. It may protect a fast
-                            // re-tap, but cannot retain a sprint multiplier forever.
-                            _currentSpeed = [_currentSpeed, (_effectiveNormalSpeed * _hillWalkSlowdownMultiplier) min _currentSpeed,
-                                [_speedLerp, _decelerationScale] call GAIT_fnc_scaleInertiaRamp, _dt] call GAIT_fnc_stepSpeedCoefficient;
-                        } else {_currentSpeed = _effectiveNormalSpeed;};
-                    };
+                    // No commanded forward movement means no scalar momentum.
+                    // The engine handles the stop blend and current side/back input.
+                    _currentSpeed = _inputReleasePace;
                     _shiftReleaseTaperActiveUntil = -999;
-                    if (_gaitMovementEnabled && {_movementEligible} && {_turboHeld || {_uphillBrakeActive}} && {_gaitStanceOk} && {!_isAceCarrying}) then {
-                        // Only preserve the numerical brake while it sheds speed.
-                        // Draw3D selects native idle from the current stop input.
-                        if (_uphillBrakeActive) then {
-                            [player, _currentSpeed, false] call GAIT_fnc_applyNativeMovement;
-                        } else {[] call GAIT_fnc_releaseSpeedCoefficient;};
-                    } else {
-                        // Draw3D consumes current direction for the body exit.
-                        // A scheduled no-input sample must not preempt a newer
-                        // sprint/strafe input with an obsolete animation release.
-                        [] call GAIT_fnc_releaseSpeedCoefficient;
-                    };
+                    // Speed ownership must not slow the native stop blend.
+                    // Render input chooses the body exit independently.
+                    [] call GAIT_fnc_releaseSpeedCoefficient;
                 };
                 // A remaining shallow-slope coast may hold only the speed
                 // left after braking, never resurrect the pre-brake sprint.
@@ -1802,7 +1816,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 if (_debugHudEnabled && {(time - _lastDebugHudTime) >= ((_debugHudInterval max 0.05) min 1)}) then {
                     _lastDebugHudTime = time;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha4<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13<br/>Foundation: %14 | Measured pace profile: %15</t>",
+                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha5<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13<br/>Foundation: %14 | Measured pace profile: %15</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,

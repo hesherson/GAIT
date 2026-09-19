@@ -63,8 +63,77 @@ if (_commands isNotEqualTo ["brace","promote"] || {_stage isNotEqualTo "complete
         _failures pushBack "Brace idle escaped its own action map";
     };
 } forEach ["SrasWrfl","SlowWrfl","SrasWpst","SnonWnon"];
+
+// Exercise the actual render observer across changes entirely between two
+// scheduled feature updates. Its unit variables must survive ordinary
+// animation cleanup, or a stale brace/coast can restart after a quick W tap.
+private _testUnit = player;
+private _savedGlobals = [];
+{
+    _x params ["_name", "_default"];
+    _savedGlobals pushBack [_name, missionNamespace getVariable [_name, _default]];
+} forEach [["GAIT_braceActive",false], ["GAIT_braceEndTime",-1], ["GAIT_uphillBrakeActive",false], ["GAIT_uphillBrakeEndTime",-1], ["GAIT_uphillBrakeUnit",objNull]];
+_testUnit setVariable ["GAIT_forwardReleaseSerial", 0];
+_testUnit setVariable ["GAIT_forwardInputHeld", true];
+_testUnit setVariable ["GAIT_slopeCanceledBraceEndTime", -2];
+missionNamespace setVariable ["GAIT_braceActive", true];
+missionNamespace setVariable ["GAIT_braceEndTime", time + 10];
+missionNamespace setVariable ["GAIT_uphillBrakeActive", false];
+{
+    _x params ["_input", "_expected", "_serial", "_label"];
+    private _actual = [_testUnit, _input] call GAIT_fnc_observeLocomotionInput;
+    if (_actual isNotEqualTo _expected || {(_testUnit getVariable ["GAIT_forwardReleaseSerial", -1]) isNotEqualTo _serial}) then {
+        _failures pushBack format ["%1: brace=%2 serial=%3", _label, _actual, _testUnit getVariable ["GAIT_forwardReleaseSerial", -1]];
+    };
+} forEach [
+    [[1,0,true],true,0,"fresh launch begins brace"],
+    [[0.707,0.707,true],true,0,"forward diagonal does not cancel forward intent"],
+    [[0,1,true],false,1,"W release cancels launch and increments serial once"],
+    [[0,0,true],false,1,"held stop does not repeatedly increment serial"],
+    [[1,0,true],false,1,"quick W re-press cannot revive stale launch token"]
+];
+[_testUnit] call GAIT_fnc_clearSlopeLocomotionState;
+if ([_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Cleanup revived consumed brace token";};
+if ((_testUnit getVariable ["GAIT_forwardReleaseSerial", -1]) isNotEqualTo 1) then {_failures pushBack "Cleanup lost W-release serial";};
+missionNamespace setVariable ["GAIT_braceEndTime", time + 11];
+if !([_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Fresh launch token did not rearm";};
+if ([_testUnit,[1,0,false]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Released Turbo retained launch walking clip";};
+if ([_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Raw Turbo re-tap revived stale launch";};
+
+private _brakeEnd = time + 12;
+missionNamespace setVariable ["GAIT_braceEndTime", _brakeEnd];
+missionNamespace setVariable ["GAIT_uphillBrakeEndTime", _brakeEnd];
+missionNamespace setVariable ["GAIT_uphillBrakeActive", true];
+missionNamespace setVariable ["GAIT_uphillBrakeUnit", _testUnit];
+if !([_testUnit,[1,0,false]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Forward uphill brake lost its walking step";};
+if ([_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Turbo re-tap retained stale uphill walking step";};
+if ([_testUnit,[1,0,false]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Released Turbo revived consumed uphill step";};
+
+// A failed promotion uses the existing safe native-exit boundary exactly
+// once. Mock only that boundary; the failure latch and input observer are
+// production code. Engine blend acceptance still needs an Arma test.
+private _actualRelease = GAIT_fnc_releaseSlopeLocomotion;
+private _actualExit = GAIT_fnc_serviceLocomotionExit;
+private _releaseCalls = [];
+private _serviceCalls = 0;
+GAIT_fnc_releaseSlopeLocomotion = {_releaseCalls pushBack _this; (_this select 0) setVariable ["GAIT_locomotionPhase", "exiting"];};
+GAIT_fnc_serviceLocomotionExit = {_serviceCalls = _serviceCalls + 1; false};
+[_testUnit,[1,0,true]] call GAIT_fnc_failBraceLocomotion;
+if ((count _releaseCalls) isNotEqualTo 1 || {_serviceCalls isNotEqualTo 1} || {(_testUnit getVariable ["GAIT_locomotionPhase", ""]) isNotEqualTo "exiting"}) then {
+    _failures pushBack "Failed brace did not request one native cleanup";
+};
+if (((_releaseCalls select 0) select 1) isNotEqualTo [1,0,true]) then {_failures pushBack "Failed brace cleanup lost current input";};
+GAIT_fnc_releaseSlopeLocomotion = _actualRelease;
+GAIT_fnc_serviceLocomotionExit = _actualExit;
+[_testUnit] call GAIT_fnc_clearSlopeLocomotionState;
+[_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput;
+if !(_testUnit getVariable ["GAIT_slopeBraceFailedUntilRelease", false]) then {_failures pushBack "Held Turbo lost failure latch after cleanup";};
+[_testUnit,[1,0,false]] call GAIT_fnc_observeLocomotionInput;
+if (_testUnit getVariable ["GAIT_slopeBraceFailedUntilRelease", true]) then {_failures pushBack "Turbo release failed to rearm after cleanup";};
+{missionNamespace setVariable [_x select 0, _x select 1];} forEach _savedGlobals;
+
 if (_failures isEqualTo []) then {
-    diag_log "GAIT locomotion handoff tests PASS: aim-preserving arguments, exact-clip phase, 12 lifecycle cases, one brace/promotion sequence, 36 brace states.";
+    diag_log "GAIT locomotion handoff tests PASS: aim-preserving arguments, brace lifecycle/states, raw W/Turbo cancellation, persistent release serial, failed-brace native cleanup.";
 } else {
     {diag_log ("GAIT locomotion handoff tests FAIL: "+_x);} forEach _failures;
     throw "GAIT locomotion handoff regression failed";

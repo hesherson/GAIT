@@ -49,23 +49,36 @@ GAIT_fnc_isSuspendedContext = {
 // transition rejection during the single custom sprint entry request.
 GAIT_fnc_isStandingLocomotionBlend = {
     params [["_animation", "", [""]], ["_source", "", [""]], ["_target", "", [""]]];
-    private _parts = (toLower _animation) splitString "_";
-    _parts = _parts - ["gait"];
-    if ((count _parts) != 2) exitWith {false};
-    private _valid = true;
-    {
-        if (!((_x select [0, 8]) isEqualTo "amovperc") ||
-            {!((_x select [8, 4]) in ["mstp", "mwlk", "mrun", "mtac", "meva", "mspr"])} ||
-            {!((_x select [12, 8]) in ["sraswrfl", "slowwrfl", "sraswpst", "snonwnon"])} ||
-            {!((_x select [20]) in ["dnon", "df", "dfl", "dl", "dbl", "db", "dbr", "dr", "dfr"])}) exitWith {
-            _valid = false;
+    // Split at the second state, not every underscore. The native lowered
+    // rifle walk/tactical states have a real _ver2 suffix in our graph.
+    // Only these exact known variants and the optional GAIT marker qualify.
+    private _canonicalState = {
+        params ["_state"];
+        private _parts = (toLower _state) splitString "_";
+        if ((count _parts) < 1 || {(count _parts) > 2}) exitWith {""};
+        private _base = _parts select 0;
+        private _suffix = _parts param [1, ""];
+        if !(_suffix in ["", "gait", "ver2"]) exitWith {""};
+        if (!((_base select [0, 8]) isEqualTo "amovperc") ||
+            {!((_base select [8, 4]) in ["mstp", "mwlk", "mrun", "mtac", "meva", "mspr"])} ||
+            {!((_base select [12, 8]) in ["sraswrfl", "slowwrfl", "sraswpst", "snonwnon"])} ||
+            {!((_base select [20]) in ["dnon", "df", "dfl", "dl", "dbl", "db", "dbr", "dr", "dfr"])}) exitWith {""};
+        if (_suffix isEqualTo "ver2") exitWith {
+            if ((_base select [12, 8]) isEqualTo "slowwrfl" &&
+                {(_base select [8, 4]) in ["mwlk", "mtac"]} &&
+                {(_base select [20]) isNotEqualTo "dnon"}) then {_base + "_ver2"} else {""}
         };
-    } forEach _parts;
-    if (!_valid) exitWith {false};
-    private _sourceParts = ((toLower _source) splitString "_") - ["gait"];
-    private _targetParts = ((toLower _target) splitString "_") - ["gait"];
-    if ((count _sourceParts) != 1 || {(count _targetParts) != 1}) exitWith {false};
-    _parts isEqualTo [_sourceParts select 0, _targetParts select 0]
+        _base
+    };
+    private _name = toLower _animation;
+    private _divider = _name find "_amov";
+    if (_divider < 0) exitWith {false};
+    private _left = [_name select [0, _divider]] call _canonicalState;
+    private _right = [_name select [_divider + 1]] call _canonicalState;
+    private _expectedLeft = [_source] call _canonicalState;
+    private _expectedRight = [_target] call _canonicalState;
+    _left isNotEqualTo "" && {_right isNotEqualTo ""} &&
+        {_left isEqualTo _expectedLeft} && {_right isEqualTo _expectedRight}
 };
 
 GAIT_fnc_nativeMovementEligible = {

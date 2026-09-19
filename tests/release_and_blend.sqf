@@ -48,8 +48,40 @@ private _target = "AmovPercMevaSrasWrflDf_GAIT";
     ["AmovPercMrunSrasWrflDf_AmovPercMevaSrasWrflDf_GAIT_AmovPercMevaSrasWrflDf", false]
 ];
 
+// Lowered-rifle walk/tactical _ver2 states already have graph edges. Their
+// exact native suffix must survive validation into the brief brace state;
+// unknown suffixes and near-matching source/target states remain rejected.
+private _variantSource = "AmovPercMwlkSlowWrflDf_ver2";
+private _braceTarget = "AmovPercMwlkSlowWrflDf_GAIT";
+{
+    _x params ["_animation", "_expected"];
+    private _actual = [_animation, _variantSource, _braceTarget] call GAIT_fnc_isStandingLocomotionBlend;
+    if (_actual isNotEqualTo _expected) then {_failures pushBack format ["Native variant brace blend classification: %1", _animation];};
+} forEach [
+    ["AmovPercMwlkSlowWrflDf_ver2_AmovPercMwlkSlowWrflDf_GAIT", true],
+    ["AmovPercMwlkSlowWrflDf_ver2_AmovPercMwlkSlowWrflDf", true],
+    ["AmovPercMwlkSlowWrflDf_AmovPercMwlkSlowWrflDf_GAIT", false],
+    ["AmovPercMwlkSlowWrflDf_ver3_AmovPercMwlkSlowWrflDf_GAIT", false],
+    ["AmovPercMwlkSlowWrflDf_ver2_AmovPercMwlkSlowWrflDfr_GAIT", false],
+    ["AmovPercMwlkSlowWrflDf_ver2_AmovPknlMwlkSlowWrflDf_GAIT", false],
+    ["AmovPercMwlkSlowWrflDf_ver2_AinvPknlMstpSnonWrflDnon_medic", false],
+    ["AmovPercMwlkSlowWrflDf_ver2_AmovPercMwlkSlowWrflDf_GAIT_reload", false],
+    ["AmovPercMwlkSlowWrflDf_ver2_AmovPercMwlkSlowWrflDf_GAIT_AmovPercMevaSlowWrflDf_GAIT", false]
+];
+{
+    _x params ["_sourceState", "_expected"];
+    private _actual = [_sourceState + "_" + _braceTarget, _sourceState, _braceTarget] call GAIT_fnc_isStandingLocomotionBlend;
+    if (_actual isNotEqualTo _expected) then {_failures pushBack format ["Native variant whitelist: %1", _sourceState];};
+} forEach [
+    ["AmovPercMtacSlowWrflDfr_ver2",true],
+    ["AmovPercMwlkSrasWrflDf_ver2",false],
+    ["AmovPercMevaSlowWrflDf_ver2",false],
+    ["AmovPercMwlkSlowWrflDnon_ver2",false],
+    ["AmovPercMwlkSlowWrflDf_ver2_GAIT",false]
+];
+
 if (_failures isEqualTo []) then {
-    diag_log "GAIT cleanup and blend tests PASS: five inherited argument contexts; coefficient-only cleanup; 12 expected/unsafe transition cases.";
+    diag_log "GAIT cleanup and blend tests PASS: inherited arguments, coefficient-only cleanup, expected/unsafe transitions and strict native _ver2 brace handoffs.";
 } else {
     {diag_log ("GAIT cleanup and blend tests FAIL: " + _x);} forEach _failures;
     throw "GAIT cleanup/blend regression failed";

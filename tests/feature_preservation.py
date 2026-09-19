@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Protect GAIT's retained RC4 tuning with exact user-authorized deltas through alpha4.
+"""Protect GAIT's retained RC4 tuning with exact user-authorized deltas through alpha5.
 
 Run: python tests/feature_preservation.py [project-root] [--self-test]
 No Arma, third-party packages or adjacent old checkout is required.
@@ -758,13 +758,60 @@ MAIN_FILE = "addons/gait/functions/fn_initSprintSystem.sqf"
 # exemption for these blocks and none of the historical hashes are changed.
 # New helpers also require their separate SQF behavior tests.
 AUTHORIZED_BLOCK_DELTAS = [
-    # Alpha4 authorizes load-dependent acceleration/deceleration and launch
-    # response. Reverse each precise integration change before the earlier
-    # deltas; every original RC4 digest remains the comparison target.
+    # Alpha5 corrects the heavy-kit overreach and confines the release curve
+    # to held forward input. Exact reversals still target the original RC4 hash.
+    ("step_off_brace_and_sprint_end", "alpha5 forward release latch replaces lateral veto", """
+        if (_isForwardHeld && {!_isBackHeld} && {!_forwardReleasedSinceTick} && {_movementEligible}) then {
+    """, """
+        if (_isForwardHeld && {!_isBackHeld} && {!_isLateralHeld} && {_movementEligible}) then {
+    """),
+    ("shift_release_hold_and_taper", "alpha5 finite forward release curve with endpoint consumption", """
+        if (_shiftReleaseRunTaperEnabled && {!_isSprinting} && {_movementEligible} && {!_externalWalkLock} && {!_externalSprintLock} && {_isForwardHeld} && {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0}) then {
+            private _releaseCurve = [_shiftReleaseTaperStartSpeed, _targetSpeed,
+                (time - _lastShiftReleaseTime) max 0, _activeCoastDuration, _shiftReleaseRunTaperCurve]
+                call GAIT_fnc_forwardCoastPace;
+            _targetSpeed = (_releaseCurve select 0) min _currentSpeed;
+            _shiftReleaseTaperActiveNow = true;
+            _shiftReleaseTaperKeepNow = _releaseCurve select 1;
+            _shiftReleaseTaperTargetKmhNow = _actualSpeedKmh;
+            // Consume the endpoint once even if a delayed tick crosses
+            // the deadline; no residual speed or animation tail remains.
+            if !(_releaseCurve select 2) then {_shiftReleaseTaperActiveUntil = -999;};
+        } else {
+            _shiftReleaseTaperActiveUntil = -999;
+        };
+    """, """
+        if (_shiftReleaseRunTaperEnabled && {!_isSprinting} && {_movementEligible} && {!_externalWalkLock} && {!_externalSprintLock} && {!_isLateralHeld} && {_isForwardHeld} && {!_isBackHeld} && {time <= _shiftReleaseTaperActiveUntil}) then {
+            private _holdDuration = _activeCoastHold;
+            private _taperDuration = _activeCoastDuration;
+            private _elapsedSinceShift = (time - _lastShiftReleaseTime) max 0;
+            private _taperKeep = 1;
+            if (_elapsedSinceShift <= _holdDuration) then {
+                _shiftReleaseTaperHoldActiveNow = true;
+            } else {
+                private _taperRaw = ((_elapsedSinceShift - _holdDuration) / _taperDuration) max 0 min 1;
+                private _taperCurve = (_shiftReleaseRunTaperCurve max 0.25) min 5.0;
+                _taperKeep = (1 - _taperRaw) ^ _taperCurve;
+            };
+            private _taperStart = _shiftReleaseTaperStartSpeed max _targetSpeed;
+            _targetSpeed = _targetSpeed max (_targetSpeed + ((_taperStart - _targetSpeed) * _taperKeep));
+            _shiftReleaseTaperActiveNow = true;
+            _shiftReleaseTaperKeepNow = _taperKeep;
+            _shiftReleaseTaperTargetKmhNow = _actualSpeedKmh; // measured speed
+        } else {
+            if (!_isForwardHeld || {_isBackHeld} || {_isLateralHeld} || {_isSprinting} || {!_movementEligible} || {_externalWalkLock} || {_externalSprintLock}) then {
+                _shiftReleaseTaperActiveUntil = -999;
+            };
+        };
+    """),
+    # Retained snapshot/ownership integration from alpha4, refined by alpha5.
+    # Original tier-relief selection and base launch duration require no delta.
+    # Every original RC4 digest remains the comparison target.
     ("initial_tuning_and_momentum_state", "alpha4 snapshot load-scaled coast windows", """
         private _shiftReleaseTaperStartSpeed = _normalSpeed;
         private _activeCoastHold = 0;
         private _activeCoastDuration = 0.05;
+        private _lastForwardReleaseSerial = -1;
     """, "private _shiftReleaseTaperStartSpeed = _normalSpeed;"),
     ("preset_and_reset_state", "alpha4 reset coast ownership", """
         _lastResetRequestHandled = _resetRequest;
@@ -784,31 +831,6 @@ AUTHORIZED_BLOCK_DELTAS = [
         missionNamespace setVariable ["GAIT_uphillBrakeReadyUntil", -1];
         missionNamespace setVariable ["GAIT_uphillBrakeUnit", objNull];
     """),
-    ("gear_weight_and_brace_relief", "alpha4 continuous load inertia and existing brace relief anchors", """
-        private _gearInertia = [_gearLbs,
-            [_lightBraceRelief, _mediumBraceRelief, _moderateBraceRelief, _heavyBraceRelief],
-            [_lightWeightMax, _mediumWeightMax, _moderateWeightMax]] call GAIT_fnc_gearInertia;
-        _gearInertia params ["_accelerationScale", "_decelerationScale", "_coastScale", "_launchDurationScale", "_braceRelief"];
-        missionNamespace setVariable ["GAIT_gearInertia", _gearInertia];
-    """, """
-        private _braceRelief = _heavyBraceRelief;
-        if (_gearLbs <= _lightWeightMax) then {
-            _braceRelief = _lightBraceRelief;
-        } else {
-            if (_gearLbs <= _mediumWeightMax) then {
-                _braceRelief = _mediumBraceRelief;
-            } else {
-                if (_gearLbs <= _moderateWeightMax) then {
-                    _braceRelief = _moderateBraceRelief;
-                };
-            };
-        };
-    """),
-    ("step_off_brace_and_sprint_end", "alpha4 gear-scaled launch duration", """
-        private _braceDurationNow = (_sprintStartBraceDuration * _launchDurationScale) + (((_slopeStopBraceExtraDuration max 0) min 2.0) * _slopeBraceFactor);
-    """, """
-        private _braceDurationNow = _sprintStartBraceDuration + (((_slopeStopBraceExtraDuration max 0) min 2.0) * _slopeBraceFactor);
-    """),
     ("step_off_brace_and_sprint_end", "alpha4 snapshot coast duration at sprint release", """
         private _coastWindow = [_shiftReleaseRunTaperHoldDuration, _shiftReleaseRunTaperDuration, _coastScale] call GAIT_fnc_gearCoastWindow;
         _activeCoastHold = _coastWindow select 0;
@@ -824,11 +846,15 @@ AUTHORIZED_BLOCK_DELTAS = [
         private _holdDuration = (_shiftReleaseRunTaperHoldDuration max 0) min 3.0;
         private _taperDuration = (_shiftReleaseRunTaperDuration max 0.05) min 4.0;
     """),
-    ("brace_or_momentum_speed_ramp", "alpha4 load-dependent response outside carry and brace phases", """
-        if (!_isAceCarrying && {!_uphillBrakeActive} && {!(_isSprinting && {_sprintBraceEndTime > time})}) then {
-            _ramp = [_ramp, [_decelerationScale, _accelerationScale] select (_rampTarget > _currentSpeed)] call GAIT_fnc_scaleInertiaRamp;
+    ("brace_or_momentum_speed_ramp", "alpha5 mild sprint acceleration and direct release response", """
+        if (!_isAceCarrying && {_isSprinting} && {!_uphillBrakeActive} && {_sprintBraceEndTime <= time} && {_rampTarget > _currentSpeed}) then {
+            _ramp = [_ramp, _accelerationScale] call GAIT_fnc_scaleInertiaRamp;
         };
-        _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
+        if (_shiftReleaseTaperActiveNow && {!_uphillBrakeActive} && {!_isAceCarrying}) then {
+            _currentSpeed = _rampTarget;
+        } else {
+            _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
+        };
     """, """
         _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
     """),
@@ -900,6 +926,14 @@ AUTHORIZED_BLOCK_DELTAS = [
 ]
 
 AUTHORIZED_SETTINGS_DELTAS = [
+    ("alpha5 release Enabled label/description", '["GAIT_ss_shiftReleaseRunTaperEnabled", "Smooth Shift-release taper", "Release Shift while holding W to slow smoothly over a short bounded interval. Releasing W cancels the coast; forward diagonals remain responsive. Default: enabled.", _categoryMove, true] call _addCheckbox;',
+     '["GAIT_ss_shiftReleaseRunTaperEnabled", "Smooth Shift-release taper", "When Shift is released but W remains held, GAIT keeps current running speed briefly and smoothly tapers to normal W movement instead of snapping down. Default: enabled.", _categoryMove, true] call _addCheckbox;'),
+    ("alpha5 release Duration label/description", '["GAIT_ss_shiftReleaseRunTaperDuration", "Shift-release taper duration", "Scale for the short forward slowdown. Effective duration is half this value times a small load factor, bounded to 0.20-0.65 seconds. Default 0.85 gives about 0.38-0.49 seconds.", _categoryMove, 0.05, 4.00, 0.85, 2] call _addSlider;',
+     '["GAIT_ss_shiftReleaseRunTaperDuration", "Shift-release taper duration", "Seconds used to taper from sustained run speed to W-only speed after releasing Shift while holding W. Default: 0.85 sec.", _categoryMove, 0.05, 4.00, 0.85, 2] call _addSlider;'),
+    ("alpha5 release HoldDuration label/description", '["GAIT_ss_shiftReleaseRunTaperHoldDuration", "Shift-release sustain (inactive)", "Legacy setting retained for saved profiles. Slowdown now begins immediately, so this value no longer changes movement.", _categoryMove, 0.00, 3.00, 1.00, 2] call _addSlider;',
+     '["GAIT_ss_shiftReleaseRunTaperHoldDuration", "Shift-release sustain", "Seconds to hold the previous running speed after releasing Shift while W remains held before tapering down. Default: 1.00 sec.", _categoryMove, 0.00, 3.00, 1.00, 2] call _addSlider;'),
+    ("alpha5 release Curve label/description", '["GAIT_ss_shiftReleaseRunTaperCurve", "Shift-release taper curve", "Shapes the smooth release curve: higher values lose pace sooner. Effective range is 1-3. The slowdown still reaches its endpoint within the bounded duration. Default: 1.45.", _categoryMove, 0.25, 5.00, 1.45, 2] call _addSlider;',
+     '["GAIT_ss_shiftReleaseRunTaperCurve", "Shift-release taper curve", "Higher values hold speed briefly then brake later; lower values taper more linearly. Default: 1.45.", _categoryMove, 0.25, 5.00, 1.45, 2] call _addSlider;'),
     ("alpha3 uphill release checkbox", '''
         ["GAIT_ss_uphillReleaseBraceEnabled", "Uphill sprint-release brace", "Dig-in braking when releasing a moving uphill sprint. Uses the slope brace start/max angles, duration and dip; steeper slopes brake harder. Flat/downhill momentum is preserved. Default: enabled.", _categoryBrace, true] call _addCheckbox;
     ''', ""),
@@ -941,7 +975,7 @@ def verify(root: Path) -> tuple[list[str], dict[str, str]]:
                 settings = reverse_exact_delta(settings, current, old,
                                                f"{SETTINGS_FILE}: {label}", failures)
             if token_digest(settings) != SETTINGS_RC4_TOKEN_SHA256:
-                failures.append(f"Registration code differs beyond authorized descriptions, two sliders and release checkbox: {relative}")
+                failures.append(f"Registration code differs beyond authorized descriptions/labels, two sliders and release checkbox: {relative}")
         elif hashlib.sha256(path.read_bytes()).hexdigest() != expected:
             failures.append(f"Tuning file bytes differ from RC4: {relative}")
     sources = {}
@@ -984,17 +1018,18 @@ def self_test(root: Path) -> None:
     mutations = [
         ("step_off_brace_and_sprint_end", "max 0.08", "max 0.10"),
         ("step_off_brace_and_sprint_end", "_reserveRatioForBrace >= _braceMinReserveRatio", "_reserveRatioForBrace > _braceMinReserveRatio"),
-        ("shift_release_hold_and_taper", "(1 - _taperRaw) ^ _taperCurve", "(1 - _taperRaw)"),
+        ("shift_release_hold_and_taper", "_targetSpeed = (_releaseCurve select 0) min _currentSpeed;", "_targetSpeed = (_releaseCurve select 0) max _currentSpeed;"),
         ("sprint_pace_gate", "_turboHeld && {_isForwardHeld}", "_turboHeld && {_isForwardHeld || {_isLateralHeld}}"),
         ("frame_rate_independent_ramp", "(_dt max 0 min 0.20) / 0.05", "(_dt max 0 min 0.20) / 0.10"),
         ("step_off_brace_and_sprint_end", "private _canBrace = [_sprintStartBraceEnabled, _hasRetainedSprintMomentum || {_uphillBrakeResumed},", "private _canBrace = [_sprintStartBraceEnabled, false,"),
         ("step_off_brace_and_sprint_end", "_hasRetainedSprintMomentum || {_uphillBrakeResumed}", "_hasRetainedSprintMomentum || {false}"),
         ("brace_or_momentum_speed_ramp", "_uphillBrakeTarget min _currentSpeed", "_uphillBrakeTarget max _currentSpeed"),
         ("directional_grade_trips_and_walk_pace", "_downhillMaxBoost + _sustainedBonus", "_downhillMaxBoost + 0.35"),
-        ("step_off_brace_and_sprint_end", "_sprintStartBraceDuration * _launchDurationScale", "_sprintStartBraceDuration / _launchDurationScale"),
-        ("gear_weight_and_brace_relief", "[_lightBraceRelief, _mediumBraceRelief, _moderateBraceRelief, _heavyBraceRelief]", "[_heavyBraceRelief, _mediumBraceRelief, _moderateBraceRelief, _lightBraceRelief]"),
-        ("shift_release_hold_and_taper", "private _holdDuration = _activeCoastHold;", "private _holdDuration = _activeCoastDuration;"),
-        ("brace_or_momentum_speed_ramp", "[_decelerationScale, _accelerationScale] select (_rampTarget > _currentSpeed)", "[_accelerationScale, _decelerationScale] select (_rampTarget > _currentSpeed)"),
+        ("step_off_brace_and_sprint_end", "_sprintStartBraceDuration +", "(_sprintStartBraceDuration * 1.28) +"),
+        ("gear_weight_and_brace_relief", "_braceRelief = _lightBraceRelief;", "_braceRelief = _heavyBraceRelief;"),
+        ("shift_release_hold_and_taper", "&& {_isForwardHeld} && {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0}", "&& {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0}"),
+        ("shift_release_hold_and_taper", "if !(_releaseCurve select 2) then {_shiftReleaseTaperActiveUntil = -999;};", "if !(_releaseCurve select 2) then {_shiftReleaseTaperActiveUntil = time + 6;};"),
+        ("brace_or_momentum_speed_ramp", "_currentSpeed = _rampTarget;", "_currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;"),
     ]
     with tempfile.TemporaryDirectory(prefix="gait-feature-preservation-") as directory:
         copy = Path(directory)
@@ -1028,7 +1063,7 @@ def self_test(root: Path) -> None:
         assert not verify(copy)[0], "Intact extraction should preserve the feature"
         extracted_path.write_text("/*\n" + extracted + "\n*/", encoding="utf-8")
         assert any(feature["name"] in f for f in verify(copy)[0]), "A comment cannot preserve executable code"
-    print("PASS mutation checks: unauthorized brace dip/duration, gear-relief anchors, reserve gate, Shift taper/window, sprint gate, ramp timing/load selection, momentum veto, release-resume veto, brake target direction, downhill integration and setting default are rejected; intact extraction is accepted")
+    print("PASS mutation checks: unauthorized brace dip/duration, gear-relief anchors, reserve gate, forward release target/gate/endpoint, sprint gate, ramp timing/direct response, momentum veto, release-resume veto, brake target direction, downhill integration and setting default are rejected; intact extraction is accepted")
 
 
 def main() -> int:
@@ -1043,7 +1078,7 @@ def main() -> int:
             print("FAIL " + failure)
         return 1
     changed_blocks = {delta[0] for delta in AUTHORIZED_BLOCK_DELTAS}
-    print(f"PASS {len(BYTE_FILES) - 1} byte-identical tuning files; original registrations preserved except two descriptions/one label, two new sliders and one release checkbox")
+    print(f"PASS {len(BYTE_FILES) - 1} byte-identical tuning files; original registrations preserved except reviewed alpha2/alpha5 descriptions/labels, two new sliders and one release checkbox")
     print(f"PASS {len(BLOCKS) - len(changed_blocks)} intact RC4 feature blocks; {len(changed_blocks)} blocks with {len(AUTHORIZED_BLOCK_DELTAS)} exact authorized deltas; all historical hashes retained")
     for feature, relative in locations.items():
         print(f"  {feature}: {relative}")

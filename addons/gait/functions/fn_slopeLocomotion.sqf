@@ -70,6 +70,40 @@ GAIT_fnc_braceLocomotionDecision = {
     "hold"
 };
 
+// Draw3D sees a W release even when W is pressed again before the slower
+// feature loop runs. Preserve the serial across animation cleanup so that
+// loop can discard its old forward coast instead of reviving it on re-press.
+// A cancelled brace token likewise cannot re-enter its walking clip while
+// the scheduled snapshot still describes the previous key press.
+GAIT_fnc_observeLocomotionInput = {
+    params ["_unit", "_input"];
+    private _forwardHeld = (_input select 0) > 0.05;
+    private _turbo = _input select 2;
+    if (!_forwardHeld && {_unit getVariable ["GAIT_forwardInputHeld", true]}) then {
+        _unit setVariable ["GAIT_forwardReleaseSerial", (_unit getVariable ["GAIT_forwardReleaseSerial", 0]) + 1];
+    };
+    _unit setVariable ["GAIT_forwardInputHeld", _forwardHeld];
+    if (!_turbo) then {_unit setVariable ["GAIT_slopeBraceFailedUntilRelease", false];};
+
+    private _end = missionNamespace getVariable ["GAIT_braceEndTime", -1];
+    private _active = (missionNamespace getVariable ["GAIT_braceActive", false]) && {time < _end};
+    private _braking = _unit isEqualTo (missionNamespace getVariable ["GAIT_uphillBrakeUnit", objNull]) &&
+        {missionNamespace getVariable ["GAIT_uphillBrakeActive", false]} &&
+        {_end isEqualTo (missionNamespace getVariable ["GAIT_uphillBrakeEndTime", -1])};
+    private _live = _active && {_forwardHeld} && {[_turbo, !_turbo] select _braking};
+    if (_active && {!_live}) then {_unit setVariable ["GAIT_slopeCanceledBraceEndTime", _end];};
+    _live && {_end isNotEqualTo (_unit getVariable ["GAIT_slopeCanceledBraceEndTime", -2])}
+};
+
+GAIT_fnc_failBraceLocomotion = {
+    params ["_unit", "_input", ["_walkOnly", false, [false]]];
+    // Retain the latch through native cleanup. The live input observer clears
+    // it on Turbo release, so a failed clip cannot become a retry loop.
+    _unit setVariable ["GAIT_slopeBraceFailedUntilRelease", true];
+    [_unit, _input, _walkOnly] call GAIT_fnc_releaseSlopeLocomotion;
+    [_unit] call GAIT_fnc_serviceLocomotionExit;
+};
+
 GAIT_fnc_slopeWeaponFamily = {
     params ["_unit"];
     private _weapon = currentWeapon _unit;
@@ -352,6 +386,15 @@ GAIT_fnc_locomotionIntent = {
 };
 
 GAIT_fnc_tickLocomotion = {
+    // Observe edges while cleanup is deferred too. Recording intent never
+    // authorizes an entry or body command to overtake that cleanup.
+    private _input = [] call GAIT_fnc_getMovementInput;
+    private _braceRequested = false;
+    if (!isNull player) then {
+        // These variables are client-local input history, never public body
+        // control. The normal ownership gates still guard every body action.
+        _braceRequested = [player, _input] call GAIT_fnc_observeLocomotionInput;
+    };
     private _owner = missionNamespace getVariable ["GAIT_slopeOwner", objNull];
     if ([_owner] call GAIT_fnc_serviceLocomotionExit) exitWith {};
     _owner = missionNamespace getVariable ["GAIT_slopeOwner", objNull];
@@ -372,7 +415,6 @@ GAIT_fnc_tickLocomotion = {
         // The replacement player's fresh submission is still valid.
         missionNamespace setVariable ["GAIT_locomotionRequest", _request];
     };
-    private _input = [] call GAIT_fnc_getMovementInput;
     private _moving = abs (_input select 0) > 0.05 || {abs (_input select 1) > 0.05};
     private _enabled = (missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]) &&
         {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]} && {call GAIT_fnc_modeAllowsMovement};
@@ -392,7 +434,7 @@ GAIT_fnc_tickLocomotion = {
         diag_tickTime < (missionNamespace getVariable ["GAIT_coastReadyUntil", -1]),
         _input select 0
     ] call GAIT_fnc_coastKeepsFamily;
-    private _requested = _enabled && {!_locked} && {[
+    private _requested = _enabled && {!_locked} && {!(_unit getVariable ["GAIT_slopeBraceFailedUntilRelease", false])} && {[
         _request select 1, _input select 2, _moving, _input select 0,
         _brakeKeepsFamily, _coastKeepsFamily
     ] call GAIT_fnc_locomotionIntent};
@@ -434,7 +476,7 @@ GAIT_fnc_tickLocomotion = {
             };
             private _braceAction = [
                 _unit getVariable ["GAIT_slopeBraceStage", "complete"],
-                missionNamespace getVariable ["GAIT_braceActive", false],
+                _braceRequested,
                 time < _braceEnd,
                 _role, [_animation] call GAIT_fnc_isSlopeLocomotionBlend,
                 diag_tickTime > (_unit getVariable ["GAIT_slopeBracePromoteDeadline", -1]),
@@ -455,11 +497,11 @@ GAIT_fnc_tickLocomotion = {
             };
             if (_braceAction isEqualTo "complete") then {_unit setVariable ["GAIT_slopeBraceStage", "complete"];};
             if (_braceAction isEqualTo "failed") then {
-                _unit setVariable ["GAIT_locomotionPhase", "blocked"];
-                _unit setVariable ["GAIT_slopeLocomotionActive", false];
-                missionNamespace setVariable ["GAIT_locomotionPhase", "blocked"];
-                missionNamespace setVariable ["GAIT_slopeLocomotionActive", false];
-                diag_log format ["[GAIT_LOCOMOTION] brace promotion not observed from %1; release Turbo to rearm, no reassertion.", _animation];
+                // A failed promotion must not leave the walking brace graph
+                // holding the body indefinitely. Exit once and keep retries
+                // latched until the player releases Turbo.
+                diag_log format ["[GAIT_LOCOMOTION] brace promotion not observed from %1; native cleanup requested, release Turbo to rearm.", _animation];
+                [_unit, _input, isForcedWalk _unit] call GAIT_fnc_failBraceLocomotion;
             };
             if (_braceAction isEqualTo "promote") then {
                 private _direction = [_input select 0, _input select 1] call GAIT_fnc_slopeDirection;
@@ -483,8 +525,7 @@ GAIT_fnc_tickLocomotion = {
         case "enter": {
             if (_family isEqualTo "" || {!([_family] call GAIT_fnc_slopeFamilyAvailable)}) exitWith {};
             private _direction = [_input select 0, _input select 1] call GAIT_fnc_slopeDirection;
-            private _brace = (missionNamespace getVariable ["GAIT_braceActive", false]) &&
-                {time < (missionNamespace getVariable ["GAIT_braceEndTime", -1])};
+            private _brace = _braceRequested;
             private _target = [_family, _direction, _brace] call GAIT_fnc_slopeStateName;
             _unit setVariable ["GAIT_slopeBraceStage", ["complete", "brace"] select _brace];
             _unit setVariable ["GAIT_slopeBraceSeenEndTime", missionNamespace getVariable ["GAIT_braceEndTime", -1]];

@@ -1,21 +1,11 @@
 /*
-    Pure load-dependent pace response. This shapes the existing scalar speed
-    coefficient and launch brace; it never owns movement input or animation.
-    A heavy kit takes longer to accelerate and longer to settle from a sprint
-    toward walking while forward input remains held. Release/turn intent must
-    still reach the locomotion graph immediately. Uphill release braking has
-    priority and must use its own original response without these rate scales.
+    Alpha5 restores original per-tier brace relief and launch duration.
+    Load modestly changes acceleration, never sprint permission or steady pace.
+    A released sprint has one short forward-only taper, with no hold and no
+    secondary exponential tail. The separate uphill brake has priority.
 
-    Input: [displayedGearLbs, [light, medium, moderate, heavy] brace relief,
-            [lightMaxLbs, mediumMaxLbs, moderateMaxLbs]].
-    Output: [accelerationRateScale, decelerationRateScale, coastDurationScale,
-             launchBraceDurationScale, interpolatedBraceRelief].
-
-    Scales modify response, never steady sprint/walk targets. The existing
-    brace speed, response and duration settings remain the baseline. Relief
-    interpolates from light at zero load to medium/lightMax, moderate/mediumMax
-    and heavy/moderateMax; a heavy kit retains its original full brace dip.
-    Load beyond moderateMax + 50 lb does not add unbounded response delay.
+    Returns [accelerationScale, decelerationScale, coastScale,
+             launchDurationScale, originalTierBraceRelief].
 */
 GAIT_fnc_gearInertia = {
     params [
@@ -28,38 +18,26 @@ GAIT_fnc_gearInertia = {
     private _lightMax = (_thresholds param [0, 35, [0]]) max 1;
     private _mediumMax = (_thresholds param [1, 55, [0]]) max (_lightMax + 1);
     private _moderateMax = (_thresholds param [2, 75, [0]]) max (_mediumMax + 1);
-    private _lightRelief = (_braceRelief param [0, 0.55, [0]]) max 0 min 1;
-    private _mediumRelief = (_braceRelief param [1, 0.35, [0]]) max 0 min 1;
-    private _moderateRelief = (_braceRelief param [2, 0.18, [0]]) max 0 min 1;
-    private _heavyRelief = (_braceRelief param [3, 0, [0]]) max 0 min 1;
     private _landmarks = [0, _lightMax, _mediumMax, _moderateMax, _moderateMax + 25, _moderateMax + 50];
-    private _responses = [
-        [1.20, 1.40, 0.60, 0.90, _lightRelief],
-        [1.10, 1.20, 0.80, 0.95, _mediumRelief],
-        [1.00, 1.00, 1.00, 1.00, _moderateRelief],
-        [0.86, 0.84, 1.15, 1.08, _heavyRelief],
-        [0.73, 0.70, 1.30, 1.18, _heavyRelief],
-        [0.62, 0.60, 1.45, 1.28, _heavyRelief]
-    ];
+    private _acceleration = [1, 1, 0.98, 0.96, 0.93, 0.90];
+    private _coast = [0.90, 0.95, 1, 1.05, 1.10, 1.15];
     private _load = _gearLbs max 0 min (_landmarks select 5);
     private _segment = 0;
     for "_i" from 1 to 4 do {
         if (_load > (_landmarks select _i)) then {_segment = _i;};
     };
-    private _lowerLoad = _landmarks select _segment;
-    private _upperLoad = _landmarks select (_segment + 1);
-    private _fraction = (_load - _lowerLoad) / (_upperLoad - _lowerLoad);
-    private _lower = _responses select _segment;
-    private _upper = _responses select (_segment + 1);
-    private _result = [];
-    for "_i" from 0 to 4 do {
-        _result pushBack ((_lower select _i) + (((_upper select _i) - (_lower select _i)) * _fraction));
+    private _fraction = (_load - (_landmarks select _segment)) / ((_landmarks select (_segment + 1)) - (_landmarks select _segment));
+    private _accelerationScale = (_acceleration select _segment) + (((_acceleration select (_segment + 1)) - (_acceleration select _segment)) * _fraction);
+    private _coastScale = (_coast select _segment) + (((_coast select (_segment + 1)) - (_coast select _segment)) * _fraction);
+    private _tier = 3;
+    if (_gearLbs <= _lightMax) then {_tier = 0;} else {
+        if (_gearLbs <= _mediumMax) then {_tier = 1;} else {
+            if (_gearLbs <= _moderateMax) then {_tier = 2;};
+        };
     };
-    _result
+    [_accelerationScale, 1, _coastScale, 1, (_braceRelief param [_tier, 0, [0]]) max 0 min 1]
 };
 
-// Preserve the time constant when applying a rate scale to the existing
-// exponential 50 ms response. Caller passes this to stepSpeedCoefficient.
 GAIT_fnc_scaleInertiaRamp = {
     params [["_baseLerp", 0.05, [0]], ["_rateScale", 1, [0]]];
     _baseLerp = _baseLerp max 0 min 1;
@@ -67,41 +45,38 @@ GAIT_fnc_scaleInertiaRamp = {
     1 - ((1 - _baseLerp) ^ _rateScale)
 };
 
-// Resolve once per release and reuse for both the deadline and taper curve.
-// The enabled flag remains caller policy. Zero hold remains zero, and the
-// original hold/taper caps prevent excessive settings or load causing a coast
-// that never settles. Uphill shortening is applied AFTER this calculation.
+// Keep the stored hold argument for compatibility, but never apply it. Saved
+// alpha4 hold settings must not reintroduce input lag. The duration setting is
+// a scale: default .85 resolves to .383-.489 seconds across default load tiers.
 GAIT_fnc_gearCoastWindow = {
-    params [
-        ["_holdSeconds", 1, [0]],
-        ["_taperSeconds", 0.85, [0]],
-        ["_durationScale", 1, [0]]
-    ];
-    _durationScale = _durationScale max 0.25 min 2;
-    [((_holdSeconds max 0 min 3) * _durationScale) min 3,
-     ((_taperSeconds max 0.05 min 4) * _durationScale) max 0.05 min 4]
+    params [["_holdSeconds", 0, [0]], ["_taperSeconds", 0.85, [0]], ["_durationScale", 1, [0]]];
+    [0, ((_taperSeconds max 0.05 min 4) * 0.50 * (_durationScale max 0.9 min 1.15)) max 0.20 min 0.65]
 };
 
-// The target reaches walking at the end of its finite taper, but the actual
-// scalar response still trails that target. Keep the same movement family
-// through this remaining decay so a re-tap does not exit and re-enter sprint.
-// Raw turn/stop intent cancels immediately. A six-second upper bound prevents
-// tiny custom response settings from retaining the sprint family indefinitely.
+// Finite curve applied directly to the coefficient, not filtered a second
+// time. Output never exceeds the release value. The caller also limits it
+// to the current coefficient, so a rising live walk target cannot add speed.
+GAIT_fnc_forwardCoastPace = {
+    params ["_start", "_walk", "_elapsed", "_duration", ["_curve", 1.45, [0]]];
+    _start = _start max 0;
+    _walk = (_walk max 0) min _start;
+    private _t = (_elapsed / (_duration max 0.05)) max 0 min 1;
+    private _ease = _t * _t * (3 - (2 * _t));
+    private _keep = (1 - _ease) ^ (_curve max 1 min 3);
+    [_walk + ((_start - _walk) * _keep), _keep, _t < 1]
+};
+
+// Retain the sprint graph only for the finite curve while W stays held.
+// W+A/D are valid forward movement; pure strafe/back/stop are not coasting.
+// Compatibility arguments retain old call sites without any residual tail.
 GAIT_fnc_gearCoastActive = {
     params [
-        ["_enabled", false, [false]],
-        ["_sprinting", false, [false]],
-        ["_forward", false, [false]],
-        ["_lateral", false, [false]],
-        ["_protected", false, [false]],
-        ["_moving", false, [false]],
-        ["_currentCoef", 1, [0]],
-        ["_walkCoef", 1, [0]],
-        ["_now", 0, [0]],
-        ["_taperUntil", -999, [0]],
-        ["_taperActive", false, [false]]
+        ["_enabled", false, [false]], ["_sprinting", false, [false]],
+        ["_forward", false, [false]], ["_lateral", false, [false]],
+        ["_protected", false, [false]], ["_moving", false, [false]],
+        ["_currentCoef", 1, [0]], ["_walkCoef", 1, [0]],
+        ["_now", 0, [0]], ["_taperUntil", -999, [0]], ["_taperActive", false, [false]]
     ];
-    _enabled && {!_sprinting} && {_forward} && {!_lateral} && {_protected} && {_moving} &&
-    {_taperUntil >= 0} && {_now <= (_taperUntil + 6)} &&
-    {_taperActive || {_currentCoef > ((_walkCoef max 0) + 0.04)}}
+    _enabled && {!_sprinting} && {_forward} && {_moving} &&
+    {_taperActive} && {_taperUntil >= 0} && {_now < _taperUntil}
 };

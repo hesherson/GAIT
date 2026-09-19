@@ -366,6 +366,7 @@ GAIT_fnc_serviceLocomotionExit = {
     _unit setVariable ["GAIT_slopeExitSource", _animation];
     _unit setVariable ["GAIT_slopeExitTarget", _target];
     _unit setVariable ["GAIT_slopeExitDeadline", diag_tickTime + 1.5];
+    if (!isNil "GAIT_fnc_beginPaceHandoff") then {[_unit, _animation, _target] call GAIT_fnc_beginPaceHandoff;};
     diag_log format ["[GAIT_LOCOMOTION] exit Draw3D %1 -> %2", _animation, _target];
     [_unit, _target] call GAIT_fnc_requestLocomotionMove;
     true
@@ -523,9 +524,11 @@ GAIT_fnc_tickLocomotion = {
         // These variables are client-local input history, never public body
         // control. The normal ownership gates still guard every body action.
         [player, _input] call GAIT_fnc_observeLocomotionInput;
+        if (!isNil "GAIT_fnc_observePaceCalibration") then {[player, _input] call GAIT_fnc_observePaceCalibration;};
         [player, _input] call GAIT_fnc_observeReleaseMomentum;
         if ((player getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo [] ||
-            {(player getVariable ["GAIT_releasePendingCoefficient", -1]) >= 0}) then {
+            {(player getVariable ["GAIT_releasePendingCoefficient", -1]) >= 0} ||
+            {(player getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []}) then {
             [player, missionNamespace getVariable ["GAIT_nativeLastPreVegetation", 1], false]
                 call GAIT_fnc_applyNativeMovement;
         };

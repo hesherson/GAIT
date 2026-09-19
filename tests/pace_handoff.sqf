@@ -1,0 +1,51 @@
+/* Execute the production handoff lifecycle; replace the engine observation only. */
+private _assert = {params ["_ok", "_label"]; if (!_ok) then {throw ("FAIL " + _label);};};
+private _unit = player;
+private _match = ["sprint", "jog", 6, 4, 3.44, "rifle", "Df", "ground", 0];
+private _context = [true, false, "sprint", [0,0,0,1]];
+GAIT_fnc_paceHandoffContext = {_context};
+private _start = {
+    _unit setVariable ["GAIT_paceHandoff", [_match,diag_tickTime+0.5,false]];
+    _unit setVariable ["GAIT_releaseResume", []];
+};
+call _start;
+private _out = [_unit, 1.2] call GAIT_fnc_samplePaceHandoff;
+[abs (_out - 3.44/6) < 0.00001, "source endpoint starts at converted sprint coefficient"] call _assert;
+_context = [true,false,"sprint",[0,0,0,0.5]];
+_out = [_unit,0.86] call GAIT_fnc_samplePaceHandoff;
+[abs (_out - 3.44/5) < 0.00001, "outgoing primary clip uses complementary weight"] call _assert;
+_context = [true,false,"jog",[0,0,0,0.5]];
+_out = [_unit,0.86] call GAIT_fnc_samplePaceHandoff;
+[abs (_out - 3.44/5) < 0.00001, "live engine blend factor controls conversion"] call _assert;
+_context = [true,false,"jog",[0,0,0,1]];
+_out = [_unit,0.5] call GAIT_fnc_samplePaceHandoff;
+[abs (_out - 0.86) < 0.00001, "native endpoint reaches ordinary coefficient without a second tail"] call _assert;
+[(_unit getVariable ["GAIT_paceHandoff",[]]) isEqualTo [],"completed bridge retires"] call _assert;
+// Explicit transition clips use phase, and unsupported actions are not converted.
+call _start;
+_context = [true,false,"sprint_jog",[0.25,0,0,1]];
+_out = [_unit,0.86] call GAIT_fnc_samplePaceHandoff;
+[abs (_out - 3.44/5.5) < 0.00001,"explicit transition uses its normalized phase"] call _assert;
+_context = [true,false,"medical",[0,0,0,1]];
+_out = [_unit,0.75] call GAIT_fnc_samplePaceHandoff;
+[_out isEqualTo 0.75 && {(_unit getVariable ["GAIT_paceHandoff",[]]) isEqualTo []},"unknown action cancels without stealing its pace"] call _assert;
+// Mid-blend sprint re-press reverses physical matching and seeds brace protection.
+call _start;
+_context = [true,true,"jog",[0,0,0,1]];
+_out = [_unit,1.2] call GAIT_fnc_samplePaceHandoff;
+[abs (_out-0.86)<0.00001,"retap does not impose sprint coefficient on still-native jog"] call _assert;
+[abs (((_unit getVariable ["GAIT_releaseResume",[]]) select 0)-3.44/6)<0.00001,"retap supplies converted sprint seed"] call _assert;
+_context = [true,true,"sprint",[0,0,0,0.5]];
+_out = [_unit,1.2] call GAIT_fnc_samplePaceHandoff;
+[abs (_out-3.44/5)<0.00001,"reverse blend keeps remaining physical speed"] call _assert;
+_context = [true,true,"sprint",[0,0,0,1]];
+_out = [_unit,1.2] call GAIT_fnc_samplePaceHandoff;
+[abs (_out-3.44/6)<0.00001 && {(_unit getVariable ["GAIT_paceHandoff",[]]) isEqualTo []},"reverse endpoint hands remaining pace back to acceleration"] call _assert;
+call _start;
+_context = [false,false,"jog",[0,0,0,0.5]];
+_out = [_unit,0.86] call GAIT_fnc_samplePaceHandoff;
+[_out isEqualTo 0.86 && {(_unit getVariable ["GAIT_paceHandoff",[]]) isEqualTo []},"expired, changed input or lost ownership cancels immediately"] call _assert;
+_unit setVariable ["GAIT_paceHandoffCandidate",[_match,diag_tickTime+0.15]];
+[_unit,"sprint","stop"] call GAIT_fnc_beginPaceHandoff;
+[(_unit getVariable ["GAIT_paceHandoff",[]]) isEqualTo [],"stop cannot start a stale jog bridge"] call _assert;
+diag_log "GAIT TEST PASS: actual handoff sampler, live blend endpoints, explicit transition phase, retap conversion, unsafe context and stale target cancellation.";

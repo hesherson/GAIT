@@ -11,10 +11,10 @@ private _categoryMove = ["GAIT", "03 Movement and Sprint"];
 private _categoryCarry = ["GAIT", "04 ACE Carry Movement"];
 private _categoryWeight = ["GAIT", "05 Gear Weight Gates"];
 private _categoryBrace = ["GAIT", "06 Brace Step and Momentum"];
-private _categoryAudio = ["GAIT", "08 Audio and Hearing"];
-private _categoryVisual = ["GAIT", "09 Fatigue Vignette"];
-private _categorySlope = ["GAIT", "10 Terrain, Slopes, and Tripping"];
-private _categoryQoL = ["GAIT", "11 QoL, Presets, and Compatibility"];
+private _categoryAudio = ["GAIT", "07 Audio and Hearing"];
+private _categoryVisual = ["GAIT", "08 Fatigue Vignette"];
+private _categorySlope = ["GAIT", "09 Terrain, Slopes, and Tripping"];
+private _categoryQoL = ["GAIT", "10 QoL, Presets, and Compatibility"];
 
 private _addCheckbox = {
     params ["_name", "_title", "_tooltip", "_category", "_default"];
@@ -61,16 +61,16 @@ private _addList = {
 // -----------------------------------------------------
 // 01 General
 // -----------------------------------------------------
-["GAIT_ss_enabled", "Enable GAIT", "Master switch for GAIT's sprint, brace, momentum, audio, and visual systems. Turn off to release GAIT runtime control. The addon terrainSpeedCoef config remains until the addon is unloaded.", _categoryGeneral, true] call _addCheckbox;
-["GAIT_ss_tickRate", "Update rate", "Movement update interval in seconds. Acceleration timing stays consistent across update rates. Default: 0.05.", _categoryGeneral, 0.01, 0.20, 0.05, 2] call _addSlider;
+["GAIT_ss_enabled", "Enable GAIT", "Master switch for runtime movement, brace, fatigue audio and vignette. Disabling releases owned effects. Terrain config and the optional 20% ACE heartbeat patch remain until their PBOs are unloaded.", _categoryGeneral, true] call _addCheckbox;
+["GAIT_ss_tickRate", "Feature update interval", "Seconds between terrain, reserve and ordinary acceleration updates. Release interpolation is sampled each rendered frame. Default: 0.05 seconds.", _categoryGeneral, 0.01, 0.20, 0.05, 2] call _addSlider;
 
 ["GAIT_ss_masterTripFrequency", "Master: trip frequency", "Meta-knob that scales downhill trip chance without changing thresholds. 1.00 is baseline.", _categoryGeneral, 0.00, 3.00, 1.00, 2] call _addSlider;
-["GAIT_ss_masterFxIntensity", "Master: FX intensity", "Meta-knob that scales tinnitus/hearing/visual exhaustion effects. 1.00 is baseline.", _categoryGeneral, 0.00, 2.00, 1.00, 2] call _addSlider;
+["GAIT_ss_masterFxIntensity", "Fatigue effect intensity", "Scales GAIT tinnitus, hearing reduction and vignette strength. Does not scale ACE heartbeat. Vignette opacity remains capped at 14%. Default: 1.00.", _categoryGeneral, 0.00, 2.00, 1.00, 2] call _addSlider;
 
 // -----------------------------------------------------
 // 02 ACE Advanced Fatigue Integration
 // -----------------------------------------------------
-["GAIT_ss_aceBridgeEnabled", "Use ACE Advanced Fatigue physiology", "Lets ACE Advanced Fatigue provide the endurance/acidosis/muscle-damage model while GAIT controls movement feel.", _categoryACE, true] call _addCheckbox;
+["GAIT_ss_aceBridgeEnabled", "Read ACE Advanced Fatigue", "Allows GAIT to read active ACE Advanced Fatigue reserves and physiological penalties. This does not enable, disable or write ACE physiology. Default: enabled.", _categoryACE, true] call _addCheckbox;
 ["GAIT_ss_useAceReserveModel", "Use ACE reserve for sprint strength", "Reads ACE anaerobic/aerobic reserves, acidosis, and muscle damage to scale GAIT sprint speed and exhaustion effects.", _categoryACE, true] call _addCheckbox;
 ["GAIT_ss_clearAceMovementLocks", "Prevent ACE walk-lock override", "Clears only ACE Advanced Fatigue's forced-walk and block-sprint locks so GAIT movement is not overwritten.", _categoryACE, true] call _addCheckbox;
 ["GAIT_ss_registerAceAnimExclusion", "Protect GAIT animation speed", "Adds GAIT to ACE Advanced Fatigue's animation-speed exclusion list so ACE does not reset GAIT speed every fatigue tick.", _categoryACE, true] call _addCheckbox;
@@ -80,17 +80,16 @@ private _addList = {
 // -----------------------------------------------------
 // 03 Movement and Sprint
 // -----------------------------------------------------
-["GAIT_ss_normalSpeed", "Normal movement speed", "Base animation speed while not sprinting. 1.00 is normal Arma speed. Default: 0.86.", _categoryMove, 0.50, 1.50, 0.86, 2] call _addSlider;
-["GAIT_ss_sprintFullSpeed", "Fresh sprint speed", "Sprint speed multiplier while reserve is high. Default: 1.28.", _categoryMove, 0.70, 2.00, 1.28, 2] call _addSlider;
-["GAIT_ss_sprintExhaustedSpeed", "Exhausted sprint speed", "Sprint speed multiplier when reserve is depleted. Default: 0.89.", _categoryMove, 0.40, 1.50, 0.89, 2] call _addSlider;
-["GAIT_ss_sprintReserveMax", "Fallback sprint reserve", "Seconds of full sprint used when ACE Advanced Fatigue is unavailable or has not initialized yet. Default: 25.", _categoryMove, 1.00, 120.00, 25.00, 0] call _addSlider;
-["GAIT_ss_sprintRecoverTime", "Fallback recovery time", "Seconds to fully recover the fallback GAIT reserve when ACE Advanced Fatigue is unavailable. Default: 10.", _categoryMove, 1.00, 60.00, 10.00, 0] call _addSlider;
+["GAIT_ss_normalSpeed", "Ordinary movement coefficient", "Base animation coefficient for non-sprint movement before gear and slope modifiers. 1.00 is the active clip at its native playback rate, not a fixed speed in km/h. Default: 0.86.", _categoryMove, 0.50, 1.50, 0.86, 2] call _addSlider;
+["GAIT_ss_sprintFullSpeed", "Fresh sprint coefficient", "Base sprint animation coefficient at full reserve, before gear, slope and minimum pace-ratio modifiers. Not a speed in km/h. Default: 1.28.", _categoryMove, 0.70, 2.00, 1.28, 2] call _addSlider;
+["GAIT_ss_sprintExhaustedSpeed", "Exhausted sprint coefficient", "Base sprint animation coefficient at empty reserve, before gear, slope and minimum pace-ratio modifiers. Default: 0.89.", _categoryMove, 0.40, 1.50, 0.89, 2] call _addSlider;
+["GAIT_ss_sprintReserveMax", "Fallback sprint reserve", "Seconds of full sprint in the GAIT reserve model when ACE reserve reading is disabled, unavailable or not initialized. Default: 25 seconds.", _categoryMove, 1.00, 120.00, 25.00, 0] call _addSlider;
+["GAIT_ss_sprintRecoverTime", "Fallback reserve recovery", "Seconds to recover the GAIT fallback reserve. Does not change ACE recovery. Default: 10 seconds.", _categoryMove, 1.00, 60.00, 10.00, 0] call _addSlider;
 ["GAIT_ss_speedLerp", "Speed ramp smoothness", "How quickly current speed moves toward target speed. Lower is smoother/slower; higher is snappier. Default: 0.05.", _categoryMove, 0.01, 1.00, 0.05, 2] call _addSlider;
 ["GAIT_ss_wReleaseZeroMomentumDelay", "W-release zero-momentum delay", "Seconds after releasing forward movement before the next sprint start is treated as zero momentum. Lower values make brace return sooner. Default: 0.50.", _categoryMove, 0.00, 20.00, 0.50, 2] call _addSlider;
-["GAIT_ss_shiftReleaseRunTaperEnabled", "Smooth Shift-release taper", "Release Shift while holding W to slow smoothly over a short bounded interval. Releasing W cancels the coast; forward diagonals remain responsive. Default: enabled.", _categoryMove, true] call _addCheckbox;
-["GAIT_ss_shiftReleaseRunTaperDuration", "Shift-release taper duration", "Scale for the short forward slowdown. Effective duration is 0.35 times this value and a small load factor, bounded to 0.15-0.45 seconds. Default 0.85 gives about 0.27-0.34 seconds.", _categoryMove, 0.05, 4.00, 0.85, 2] call _addSlider;
-["GAIT_ss_shiftReleaseRunTaperHoldDuration", "Shift-release sustain (inactive)", "Legacy setting retained for saved profiles. Slowdown now begins immediately, so this value no longer changes movement.", _categoryMove, 0.00, 3.00, 1.00, 2] call _addSlider;
-["GAIT_ss_shiftReleaseRunTaperCurve", "Shift-release taper curve", "Shapes the smooth release curve: higher values lose pace sooner. Effective range is 1-3. The slowdown still reaches its endpoint within the bounded duration. Default: 1.45.", _categoryMove, 0.25, 5.00, 1.45, 2] call _addSlider;
+["GAIT_ss_shiftReleaseRunTaperEnabled", "Smooth sprint release", "Release sprint while keeping forward movement held to decelerate from current motion. Uses measured jog pace when a valid reference exists. Stop, direction changes and medical restrictions cancel promptly. Default: enabled.", _categoryMove, true] call _addCheckbox;
+["GAIT_ss_shiftReleaseRunTaperDuration", "Sprint release duration scale", "Sets the ceiling for the release ramp, not a fixed duration: value x 0.35 x gear factor, bounded to 0.15-0.45 seconds. Actual excess velocity shortens this down to 0.08 seconds. Default 0.85 gives a ceiling near 0.27-0.34 seconds.", _categoryMove, 0.05, 4.00, 0.85, 2] call _addSlider;
+["GAIT_ss_shiftReleaseRunTaperCurve", "Sprint release curve", "Shapes the finite slowdown. Higher values lose pace sooner. Effective range: 1-3. Does not add a hold or extend the deadline. Default: 1.45.", _categoryMove, 1.00, 3.00, 1.45, 2] call _addSlider;
 ["GAIT_ss_unarmedSprintNormalizer", "Unarmed sprint normalizer", "Multiplier applied when sprinting with no weapon out so holstering does not create an unrealistic speed boost. Default: 0.725.", _categoryMove, 0.30, 1.20, 0.725, 3] call _addSlider;
 
 // -----------------------------------------------------
@@ -123,32 +122,32 @@ private _addList = {
 ["GAIT_ss_sprintStartBraceDuration", "Brace duration", "How long the start-brace slowdown lasts, in seconds. Default: 0.15.", _categoryBrace, 0.00, 1.00, 0.15, 2] call _addSlider;
 ["GAIT_ss_sprintStartBraceSpeed", "Brace speed", "Animation speed target during the brace step. Lower is a stronger dip. Default: 0.42.", _categoryBrace, 0.10, 1.20, 0.42, 2] call _addSlider;
 ["GAIT_ss_sprintStartBraceLerp", "Brace snap", "How abruptly speed moves into the brace step. Higher is sharper; lower is smoother. Default: 0.575.", _categoryBrace, 0.01, 1.00, 0.575, 3] call _addSlider;
-["GAIT_ss_braceRequiredWalkTime", "Settle time before brace", "Seconds standing or slow-walking before the next sprint start is eligible for brace. Default: 2.", _categoryBrace, 0.00, 10.00, 2.00, 1] call _addSlider;
-["GAIT_ss_braceRecentSprintCooldown", "Momentum grace time", "Seconds after a sprint where re-pressing Shift preserves momentum and avoids another brace. Default: 3.", _categoryBrace, 0.00, 10.00, 3.00, 1] call _addSlider;
+["GAIT_ss_braceRequiredWalkTime", "Brace settle time", "Non-sprint settle interval used by normal brace readiness and momentum recovery. A true stop can independently rearm the brace; a moving sprint retap is protected. Default: 2 seconds.", _categoryBrace, 0.00, 10.00, 2.00, 1] call _addSlider;
+["GAIT_ss_braceRecentSprintCooldown", "Recent sprint grace", "Recent-sprint interval used by normal brace readiness and retained momentum. A real stop can still rearm brace before it expires. Default: 3 seconds.", _categoryBrace, 0.00, 10.00, 3.00, 1] call _addSlider;
 ["GAIT_ss_braceMinReserveRatio", "Brace reserve gate", "Minimum GAIT reserve ratio needed for brace when ACE reserve is not active. With ACE active, movement state owns brace. Default: 0.98.", _categoryBrace, 0.00, 1.00, 0.98, 2] call _addSlider;
 ["GAIT_ss_braceNoMomentumThreshold", "No-momentum threshold", "Coefficient margin used to detect settled walking. Established moving sprint momentum overrides all brace triggers until a real stop or settled recovery. Default: 0.04.", _categoryBrace, 0.00, 0.50, 0.04, 2] call _addSlider;
-["GAIT_ss_braceReadySpeedThreshold", "Brace-ready movement speed", "Maximum non-sprint movement speed that can arm the next brace. Higher makes walking/slow movement more likely to re-arm brace. Default: 4.0.", _categoryBrace, 0.00, 10.00, 4.00, 1] call _addSlider;
+["GAIT_ss_braceReadySpeedThreshold", "Brace-ready movement speed", "Non-sprint speed gate for ordinary brace readiness, in km/h. Crouch and a sufficiently long forward-input release can also arm it. Default: 4 km/h.", _categoryBrace, 0.00, 10.00, 4.00, 1] call _addSlider;
 ["GAIT_ss_slopeStopBraceEnabled", "Slope stop brace", "If enabled, stopping and restarting sprint on an incline makes the initial brace step more pronounced based on slope angle. Default: enabled.", _categoryBrace, true] call _addCheckbox;
 ["GAIT_ss_slopeStopBraceStartDegrees", "Slope brace starts", "Incline/decline angle where slope-aware brace begins. Default: 15 degrees.", _categoryBrace, 0.00, 60.00, 15.00, 1] call _addSlider;
 ["GAIT_ss_slopeStopBraceMaxDegrees", "Slope brace max angle", "Slope angle where the extra brace reaches full strength. Default: 35 degrees.", _categoryBrace, 5.00, 80.00, 35.00, 1] call _addSlider;
 ["GAIT_ss_slopeStopBraceExtraDuration", "Slope brace extra duration", "Extra brace duration added on steep inclines/declines. Default: 0.18 sec.", _categoryBrace, 0.00, 2.00, 0.18, 2] call _addSlider;
 ["GAIT_ss_slopeStopBraceExtraDip", "Slope brace extra dip", "Additional speed dip applied to the brace step on steep slopes. Default: 0.28.", _categoryBrace, 0.00, 0.90, 0.28, 2] call _addSlider;
 ["GAIT_ss_slopeStopBraceMemoryTime", "Slope brace memory", "Seconds after stopping sprint on an incline where the next sprint start still uses the slope brace. Default: 2.5 sec.", _categoryBrace, 0.00, 10.00, 2.50, 1] call _addSlider;
-["GAIT_ss_uphillReleaseBraceEnabled", "Uphill sprint-release brace", "Dig-in braking when releasing a moving uphill sprint. Uses the slope brace start/max angles, duration and dip; steeper slopes brake harder. Flat/downhill momentum is preserved. Default: enabled.", _categoryBrace, true] call _addCheckbox;
+["GAIT_ss_uphillReleaseBraceEnabled", "Uphill sprint-release brake", "Brief dig-in braking when releasing a moving uphill sprint. Uses the slope brace angles, duration and dip and takes priority over the ordinary release ramp. Releasing forward movement cancels its animation hold. Default: enabled.", _categoryBrace, true] call _addCheckbox;
 
 // -----------------------------------------------------
 // Weapon handling is left to ACE/native systems; no GAIT sway controls.
 // -----------------------------------------------------
 
 // -----------------------------------------------------
-// 08 Audio and Hearing
+// 07 Audio and Hearing
 // -----------------------------------------------------
-["GAIT_ss_tinnitusEnabled", "Enable tinnitus loop", "Enables GAIT tinnitus at high exhaustion. ACE Medical Feedback owns heartbeat audio; GAIT halves its sample volume.", _categoryAudio, true] call _addCheckbox;
+["GAIT_ss_tinnitusEnabled", "Enable tinnitus", "Enables GAIT tinnitus at high exhaustion. Separate optional gait_heartbeat.pbo fixes ACE heartbeat gain at 20% of original; this checkbox does not control it.", _categoryAudio, true] call _addCheckbox;
 ["GAIT_ss_tinnitusStartExhaustion", "Tinnitus starts at exhaustion", "Exhaustion level where tinnitus begins. 0 = immediately, 1 = only at max exhaustion. Default: 0.70.", _categoryAudio, 0.00, 1.00, 0.70, 2] call _addSlider;
-["GAIT_ss_audioStopExhaustion", "Audio stops below exhaustion", "Exhaustion level below which GAIT exhaustion audio fades out. Default: 0.10.", _categoryAudio, 0.00, 1.00, 0.10, 2] call _addSlider;
-["GAIT_ss_tinnitusMaxVolume", "Tinnitus max volume", "Maximum volume of the GAIT tinnitus loop. Default: 0.55.", _categoryAudio, 0.00, 2.00, 0.55, 2] call _addSlider;
+["GAIT_ss_audioStopExhaustion", "Tinnitus stop threshold", "GAIT tinnitus fades out below this exhaustion level. Does not stop ACE heartbeat or breathing. Default: 0.10.", _categoryAudio, 0.00, 1.00, 0.10, 2] call _addSlider;
+["GAIT_ss_tinnitusMaxVolume", "Tinnitus maximum gain", "Maximum GAIT tinnitus gain before the fatigue effect intensity multiplier. Does not change ACE heartbeat. Default: 0.55.", _categoryAudio, 0.00, 2.00, 0.55, 2] call _addSlider;
 ["GAIT_ss_audioFadeLerp", "Audio fade smoothness", "How quickly tinnitus volume moves toward its target. Higher changes faster. Default: 0.08.", _categoryAudio, 0.01, 1.00, 0.08, 2] call _addSlider;
-["GAIT_ss_hearingEnabled", "Enable hearing reduction", "Reduces hearing as exhaustion rises using ACE hearing capability. Default: enabled.", _categoryAudio, true] call _addCheckbox;
+["GAIT_ss_hearingEnabled", "Fatigue hearing reduction", "Applies a GAIT hearing-capability contribution through ACE when available. Other ACE hearing effects remain independently owned. Default: enabled.", _categoryAudio, true] call _addCheckbox;
 ["GAIT_ss_hearingMinVolume", "Minimum hearing volume", "Lowest hearing volume at maximum exhaustion. 1 = no reduction, 0 = muted. Default: 0.20.", _categoryAudio, 0.00, 1.00, 0.20, 2] call _addSlider;
 ["GAIT_ss_hearingFadeDuration", "Hearing fade duration", "Seconds used when changing hearing volume. Default: 0.20.", _categoryAudio, 0.00, 5.00, 0.20, 2] call _addSlider;
 
@@ -157,11 +156,11 @@ private _addList = {
 // -----------------------------------------------------
 ["GAIT_ss_fatigueVignetteEnabled", "Intermittent fatigue vignette", "Brief, subtle edge darkening when tired, separated by fully clear intervals. Replaces only ACE Advanced Fatigue blackout while active. Clears on recovery, disable or lost updates. Default: enabled.", _categoryVisual, true] call _addCheckbox;
 ["GAIT_ss_tunnelStartExhaustion", "Visuals start at exhaustion", "Exhaustion level where intermittent vignette pulses begin. Default: 0.18.", _categoryVisual, 0.00, 1.00, 0.18, 2] call _addSlider;
-["GAIT_ss_tunnelMaxStrength", "Maximum visual strength", "Scales fatigue vignette pulses; peak edge opacity is always capped at 14%. Default: 1.0.", _categoryVisual, 0.00, 2.00, 1.00, 2] call _addSlider;
+["GAIT_ss_tunnelMaxStrength", "Vignette strength scale", "Scales the fatigue pulse, together with fatigue effect intensity. Resulting strength saturates at 1 and peak edge opacity remains at most 14%. Default: 1.00.", _categoryVisual, 0.00, 2.00, 1.00, 2] call _addSlider;
 
 
 // -----------------------------------------------------
-// 10 Terrain, Slopes, and Tripping
+// 09 Terrain, Slopes, and Tripping
 // -----------------------------------------------------
 ["GAIT_ss_slopeHandlingEnabled", "Enable slope handling", "Enables GAIT terrain-aware sprint behavior. Uphill sprinting slows progressively instead of being blocked; downhill sprinting can give a small speed boost and optional trip risk on steep descents.", _categorySlope, true] call _addCheckbox;
 ["GAIT_ss_slopeSampleDistance", "Slope sample distance", "Meters ahead and behind the player used to measure the terrain slope in the current movement direction. Higher values smooth noisy terrain; lower values react faster. Default: 2.0.", _categorySlope, 0.50, 6.00, 2.00, 1] call _addSlider;
@@ -181,18 +180,17 @@ private _addList = {
 ["GAIT_ss_hillWalkSlowdownMaxDegrees", "Hill walk reference angle", "Slope angle where walking reaches the reference penalty. Pace continues decreasing on steeper terrain. Default: 40 degrees.", _categorySlope, 5.00, 80.00, 40.00, 1] call _addSlider;
 ["GAIT_ss_hillWalkUphillMaxPenalty", "Uphill walk reference penalty", "Normal movement loss at the walk reference angle, adjusted for kit weight. Default: 0.32.", _categorySlope, 0.00, 0.75, 0.32, 2] call _addSlider;
 ["GAIT_ss_hillWalkDownhillMaxPenalty", "Downhill walk max penalty", "Small normal movement speed loss while walking downhill before momentum builds. Default: 0.08.", _categorySlope, 0.00, 0.35, 0.08, 2] call _addSlider;
-["GAIT_ss_downhillMomentumEasyTriggerDegrees", "Downhill momentum starts", "Downhill angle where gravity-speed gain may begin. Lower values make downhill acceleration easier to trigger. Default: 10 degrees.", _categorySlope, 0.00, 30.00, 10.00, 1] call _addSlider;
 ["GAIT_ss_uphillFatigueDrainEnabled", "Increase uphill stamina drain", "Increases GAIT fallback reserve drain uphill when ACE reserves are unavailable. ACE calculates its own terrain exertion; its reserves and acidosis are read-only. Default: enabled.", _categorySlope, true] call _addCheckbox;
 ["GAIT_ss_uphillFatigueDrainStartDegrees", "Uphill drain starts", "Incline angle where additional uphill fatigue drain begins. Default: 10 degrees.", _categorySlope, 0.00, 45.00, 10.00, 1] call _addSlider;
 ["GAIT_ss_uphillFatigueDrainMaxDegrees", "Uphill drain max angle", "Incline angle where additional uphill fatigue drain reaches full strength. Default: 35 degrees.", _categorySlope, 5.00, 80.00, 35.00, 1] call _addSlider;
 ["GAIT_ss_uphillFatigueDrainMaxMultiplier", "Uphill max drain multiplier", "Maximum multiplier applied to sprint stamina drain on steep uphill terrain. 1.75 means 75% faster drain. Default: 1.75.", _categorySlope, 1.00, 4.00, 1.75, 2] call _addSlider;
 
-["GAIT_ss_downhillBoostEnabled", "Enable downhill boost", "When sprinting downhill, GAIT gives a small speed bonus as the descent gets steeper. Keep this subtle to avoid arcade movement. Default: enabled.", _categorySlope, true] call _addCheckbox;
-["GAIT_ss_downhillBoostStartDegrees", "Downhill boost starts", "Decline angle in degrees where the downhill speed boost begins. Default: 4 degrees.", _categorySlope, 0.00, 30.00, 4.00, 1] call _addSlider;
+["GAIT_ss_downhillBoostEnabled", "Enable downhill speed bonus", "Builds a load-dependent bonus during actual downhill sprint travel. Gain tapers again on extreme descents. Default: enabled.", _categorySlope, true] call _addCheckbox;
+["GAIT_ss_downhillBoostStartDegrees", "Downhill bonus starts", "Decline angle where the downhill speed bonus starts. This is the single onset control. Default: 4 degrees.", _categorySlope, 0.00, 30.00, 4.00, 1] call _addSlider;
 ["GAIT_ss_downhillBoostMaxDegrees", "Downhill max boost angle", "Decline angle where the downhill speed boost reaches its maximum configured value. Default: 18 degrees.", _categorySlope, 5.00, 60.00, 18.00, 1] call _addSlider;
 ["GAIT_ss_downhillMaxBoost", "Downhill base speed boost", "Base unloaded downhill bonus at full momentum, added to the sustained bonus below. Both scale down with kit weight and extreme descent angle. Default: 0.06.", _categorySlope, 0.00, 0.35, 0.06, 2] call _addSlider;
 ["GAIT_ss_downhillSustainedExtraBoost", "Sustained downhill bonus", "Additional unloaded downhill bonus built by actual sprint travel. Combined bonus is capped at 35%, reduced by kit weight, and tapered above 35 degrees. Zero removes this extra bonus. Default: 0.12.", _categorySlope, 0.00, 0.25, 0.12, 2] call _addSlider;
-["GAIT_ss_downhillMomentumBuildSeconds", "Downhill momentum build time", "Seconds of actual sprint travel to build 95% of downhill momentum. Moving sprint releases retain it; a real stop clears it. Default: 2.5 seconds.", _categorySlope, 0.50, 8.00, 2.50, 2] call _addSlider;
+["GAIT_ss_downhillMomentumBuildSeconds", "Downhill momentum build time", "Seconds of actual sprint travel to build 95% of downhill momentum. Releasing sprint allows decay while moving; releasing forward movement clears it. Default: 2.5 seconds.", _categorySlope, 0.50, 8.00, 2.50, 2] call _addSlider;
 
 ["GAIT_ss_downhillTripEnabled", "Enable steep downhill trips", "Allows a chance to stumble/ragdoll during fast grounded travel down a steep hill, including sprint deceleration. This does not apply damage by itself. Default: enabled.", _categorySlope, true] call _addCheckbox;
 ["GAIT_ss_downhillTripThresholdDegrees", "Trip risk starts above decline", "Downhill angle in degrees where trip risk begins during eligible travel above the actual speed minimum. The decline must be steeper than this value. Default: 28 degrees.", _categorySlope, 5.00, 70.00, 28.00, 1] call _addSlider;
@@ -200,7 +198,7 @@ private _addList = {
 ["GAIT_ss_downhillTripBaseChancePerSecond", "Trip base chance per second", "Per-second trip probability near the minimum decline, before current speed and weight scaling. 0.005 means 0.5% per second before scaling. Default: 0.005.", _categorySlope, 0.00, 1.00, 0.005, 3] call _addSlider;
 ["GAIT_ss_downhillTripMaxChancePerSecond", "Trip max chance per second", "Per-second trip probability at or beyond the max-risk decline, before current speed and weight scaling. 0.10 means 10% per second before scaling. Default: 0.10.", _categorySlope, 0.00, 1.00, 0.10, 2] call _addSlider;
 ["GAIT_ss_downhillTripCooldown", "Trip cooldown", "Minimum seconds between downhill trip attempts after a trip occurs. Prevents repeated ragdolls on one slope. Default: 10 seconds.", _categorySlope, 0.00, 60.00, 10.00, 1] call _addSlider;
-["GAIT_ss_downhillTripDuration", "Trip ragdoll duration", "How long the character stays ragdolled/unconscious after a downhill trip. Default: 1.00 second.", _categorySlope, 0.10, 8.00, 1.00, 2] call _addSlider;
+["GAIT_ss_downhillTripDuration", "Minimum trip ragdoll time", "Minimum time down after a GAIT trip. Recovery can take longer until horizontal speed falls below the get-up threshold, subject to the safety timeout. Default: 1 second.", _categorySlope, 0.10, 8.00, 1.00, 2] call _addSlider;
 ["GAIT_ss_downhillTripMinSpeedKmh", "Trip minimum speed", "Minimum actual horizontal speed for downhill trip checks. With speed scaling enabled, risk rises smoothly from zero above this speed. Default: 20 km/h.", _categorySlope, 0.00, 50.00, 20.00, 1] call _addSlider;
 ["GAIT_ss_downhillTripSpeedMaxKmh", "Trip reference speed", "Horizontal speed in km/h used to calibrate trip risk. Risk continues rising above this speed. Default: 34 km/h.", _categorySlope, 5.00, 70.00, 34.00, 1] call _addSlider;
 ["GAIT_ss_downhillTripSpeedInfluence", "Trip speed influence", "Trip risk curve for actual horizontal speed above the minimum. 0 disables speed scaling; 1 is linear; 2 uses a quadratic curve. Default: 1.", _categorySlope, 0.00, 2.00, 1.00, 2] call _addSlider;
@@ -216,7 +214,7 @@ private _addList = {
 
 
 // -----------------------------------------------------
-// 11 QoL, Presets, and Compatibility
+// 10 QoL, Presets, and Compatibility
 // -----------------------------------------------------
 [
     "GAIT_ss_preset",
@@ -231,22 +229,19 @@ private _addList = {
 [
     "GAIT_ss_compatibilityMode",
     "Compatibility mode",
-    "Controls how aggressively GAIT overrides movement. Full/Hybrid are intended modes. Minimal keeps fatigue effects but avoids movement control. Visuals Only avoids movement and hearing changes. Disabled safely resets GAIT effects.",
+    "Movement and effects runs the full controller. Effects and hearing disables movement changes. Visuals and tinnitus also disables hearing reduction. Disabled releases runtime effects. The fixed config patches remain loaded.",
     _categoryQoL,
-    [0, 1, 2, 3, 4],
-    ["Full GAIT Control", "ACE-Friendly Hybrid", "Minimal Movement Override", "Visuals/Audio Only", "Disabled"],
-    1
+    [1, 2, 3, 4],
+    ["Movement and effects", "Effects and hearing", "Visuals and tinnitus", "Disabled"],
+    0
 ] call _addList;
 
-["GAIT_ss_resetOnRespawn", "Reset effects on respawn", "Automatically clears GAIT movement speed, hearing, tinnitus, and visual effects when the local player respawns or changes player object. Recommended: enabled.", _categoryQoL, true] call _addCheckbox;
-["GAIT_ss_suspendInSpectator", "Suspend while spectating", "Suspends GAIT movement and effect writes when your camera is no longer attached to your player. Helps prevent stuck visuals during spectator, Zeus camera, or remote-control edge cases.", _categoryQoL, true] call _addCheckbox;
-["GAIT_ss_suspendWhileUnconscious", "Suspend while unconscious", "Suspends GAIT movement control while ACE reports the player unconscious. This avoids fighting ACE medical states and clears local fatigue effects cleanly.", _categoryQoL, true] call _addCheckbox;
 ["GAIT_ss_showStartupMessage", "Show startup message", "Shows a short systemChat message after mission start with the active preset, compatibility mode, and ACE Advanced Fatigue bridge state.", _categoryQoL, true] call _addCheckbox;
 ["GAIT_ss_showServerIndicator", "Show server/settings indicator", "In multiplayer, shows a reminder that server or mission CBA settings may override local Addon Options. Useful for units with server-forced presets.", _categoryQoL, true] call _addCheckbox;
 ["GAIT_ss_rptLogging", "Enable RPT logging", "Writes useful GAIT initialization, preset, lifecycle, and Zeus reset messages to the RPT for troubleshooting.", _categoryQoL, true] call _addCheckbox;
 
 ["GAIT_ss_debugHudEnabled", "Enable debug HUD", "Shows grade, real speed, resolved direction, coefficient targets, animation family, reserve and ACE locks. Default: disabled.", _categoryQoL, false] call _addCheckbox;
-["GAIT_ss_debugHudInterval", "Debug HUD refresh", "Seconds between debug HUD updates. Default: 0.10.", _categoryQoL, 0.03, 1.00, 0.10, 2] call _addSlider;
+["GAIT_ss_debugHudInterval", "Debug HUD refresh interval", "Seconds between debug HUD updates. Effective range: 0.05-1.00 seconds. Default: 0.10.", _categoryQoL, 0.05, 1.00, 0.10, 2] call _addSlider;
 ["GAIT_ss_hardLandingCamShakeEnabled", "Hard landing camera shake", "Adds a small camera shake when landing hard after a drop. Default: enabled.", _categoryAudio, true] call _addCheckbox;
 ["GAIT_ss_hardLandingMinVerticalSpeed", "Hard landing threshold", "Downward velocity required before landing shake can trigger. Default: 4 m/s.", _categoryAudio, 0.50, 20.00, 4.00, 1] call _addSlider;
 ["GAIT_ss_hardLandingShakeStrength", "Hard landing shake strength", "Scales camera shake strength on hard landings. Default: 1.00.", _categoryAudio, 0.00, 3.00, 1.00, 2] call _addSlider;
@@ -254,6 +249,6 @@ private _addList = {
 
 ["GAIT_ss_minSprintWalkRatio", "Minimum sprint / walk target ratio", "Conservative coefficient target floor relative to walking at the same grade and load. 1.20 preserves at least a 20% coefficient advantage after acceleration. Actual clip speeds must be verified in-game. Does not override injury, collision or special actions.", _categorySlope, 1.05, 1.50, 1.20, 2] call _addSlider;
 ["GAIT_ss_extraHeavyPenaltyPer50Lb", "Additional heavy-kit penalty", "Continuous load penalty beyond the heavy threshold: multiplier divided by 1 + value times extra pounds / 50. Default 0.18. Every additional pound continues to reduce walking and sprint pace.", _categoryWeight, 0.01, 1.00, 0.18, 2] call _addSlider;
-["GAIT_ss_slopeLocomotionEnabled", "Enable dedicated sprint animation family", "Uses a dedicated native direction map throughout standing sprint, keeping the same sprint family when terrain gets steeper. Forward and diagonal selections use sprint animations; lateral and reverse selections use native running animations. Experimental until tested in Arma; no maximum slope angle.", _categorySlope, true] call _addCheckbox;
+["GAIT_ss_slopeLocomotionEnabled", "Dedicated standing sprint animations", "Uses scoped native sprint clips for forward/diagonal standing movement and run clips for lateral/reverse movement, with one blended entry/exit. No terrain angle cutoff. Disabling uses native animation selection and disables the calibrated release handoff.", _categorySlope, true] call _addCheckbox;
 
 ["GAIT_ss_freshSprintWalkMargin", "Fresh reserve pace margin", "Extra sprint/walk coefficient ratio at full reserve, fading continuously with fatigue. Keeps reserve affecting speed when the walk-relative floor is active. Default 0.20 adds 20 percentage points to the minimum ratio when fresh.", _categorySlope, 0.01, 0.75, 0.20, 2] call _addSlider;

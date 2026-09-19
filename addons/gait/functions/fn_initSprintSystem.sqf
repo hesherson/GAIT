@@ -8,7 +8,7 @@
     - Native locomotion with scoped ACE fatigue movement-lock integration
     - Native/ACE weapon handling; tinnitus and hearing reduction
     - Short fatigue vignette pulses with clear intervals and owned cleanup
-    - ACE Medical Feedback heartbeat samples use half-volume config overrides
+    - ACE Medical Feedback heartbeat samples use 20% volume config overrides
 
     Removed from mission version:
     - Fast Carry script startup
@@ -52,7 +52,10 @@ GAIT_fnc_log = {
 GAIT_fnc_compatModeIndex = {
     private _mode = missionNamespace getVariable ["GAIT_ss_compatibilityMode", 1];
     if (_mode isEqualType "") then {
-        _mode = ["Full GAIT Control", "ACE-Friendly Hybrid", "Minimal Movement Override", "Visuals/Audio Only", "Disabled"] find _mode;
+        private _modern = ["Movement and effects", "Effects and hearing", "Visuals and tinnitus", "Disabled"] find _mode;
+        _mode = if (_modern >= 0) then {_modern + 1} else {
+            ["Full GAIT Control", "ACE-Friendly Hybrid", "Minimal Movement Override", "Visuals/Audio Only", "Disabled"] find _mode
+        };
         if (_mode < 0) then {_mode = 1;};
     };
 
@@ -60,8 +63,8 @@ GAIT_fnc_compatModeIndex = {
 };
 
 GAIT_fnc_compatModeName = {
-    private _names = ["Full GAIT Control", "ACE-Friendly Hybrid", "Minimal Movement Override", "Visuals/Audio Only", "Disabled"];
-    _names param [call GAIT_fnc_compatModeIndex, "ACE-Friendly Hybrid"]
+    private _names = ["Movement and effects", "Movement and effects", "Effects and hearing", "Visuals and tinnitus", "Disabled"];
+    _names param [call GAIT_fnc_compatModeIndex, "Movement and effects"]
 };
 
 GAIT_fnc_modeIsActive = {
@@ -88,7 +91,7 @@ GAIT_fnc_isSuspendedContext = {
     if (isNull player) exitWith {true};
     if (!alive player) exitWith {true};
 
-    if ((missionNamespace getVariable ["GAIT_ss_suspendWhileUnconscious", true]) && {player getVariable ["ACE_isUnconscious", false]}) exitWith {true};
+    if (player getVariable ["ACE_isUnconscious", false]) exitWith {true};
 
     // v1.6.0 (FIX 2 - Zeus / remote control): GAIT polls inputAction(MoveForward/
     // Turbo) and writes movement to `player`. When the Zeus/curator interface is
@@ -97,7 +100,7 @@ GAIT_fnc_isSuspendedContext = {
     // avatar - so GAIT was injecting movement the avatar would not otherwise make
     // (the "press W+Shift in Zeus and my body walks off" bug). Suspend GAIT
     // whenever direct first-person/third-person control of the avatar is not in
-    // effect. These checks run regardless of the suspendInSpectator toggle so the
+    // effect. These checks are unconditional so the
     // avatar can never be driven from a delegated context.
     //
     // Zeus / curator display open (RscDisplayCurator == 312).
@@ -105,14 +108,8 @@ GAIT_fnc_isSuspendedContext = {
     // BIS remote control leaves a back-reference on the controlling avatar.
     if (!isNull (player getVariable ["bis_fnc_moduleRemoteControl_unit", objNull])) exitWith {true};
 
-    if (missionNamespace getVariable ["GAIT_ss_suspendInSpectator", true]) then {
-        private _cam = cameraOn;
-
-        // Normal first-person/third-person player camera is player or vehicle player.
-        // Spectator/Zeus/remote-control cameras point at a different entity; if the
-        // camera is not on our avatar, our input is not driving our avatar.
-        if (!isNull _cam && {_cam != player} && {_cam != vehicle player}) exitWith {true};
-    };
+    private _cam = cameraOn;
+    if (!isNull _cam && {_cam != player} && {_cam != vehicle player}) exitWith {true};
 
     false
 };
@@ -192,6 +189,9 @@ GAIT_fnc_animLooksLikeRaisedCombat = {
     (_a find "sras") >= 0
 };
 
+// Arma 2.18+ engine boundary. Portable tests substitute this read only.
+GAIT_fnc_readPaceMoveInfo = {params ["_unit"]; getUnitMovesInfo _unit};
+
 // Traversal helpers are definitions only, loaded before any client loops start.
 call compile preprocessFileLineNumbers "\gait\functions\fn_traversalHelpers.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_slopePaceModel.sqf";
@@ -200,6 +200,7 @@ call compile preprocessFileLineNumbers "\gait\functions\fn_braceMomentum.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_gearInertia.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_downhillPace.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_uphillBrake.sqf";
+call compile preprocessFileLineNumbers "\gait\functions\fn_paceCalibration.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_releaseMomentum.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_slopeLocomotion.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_nativeController.sqf";
@@ -280,9 +281,7 @@ GAIT_fnc_tripPlayer = {
             [] call GAIT_fnc_releaseNativeMovement;
             _lastPlayer = player;
 
-            if (missionNamespace getVariable ["GAIT_ss_resetOnRespawn", true]) then {
-                ["player_object_changed"] call GAIT_fnc_resetEffects;
-            };
+            ["player_object_changed"] call GAIT_fnc_resetEffects;
 
             if (!_startupShown) then {
                 _startupShown = true;
@@ -299,7 +298,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha10"];
+missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha11"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -309,9 +308,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha10"];
         call GAIT_fnc_installNativeAceBridge;
         private _suspended = call GAIT_fnc_isSuspendedContext;
         if (_suspended && {!_lastSuspended}) then {
-            if (missionNamespace getVariable ["GAIT_ss_resetOnRespawn", true]) then {
-                ["suspended_context"] call GAIT_fnc_resetEffects;
-            };
+            ["suspended_context"] call GAIT_fnc_resetEffects;
         };
         _lastSuspended = _suspended;
 
@@ -564,10 +561,8 @@ GAIT_fnc_setTunnelVisionFX = {
     private _downhillTripMaxRagdollDuration = missionNamespace getVariable ["GAIT_ss_downhillTripMaxRagdollDuration", 6.0];
         _masterTripFrequency = missionNamespace getVariable ["GAIT_ss_masterTripFrequency", 1.00];
         _masterFxIntensity = missionNamespace getVariable ["GAIT_ss_masterFxIntensity", 1.00];
-        _downhillMomentumEasyTriggerDegrees = missionNamespace getVariable ["GAIT_ss_downhillMomentumEasyTriggerDegrees", 10.00];
         _shiftReleaseRunTaperEnabled = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true];
         _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85];
-        _shiftReleaseRunTaperHoldDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperHoldDuration", 1.00];
         _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
         _debugHudEnabled = missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false];
         _debugHudInterval = missionNamespace getVariable ["GAIT_ss_debugHudInterval", 0.10];
@@ -580,10 +575,6 @@ GAIT_fnc_setTunnelVisionFX = {
         // so existing presets remain sane.
         _masterTripFrequency = (_masterTripFrequency max 0.00) min 3.00;
         _masterFxIntensity = (_masterFxIntensity max 0.00) min 2.00;
-        _downhillMomentumEasyTriggerDegrees = (_downhillMomentumEasyTriggerDegrees max 0.00) min 30.00;
-        if (_downhillMomentumEasyTriggerDegrees > 0) then {
-            _downhillBoostStartDegrees = _downhillBoostStartDegrees min _downhillMomentumEasyTriggerDegrees;
-        };
         _downhillTripBaseChancePerSecond = _downhillTripBaseChancePerSecond * _masterTripFrequency;
         _downhillTripMaxChancePerSecond = _downhillTripMaxChancePerSecond * _masterTripFrequency;
         _tunnelMaxStrength = _tunnelMaxStrength * _masterFxIntensity;
@@ -594,7 +585,6 @@ GAIT_fnc_setTunnelVisionFX = {
     private _conflictScanDone = false;
     private _debugHudEnabled = missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false];
     private _debugHudInterval = missionNamespace getVariable ["GAIT_ss_debugHudInterval", 0.10];
-    private _downhillMomentumEasyTriggerDegrees = missionNamespace getVariable ["GAIT_ss_downhillMomentumEasyTriggerDegrees", 10.00];
     private _hardLandingCamShakeEnabled = missionNamespace getVariable ["GAIT_ss_hardLandingCamShakeEnabled", true];
     private _hardLandingMinVerticalSpeed = missionNamespace getVariable ["GAIT_ss_hardLandingMinVerticalSpeed", 4.0];
     private _hardLandingShakeStrength = missionNamespace getVariable ["GAIT_ss_hardLandingShakeStrength", 1.00];
@@ -614,7 +604,6 @@ GAIT_fnc_setTunnelVisionFX = {
     private _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
     private _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85];
     private _shiftReleaseRunTaperEnabled = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true];
-    private _shiftReleaseRunTaperHoldDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperHoldDuration", 1.00];
     private _lastForwardReleaseSerial = -1;
     private _slopeSmoothInitialized = false;
     private _smoothedSlopeDegrees = 0;
@@ -695,7 +684,6 @@ GAIT_fnc_setTunnelVisionFX = {
         // Refresh live Addon Options settings each tick.
         _debugHudEnabled = missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false];
         _debugHudInterval = missionNamespace getVariable ["GAIT_ss_debugHudInterval", 0.10];
-        _downhillMomentumEasyTriggerDegrees = missionNamespace getVariable ["GAIT_ss_downhillMomentumEasyTriggerDegrees", 10.00];
         _hardLandingCamShakeEnabled = missionNamespace getVariable ["GAIT_ss_hardLandingCamShakeEnabled", true];
         _hardLandingMinVerticalSpeed = missionNamespace getVariable ["GAIT_ss_hardLandingMinVerticalSpeed", 4.0];
         _hardLandingShakeStrength = missionNamespace getVariable ["GAIT_ss_hardLandingShakeStrength", 1.00];
@@ -709,7 +697,6 @@ GAIT_fnc_setTunnelVisionFX = {
         _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
         _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85];
         _shiftReleaseRunTaperEnabled = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true];
-        _shiftReleaseRunTaperHoldDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperHoldDuration", 1.00];
         _uphillFatigueDrainEnabled = missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainEnabled", true];
         _uphillFatigueDrainMaxDegrees = missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainMaxDegrees", 35.0];
         _uphillFatigueDrainMaxMultiplier = missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainMaxMultiplier", 1.75];
@@ -799,10 +786,8 @@ GAIT_fnc_setTunnelVisionFX = {
         _downhillTripMaxRagdollDuration = missionNamespace getVariable ["GAIT_ss_downhillTripMaxRagdollDuration", 6.0];
         _masterTripFrequency = missionNamespace getVariable ["GAIT_ss_masterTripFrequency", 1.00];
         _masterFxIntensity = missionNamespace getVariable ["GAIT_ss_masterFxIntensity", 1.00];
-        _downhillMomentumEasyTriggerDegrees = missionNamespace getVariable ["GAIT_ss_downhillMomentumEasyTriggerDegrees", 10.00];
         _shiftReleaseRunTaperEnabled = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true];
         _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85];
-        _shiftReleaseRunTaperHoldDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperHoldDuration", 1.00];
         _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
         _debugHudEnabled = missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false];
         _debugHudInterval = missionNamespace getVariable ["GAIT_ss_debugHudInterval", 0.10];
@@ -812,10 +797,6 @@ GAIT_fnc_setTunnelVisionFX = {
 
         _masterTripFrequency = (_masterTripFrequency max 0.00) min 3.00;
         _masterFxIntensity = (_masterFxIntensity max 0.00) min 2.00;
-        _downhillMomentumEasyTriggerDegrees = (_downhillMomentumEasyTriggerDegrees max 0.00) min 30.00;
-        if (_downhillMomentumEasyTriggerDegrees > 0) then {
-            _downhillBoostStartDegrees = _downhillBoostStartDegrees min _downhillMomentumEasyTriggerDegrees;
-        };
         _downhillTripBaseChancePerSecond = _downhillTripBaseChancePerSecond * _masterTripFrequency;
         _downhillTripMaxChancePerSecond = _downhillTripMaxChancePerSecond * _masterTripFrequency;
         _tunnelMaxStrength = _tunnelMaxStrength * _masterFxIntensity;
@@ -870,6 +851,10 @@ GAIT_fnc_setTunnelVisionFX = {
                 // Capture the raw release before this scheduler can write an
                 // ordinary coefficient. Draw3D shares this consumed edge state.
                 [player, _movementInput] call GAIT_fnc_observeReleaseMomentum;
+                if ((player getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []) then {
+                    [player, missionNamespace getVariable ["GAIT_nativeLastPreVegetation", _currentSpeed], false]
+                        call GAIT_fnc_applyNativeMovement;
+                };
                 private _releaseResume = player getVariable ["GAIT_releaseResume", []];
                 player setVariable ["GAIT_releaseResume", []];
                 private _releaseResumed = (count _releaseResume) isEqualTo 2 &&
@@ -1537,7 +1522,7 @@ GAIT_fnc_setTunnelVisionFX = {
 
                 // Publish a fresh ordinary target for the next raw release.
                 // Inventory/grade changes cannot restart an existing finite plan.
-                private _releaseWindow = [_shiftReleaseRunTaperHoldDuration, _shiftReleaseRunTaperDuration, _coastScale] call GAIT_fnc_gearCoastWindow;
+                private _releaseWindow = [0, _shiftReleaseRunTaperDuration, _coastScale] call GAIT_fnc_gearCoastWindow;
                 private _releasePermission = _momentumContextOk && {_movementEligible} && {_gaitStanceOk} &&
                     {_slopeHandlingEnabled} && {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]};
                 missionNamespace setVariable ["GAIT_releaseMomentumRequest", [player, _pacePair select 0,
@@ -1619,7 +1604,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 if (_debugHudEnabled && {(time - _lastDebugHudTime) >= ((_debugHudInterval max 0.05) min 1)}) then {
                     _lastDebugHudTime = time;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha10<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13<br/>Foundation: %14 | Measured pace profile: %15</t>",
+                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha11<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Slope family: %11 | Walk / sprint target: %12 / %13<br/>Foundation: %14 | Measured pace profile: %15</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,

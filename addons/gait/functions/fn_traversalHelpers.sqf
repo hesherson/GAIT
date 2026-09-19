@@ -33,7 +33,7 @@ GAIT_fnc_stepSpeedCoefficient = {
 
 GAIT_fnc_isSuspendedContext = {
     if (isNull player || {!local player} || {!alive player}) exitWith {true};
-    if ((missionNamespace getVariable ["GAIT_ss_suspendWhileUnconscious", true]) && {player getVariable ["ACE_isUnconscious", false]}) exitWith {true};
+    if (player getVariable ["ACE_isUnconscious", false]) exitWith {true};
     if (!isNull (findDisplay 312)) exitWith {true};
     if (!isNull (player getVariable ["bis_fnc_moduleRemoteControl_unit", objNull])) exitWith {true};
 
@@ -41,7 +41,7 @@ GAIT_fnc_isSuspendedContext = {
     // value was discarded and a spectator camera incorrectly returned false.
     private _camera = cameraOn;
     private _foreignCamera = !isNull _camera && {_camera != player} && {_camera != vehicle player};
-    if ((missionNamespace getVariable ["GAIT_ss_suspendInSpectator", true]) && {_foreignCamera}) exitWith {true};
+    if (_foreignCamera) exitWith {true};
     false
 };
 

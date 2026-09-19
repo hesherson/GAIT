@@ -41,6 +41,8 @@ SUITES = {
     "slope_state_selection": ("slopeLocomotion",),
     "locomotion_pace": ("slopePaceModel", "locomotionPace"),
     "release_momentum": ("releaseMomentum",),
+    "pace_calibration": ("paceCalibration",),
+    "pace_handoff": ("paceCalibration",),
     "release_runtime": ("releaseMomentum", "slopeLocomotion", "nativeController"),
     "gear_inertia": ("gearInertia", "traversalHelpers", "uphillBrake"),
     "locomotion_coast": ("traversalHelpers", "slopeLocomotion"),

@@ -124,7 +124,7 @@ param(
         foreach ($Folder in @('addons', '.hemtt', 'tests', 'tools')) {
             Copy-Item -LiteralPath (Join-Path $PackagePath $Folder) -Destination $RepoPath -Recurse -Force
         }
-        foreach ($File in @('mod.cpp', 'README_HEMTT.md', 'README_TEST_BUILD.md', 'README_SPEED_REFERENCE.md', 'DEPLOY_GITHUB.ps1')) {
+        foreach ($File in @('mod.cpp', 'README_HEMTT.md', 'README_TEST_BUILD.md', 'README_SPEED_REFERENCE.md', 'README_SETTINGS.md', 'DEPLOY_GITHUB.ps1')) {
             Copy-Item -LiteralPath (Join-Path $PackagePath $File) -Destination $RepoPath -Force
         }
         # Preserve the repository's existing ignore rules.
@@ -139,11 +139,11 @@ param(
         & hemtt build
         if ($LASTEXITCODE -ne 0) { throw 'HEMTT build failed. Source remains available for inspection; no new commit or push was made.' }
         & (Join-Path $RepoPath 'tools\verify_build.ps1') -BuildPath (Join-Path $RepoPath '.hemttout\build') -SourceRoot $RepoPath
-        Run-Git add -- addons .hemtt tests tools mod.cpp .gitignore README_HEMTT.md README_TEST_BUILD.md README_SPEED_REFERENCE.md DEPLOY_GITHUB.ps1
+        Run-Git add -- addons .hemtt tests tools mod.cpp .gitignore README_HEMTT.md README_TEST_BUILD.md README_SPEED_REFERENCE.md README_SETTINGS.md DEPLOY_GITHUB.ps1
         Run-Git diff --cached --check
         $ChangedFiles = @(Run-Git diff --cached --name-only)
         if ($ChangedFiles.Count -gt 0) {
-            Run-Git commit -m 'Fix pistol sprint handoff and release momentum continuity'
+            Run-Git commit -m 'Match measured animation pace and simplify active settings'
         }
         if (-not $NoPush) { Run-Git push -u origin $Branch }
         Write-Host "Built $Branch. Load local mod: $RepoPath\.hemttout\build"

@@ -81,7 +81,7 @@ $RequiredScripts = @(
     'fn_aceFatigueVisualBridge.sqf', 'fn_applyPreset.sqf', 'fn_braceMomentum.sqf',
     'fn_downhillPace.sqf', 'fn_fatigueVisuals.sqf', 'fn_gearInertia.sqf',
     'fn_initSprintSystem.sqf', 'fn_locomotionPace.sqf', 'fn_moduleResetEffects.sqf',
-    'fn_nativeController.sqf', 'fn_registerSettings.sqf', 'fn_releaseMomentum.sqf', 'fn_resetEffects.sqf',
+    'fn_nativeController.sqf', 'fn_registerSettings.sqf', 'fn_releaseMomentum.sqf', 'fn_paceCalibration.sqf', 'fn_resetEffects.sqf',
     'fn_slopeLocomotion.sqf', 'fn_slopePaceModel.sqf', 'fn_traversalHelpers.sqf',
     'fn_uphillBrake.sqf'
 )
@@ -109,6 +109,6 @@ try {
         }
     }
 } finally { $Hasher.Dispose() }
-Write-Host 'GAIT build verified: two PBOs, correct virtual paths, valid checksums, and all 17 runtime scripts.'
-if ($SourceRoot -ne '') { Write-Host 'All 17 embedded SQF files match the current source by SHA256.' }
+Write-Host 'GAIT build verified: two PBOs, correct virtual paths, valid checksums, and all 18 runtime scripts.'
+if ($SourceRoot -ne '') { Write-Host 'All 18 embedded SQF files match the current source by SHA256.' }
 Write-Host "Load this local mod folder: $BuildPath"

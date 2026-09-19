@@ -117,6 +117,7 @@ GAIT_fnc_clearReleaseMomentum = {
     params [["_unit", missionNamespace getVariable ["GAIT_nativeOwner", objNull], [objNull]]];
     if (!isNull _unit) then {
         _unit setVariable ["GAIT_releaseMomentumState", []];
+        _unit setVariable ["GAIT_releasePaceMatch", []];
         _unit setVariable ["GAIT_releaseBrakeHold", []];
         _unit setVariable ["GAIT_releasePendingCoefficient", -1];
         _unit setVariable ["GAIT_releaseResume", []];
@@ -139,6 +140,10 @@ GAIT_fnc_observeReleaseMomentum = {
     private _forward = (_input select 0) > 0.05;
     private _turbo = _input select 2;
     private _moving = _forward || {(_input select 0) < -0.05} || {abs (_input select 1) > 0.05};
+    if (!_moving && {(_unit getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []}) then {
+        [_unit] call GAIT_fnc_clearPaceHandoff;
+        [] call GAIT_fnc_releaseSpeedCoefficient;
+    };
     private _direction = [_input select 0, _input select 1] call GAIT_fnc_slopeDirection;
     private _release = (count _previous) isEqualTo 2 && {_previous select 0} && {!_turbo} &&
         {_previous select 1} && {_forward};
@@ -155,6 +160,7 @@ GAIT_fnc_observeReleaseMomentum = {
     if (_state isNotEqualTo []) then {
         if (!_live || {!_same} || {_brake} || {!(missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true])}) then {
             _unit setVariable ["GAIT_releaseMomentumState", []];
+        _unit setVariable ["GAIT_releasePaceMatch", []];
             _unit setVariable ["GAIT_releasePendingCoefficient", -1];
             _unit setVariable ["GAIT_releaseResume", []];
             if (_live && {_brake} && {_same}) then {
@@ -172,6 +178,7 @@ GAIT_fnc_observeReleaseMomentum = {
                 _unit setVariable ["GAIT_releasePendingCoefficient", _sample select 0];
                 _unit setVariable ["GAIT_releaseResume", [_sample select 0, _now]];
                 _unit setVariable ["GAIT_releaseMomentumState", []];
+        _unit setVariable ["GAIT_releasePaceMatch", []];
             };
         };
     };
@@ -184,9 +191,16 @@ GAIT_fnc_observeReleaseMomentum = {
             _unit setVariable ["GAIT_releaseBrakeHold", _identity];
         } else {
             if (missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true]) then {
-                private _plan = [_now, _speed, _applied, _ordinary, _window, _curve] call GAIT_fnc_releaseMomentumPlan;
+                private _match = [];
+                if (!isNil "GAIT_fnc_releasePaceMatch") then {
+                    _match = [_unit, _animation, _family, _direction, _speed, _applied, _ordinary] call GAIT_fnc_releasePaceMatch;
+                };
+                private _releaseTarget = if (_match isEqualTo []) then {_ordinary} else {_match select 0};
+                private _plan = [_now, _speed, _applied, _releaseTarget, _window, _curve] call GAIT_fnc_releaseMomentumPlan;
                 if (_plan isNotEqualTo []) then {
                     _unit setVariable ["GAIT_releaseMomentumState", [_plan, _identity]];
+                    _unit setVariable ["GAIT_releasePaceMatch", _match];
+                    missionNamespace setVariable ["GAIT_releasePaceMatched", _match isNotEqualTo []];
                     _unit setVariable ["GAIT_releasePendingCoefficient", -1];
                     missionNamespace setVariable ["GAIT_releaseStartMS", _plan select 2];
                     missionNamespace setVariable ["GAIT_releaseTargetMS", _plan select 3];
@@ -203,7 +217,9 @@ GAIT_fnc_observeReleaseMomentum = {
     // Unsafe/stale ownership can never be revived by a later render write.
     if (!_eligible || {!_owns} || {!_moving}) then {
         _unit setVariable ["GAIT_releasePendingCoefficient", -1];
-        _unit setVariable ["GAIT_releaseResume", []];
+        if ((_unit getVariable ["GAIT_paceHandoff", []]) isEqualTo [] || {!_forward} || {!_owns}) then {
+            _unit setVariable ["GAIT_releaseResume", []];
+        };
     };
     if (_state isNotEqualTo [] && {_owns} && {!_eligible || {!_moving}}) then {
         [] call GAIT_fnc_releaseSpeedCoefficient;
@@ -230,7 +246,14 @@ GAIT_fnc_sampleReleaseCoefficient = {
         missionNamespace setVariable ["GAIT_shiftReleaseRunTaperActive", _active];
         missionNamespace setVariable ["GAIT_shiftReleaseRunTaperKeep", _sample select 2];
         missionNamespace setVariable ["GAIT_shiftReleaseRunTaperTargetKmh", (_sample select 1) * 3.6];
-        if (!_active) then {_unit setVariable ["GAIT_releaseMomentumState", []];};
+        if (!_active) then {
+            private _match = _unit getVariable ["GAIT_releasePaceMatch", []];
+            if (_match isNotEqualTo []) then {
+                _unit setVariable ["GAIT_paceHandoffCandidate", [_match select 1, _now + 0.15]];
+            };
+            _unit setVariable ["GAIT_releaseMomentumState", []];
+            _unit setVariable ["GAIT_releasePaceMatch", []];
+        };
     };
     _coefficient
 };

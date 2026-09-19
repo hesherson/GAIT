@@ -1,5 +1,5 @@
 /*
-    GAIT alpha10 foundation acceptance recorder: read-only, 10 Hz, one file.
+    GAIT alpha11 foundation acceptance recorder: read-only, 10 Hz, one file.
     Copy into a saved Eden mission. With GAIT and ACE AF enabled, LOCAL EXEC:
       [60, "foundation first hill"] execVM "foundation_capture.sqf";
     Test step-off, W+Turbo, W+A/W+D, pure A/D, stop/restart and the steep hill.
@@ -35,7 +35,7 @@ private _seq = 0;
     "feedback: exhaustion,vignetteAlpha,vignetteHandle,ACEfatigueVisualOwned,pulseState",
     "release: active,startCoefficient,startKmh,targetKmh,keep",
     "trip: eligible,currentKmh,speedSeverity,speedMultiplier,chancePerSecond,sustainedGate,sprintSeconds,highSpeedSeconds,cooldownRemaining,immunityRemaining",
-    "releaseMotion: active,startMS,targetMS,duration,planAndClipIdentity,brakeHoldIdentity,lastPreVegetationCoefficient,currentWeapon",
+    "releaseMotion: active,startMS,targetMS,duration,planAndClipIdentity,brakeHoldIdentity,lastPreVegetationCoefficient,currentWeapon,matchedRelease,learnedReferences,handoff",
     "lock observations describe reported state; unassigned engine restrictions do not establish a stamina or load cause"]] call _emit;
 systemChat format ["GAIT foundation capture started for %1 seconds. Stop early with GAIT_foundationCaptureEnabled = false.", _duration];
 private _deadline = diag_tickTime + _duration;
@@ -129,7 +129,10 @@ waitUntil {
             missionNamespace getVariable ["GAIT_releaseDuration", -1],
             _unit getVariable ["GAIT_releaseMomentumState", []],
             _unit getVariable ["GAIT_releaseBrakeHold", []],
-            missionNamespace getVariable ["GAIT_nativeLastPreVegetation", -1], currentWeapon _unit];
+            missionNamespace getVariable ["GAIT_nativeLastPreVegetation", -1], currentWeapon _unit,
+            missionNamespace getVariable ["GAIT_releasePaceMatched", false],
+            count (_unit getVariable ["GAIT_paceMeasurements", []]),
+            _unit getVariable ["GAIT_paceHandoff", []]];
         ["SAMPLE", [diag_tickTime, diag_frameNo, _unit getVariable ["GAIT_locomotionPhase", "native"], _input,
             animationState _unit, gestureState _unit, _engine, _pace, _brace, _features, _uphillBrake, _gearInertia, _inputHistory, _lockDiagnostics, _feedback, _release, _trip, _releaseMotion]] call _emit;
     };

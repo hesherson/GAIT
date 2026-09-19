@@ -1,0 +1,7 @@
+{
+  "GAIT_ss_shiftReleaseRunTaperHoldDuration": "Inactive since alpha5; release starts immediately.",
+  "GAIT_ss_downhillMomentumEasyTriggerDegrees": "Redundant second onset cap; use Downhill boost starts. Defaults are unchanged; custom old caps should be entered in that remaining control.",
+  "GAIT_ss_resetOnRespawn": "Owned effects must always be cleaned up when the player changes or control is suspended.",
+  "GAIT_ss_suspendInSpectator": "Camera and delegated-control safety checks are always active.",
+  "GAIT_ss_suspendWhileUnconscious": "Medical suspension is always active."
+}

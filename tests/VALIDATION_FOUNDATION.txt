@@ -1,81 +1,53 @@
-GAIT 1.8.0-alpha10 validation
+GAIT 1.8.0-alpha11 validation — 2026-09-19
 
-HEMTT 1.21.0 build: PASS, with BI Tools staging enabled.
-Config version 1.8.0.10; 17 compiled SQF files; 2 PBOs.
-Nonblocking style advisories remain. No Arma runtime was available.
+HEMTT 1.21.0 build: PASS. Version 1.8.0.11; 18 compiled SQF scripts; 2 PBOs.
+Existing style advisories remain. Wiki refresh fell back to bundled metadata.
+No raw model/texture binarization was required. Arma runtime unavailable.
 
-All 20 actual-helper SQF-VM suites: PASS, zero diagnostics.
-Recorded source hashes match the final source. Portable evidence is in
-VALIDATION_RESULTS.json. The runner compiles each suite from current source.
-Engine boundary mocks do not simulate animation rendering or physical travel.
+All 22 actual-helper SQF-VM suites: PASS, zero diagnostics.
+Source hashes match final code; portable evidence: VALIDATION_RESULTS.json.
+New suites exercise stable passive observations, invalid/context-changing
+samples, grade/age-scoped reference lookup, unequal clip speeds, measured
+release endpoints, 101 blend weights, forward/reverse handoffs, retap seeds,
+expired/context-cancelled bridges and unknown-animation fallback.
+Engine context and clock boundaries are mocked; Arma physics is not simulated.
 
-New coverage:
-- Lowered-pistol blend recognition: the six added cases fail against the
-  alpha9 traversal helper and pass against alpha10. Ordinary lowered-pistol
-  entries now connect to the existing pistol family without another brace.
-- Actual release velocity affects finite duration at the same coefficient.
-  Same-clip conversion, load-window ordering, monotonic decay, exact endpoints,
-  early brace releases, malformed plans, partial retaps and 20/30/60/144 Hz
-  sampling are exercised by the pure planner suite.
-- The runtime suite executes the actual edge observer, finite sampler and
-  native coefficient writer with engine context/clock/I/O boundaries mocked.
-  Reversing main/render coefficient candidate order captures one plan, rejects
-  stale scheduled coefficients and preserves the preexisting ownership value.
-- A late sample applies the endpoint once; retaps return the remaining pace
-  and a main-loop resume seed. A later release captures new velocity and pace.
-- W-up, side/back/diagonal changes, weapon/family/clip changes, disabled settings,
-  invalid context, expired/replaced requests and foreign coefficient writes
-  cancel safely. Uphill braking takes priority and W-up cancels its clip hold.
-- Source integration mutation checks verify observer-before-write/graph order,
-  latest applied pace import, sole writer sampling, endpoint clearing and
-  brace protection on release resume. Full engine scheduler timing remains
-  an in-game check.
-
-Existing suites retain brace history, uphill braking, input and stop/retap
-policies, slope state selection, gear response, ACE status/native stamina
-ownership, downhill pace/trip behavior and intermittent fatigue cleanup.
-
-Animation graph: 7 tests PASS. The 36 original slope states/four action maps
-and four shortened native-action stop targets remain. Lowered-pistol entry
-and release edges are added to the existing pistol family. No forced walk
-stage, switchMove reset or repeated animation command is introduced.
-Native playback and root-motion data remain inherited.
-
-Heartbeat config: 3 tests PASS. All seven samples and pitches are unchanged.
-Gain remains 0.224403691, 20% of ACE's original db+1 amplitude. Packaging
-checks the compiled variants again. Other audio remains unchanged.
+Settings audit: 6 tests PASS. 122 unique live registrations, valid defaults,
+preset references/ranges, five retired controls absent, effective range/mode
+corrections and unconditional lifecycle cleanup. The source audit confirms
+readers and connections; it does not click every CBA option in a running game.
+Pace integration: 4 tests PASS. Loader, observer, endpoint, same-writer and
+bounded handoff/retap links; calibration contains no direct motion writes.
+Animation graph: 7 tests PASS. Heartbeat configuration: 3 tests PASS.
+Prefix/source payload: 4 tests PASS. Both PBOs have correct disjoint prefixes,
+valid SHA1 trailers and embedded runtime scripts identical to final source.
 
 Preservation and mutation self-tests: PASS. All 25 historical RC4 block hashes
-and three file reference hashes remain unchanged. Thirteen blocks are intact;
-twelve match after 44 exact reviewed reversals (six alpha10, 38 earlier).
-Four stamina, nine visual and nine release source integrations are protected.
-Defaults, presets, base brace tuning, fatigue/visual ownership and unrelated
-features remain protected. No GAIT aim/native-fatigue/recoil writers were added.
-Alpha9 gear, downhill and settings helpers are byte-identical in packaging.
+and three file reference hashes remain unchanged. Fifteen exact alpha11
+reversal groups precede the 44 historical authorized reversals. Defaults and
+unrelated gameplay stay protected except the documented settings cleanup.
+Alpha10 gear/brace, uphill/downhill, pace-model and fatigue-visual helpers
+remain byte-identical. No aim/native-fatigue/recoil writes were introduced.
 
-PBO prefix layout: 4 tests PASS. Core prefix gait and heartbeat prefix
-z\gait\addons\heartbeat remain disjoint. Both PBO SHA1 footers and all 17
-raw embedded scripts match final source. PowerShell build verification passes.
-Alpha8 deployment cleanup/build-verification behavior is retained.
+PowerShell 7.4.7 verification on Linux: PASS for both the fresh build and
+bundled standalone mod. All seven compiled heartbeat gains match 0.224403691
+(20% of original db+1 amplitude). ZIP CRC and SHA256 manifest are verified
+on creation.
 
-The ZIP contains full HEMTT source and ready_to_load/GAIT. VERIFY_READY.ps1
-validates that standalone build against the bundled source. A SHA256 manifest
-covers packaged source and build files; ZIP integrity is checked on creation.
-
-Reproduce from the project root:
+Reproduce from project root:
   hemtt build
   python tests/feature_preservation.py --self-test
+  python tests/settings_audit.py
+  python tests/pace_calibration_integration.py
   python tests/foundation_graph.py
   python tests/heartbeat_audio.py
   python tests/pbo_prefix_layout.py
   python tools/run_regressions.py --sqfvm /path/to/sqfvm --output /tmp/gait-tests
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/verify_build.ps1 -BuildPath .hemttout/build -SourceRoot .
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File VERIFY_READY.ps1
 
-Limits: observed velocity and coefficient form a local current-clip sample,
-not a calibrated native jog/walk target. Actual final cross-clip velocity,
-animation appearance, stopping distance, perceived loudness and visual effects
-require Arma acceptance. The short stop blend is not a measured guarantee of
-halved travel distance. No forced-velocity workaround is included. Windows
-deployment/junction behavior remains a target-platform check; PowerShell
-verification here ran under 7.4.7 on Linux.
+Limits: passive jog references require stable eligible travel in the current
+weapon/surface/grade context. Missing references retain alpha10 release.
+The two-clip blend model, actual cross-clip velocity, animation appearance,
+stopping distance, perceived loudness and visual effects require in-game
+acceptance. A shorter blend does not guarantee halved travel distance.
+Windows deployment/junction behavior remains a target-platform check.

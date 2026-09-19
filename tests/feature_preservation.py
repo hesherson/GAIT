@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Protect GAIT's retained RC4 tuning with exact user-authorized deltas through alpha10.
+"""Protect GAIT's retained RC4 tuning with exact user-authorized deltas through alpha11.
 
 Run: python tests/feature_preservation.py [project-root] [--self-test]
 No Arma, third-party packages or adjacent old checkout is required.
@@ -1720,7 +1720,7 @@ FATIGUE_VISUAL_INTEGRATION = [
 # the retained historical blocks. Behavioral suites test their outcomes.
 RELEASE_MOMENTUM_INTEGRATION = [('addons/gait/functions/fn_releaseMomentum.sqf',
   'actual velocity initializes finite release',
-  'private _plan = [_now, _speed, _applied, _ordinary, _window, _curve] call GAIT_fnc_releaseMomentumPlan;'),
+  'private _plan = [_now, _speed, _applied, _releaseTarget, _window, _curve] call GAIT_fnc_releaseMomentumPlan;'),
  ('addons/gait/functions/fn_releaseMomentum.sqf',
   'actual horizontal velocity measurement',
   'private _velocity = velocity _unit;\n'
@@ -1733,7 +1733,7 @@ RELEASE_MOMENTUM_INTEGRATION = [('addons/gait/functions/fn_releaseMomentum.sqf',
   'private _identity = [_weapon, _family, _direction, toLower _animation];'),
  ('addons/gait/functions/fn_releaseMomentum.sqf',
   'consumed release endpoint clears finite state',
-  'if (!_active) then {_unit setVariable ["GAIT_releaseMomentumState", []];};'),
+  '_unit setVariable ["GAIT_paceHandoffCandidate", [_match select 1, _now + 0.15]]; } ; _unit setVariable ["GAIT_releaseMomentumState", []];'),
  ('addons/gait/functions/fn_nativeController.sqf',
   'shared writer samples current finite release',
   '_coefficient = [_unit, _coefficient] call GAIT_fnc_sampleReleaseCoefficient;'),
@@ -1777,6 +1777,23 @@ def reverse_exact_delta(values: list[str], current: str, old: str,
     return values[:start] + tokenize(old) + values[start + len(needle):]
 
 
+ALPHA11_DELTAS = json.loads((Path(__file__).resolve().parent / "alpha11_authorized_deltas.json").read_text())
+
+
+def reverse_alpha11(values, relative, failures):
+    for delta in ALPHA11_DELTAS:
+        if delta["file"] != relative:
+            continue
+        needle = tokenize(delta["current"])
+        matches = [i for i in range(len(values)-len(needle)+1) if values[i:i+len(needle)] == needle]
+        if len(matches) != delta["count"]:
+            failures.append(relative + ": " + delta["label"] + ": unexpected current fragment count")
+            continue
+        for i in reversed(matches):
+            values = values[:i] + tokenize(delta["old"]) + values[i+len(needle):]
+    return values
+
+
 def verify(root: Path) -> tuple[list[str], dict[str, str]]:
     failures: list[str] = []
     locations: dict[str, str] = {}
@@ -1786,14 +1803,18 @@ def verify(root: Path) -> tuple[list[str], dict[str, str]]:
             failures.append(f"Missing unchanged tuning file: {relative}")
         elif relative == SETTINGS_FILE:
             settings = tokenize(path.read_text(encoding="utf-8-sig"))
+            settings = reverse_alpha11(settings, relative, failures)
             for label, current, old in AUTHORIZED_SETTINGS_DELTAS:
                 settings = reverse_exact_delta(settings, current, old,
                                                f"{SETTINGS_FILE}: {label}", failures)
             if token_digest(settings) != SETTINGS_RC4_TOKEN_SHA256:
-                failures.append(f"Registration code differs beyond exact authorized settings deltas through alpha10: {relative}")
+                failures.append(f"Registration code differs beyond exact authorized settings deltas through alpha11: {relative}")
         else:
             data = path.read_bytes()
             if relative == PRESETS_FILE:
+                for delta in ALPHA11_DELTAS:
+                    if delta["file"] == relative:
+                        data = reverse_exact_bytes(data, delta["current"].encode(), delta["old"].encode(), delta["label"], failures)
                 for label, current, old in AUTHORIZED_PRESET_DELTAS:
                     data = reverse_exact_bytes(data, current, old, f"{PRESETS_FILE}: {label}", failures)
             if hashlib.sha256(data).hexdigest() != expected:
@@ -1813,6 +1834,7 @@ def verify(root: Path) -> tuple[list[str], dict[str, str]]:
         if matches != 1:
             failures.append(f"Integration {label}: expected one exact executable fragment, found {matches}")
     if MAIN_FILE in sources:
+        sources[MAIN_FILE] = reverse_alpha11(sources[MAIN_FILE], MAIN_FILE, failures)
         for feature, label, current, old in AUTHORIZED_BLOCK_DELTAS:
             sources[MAIN_FILE] = reverse_exact_delta(sources[MAIN_FILE], current, old,
                                                      f"{feature}: {label}", failures)
@@ -1955,8 +1977,9 @@ def main() -> int:
             print("FAIL " + failure)
         return 1
     changed_blocks = {delta[0] for delta in AUTHORIZED_BLOCK_DELTAS}
-    print("PASS original slope pace bytes; preset bytes match after eight exact retired-entry restorations; original registrations match after exact reviewed deltas through alpha10")
+    print("PASS original slope pace bytes; preset bytes match after reviewed alpha11 and historical retired-entry restorations; original registrations match after exact reviewed deltas through alpha11")
     print(f"PASS {len(BLOCKS) - len(changed_blocks)} intact RC4 feature blocks; {len(changed_blocks)} blocks with {len(AUTHORIZED_BLOCK_DELTAS)} exact authorized deltas; all historical hashes retained")
+    print("PASS 15 exact alpha11 reversal groups for calibrated handoff integration and settings cleanup")
     print(f"PASS {len(NATIVE_STAMINA_INTEGRATION)} stamina, {len(FATIGUE_VISUAL_INTEGRATION)} visual and {len(RELEASE_MOMENTUM_INTEGRATION)} release source integrations; no GAIT aim/fatigue/recoil writers")
     for feature, relative in locations.items():
         print(f"  {feature}: {relative}")

@@ -1,12 +1,14 @@
-# GAIT alpha10 pistol handoff and release: feature preservation contract
+# GAIT alpha11 measured handoff and settings: feature preservation contract
+
+Alpha11 adds guarded passive jog-reference measurement, a measured release endpoint, and coefficient compensation during the existing native animation handoff. It removes five inactive/redundant/unsafe-to-disable controls, merges the duplicate movement-mode choice, and corrects descriptions and two UI ranges to match existing runtime clamps. No active gear, brace or steady pace default is retuned. The alpha10 behavior described below remains the fallback when a matching reference is unavailable. The two-clip blend model requires in-game validation.
 
 Alpha10 recognizes native lowered-pistol start blends and keeps an eligible forward sprint release in the current running clip for a short finite taper. The release samples horizontal velocity together with the applied coefficient; measured speed determines how long it takes to shed the excess. It then makes one ordinary blended exit. Alpha9's shorter stop blend, heavy-kit downhill increase, velocity-based trip risk and 20% heartbeat gain remain. The shared running brace, heavy-kit sprint permission, uphill pace, ACE physiology and intermittent fatigue visuals remain. These source and helper checks cannot establish actual animation interpolation, physical stopping distance or the destination native clip's speed in Arma.
 
 The reference is GAIT 1.7.0-rc4 from this investigation. The fixed historical hashes are retained. Unless another file is named, baseline line references below identify `addons/gait/functions/fn_initSprintSystem.sqf` in RC4.
 
-## Authorized changes through alpha10
+## Authorized changes through alpha11
 
-The guard retains all 25 original RC4 block hashes and all three file reference hashes. Thirteen executable blocks remain intact; twelve require forty-four exact reversals. Six alpha10 reversals restore the retired scheduled release fragments before the twelve alpha9 and twenty-six retained alpha2–alpha7 reversals. Changes are allowed only as exact reviewed fragments that are reversed in memory before comparison with RC4. A missing fragment, additional edit, reordered relief tier or retuned preserved value fails. Reference hashes must never be regenerated from current code to silence failures.
+Fifteen exact alpha11 reversal groups in `alpha11_authorized_deltas.json` first restore the reviewed alpha10 settings, preset and main-loop fragments in memory. The five removals and their reasons are listed in `settings_removals.json`; all remaining registrations are documented in `README_SETTINGS.md`. Historical reference hashes are unchanged. The guard retains all 25 original RC4 block hashes and all three file reference hashes. Thirteen executable blocks remain intact; twelve require forty-four exact reversals. Six alpha10 reversals restore the retired scheduled release fragments before the twelve alpha9 and twenty-six retained alpha2–alpha7 reversals. Changes are allowed only as exact reviewed fragments that are reversed in memory before comparison with RC4. A missing fragment, additional edit, reordered relief tier or retuned preserved value fails. Reference hashes must never be regenerated from current code to silence failures.
 
 | Area | Authorized change | What stays protected |
 | --- | --- | --- |
@@ -44,7 +46,7 @@ Alpha9's stop target still doubles the captured native idle interpolation rate f
 
 | Feature | Baseline code | Contract |
 | --- | --- | --- |
-| Player configuration and presets | Existing registrations in `fn_registerSettings.sqf`; complete `fn_applyPreset.sqf` | Preserve retained ranges, defaults, preset overrides and CBA priority after the exact authorized revisions through alpha10 listed above. Custom stops preset rewrites; forced mission/server values retain precedence. |
+| Player configuration and presets | Existing registrations in `fn_registerSettings.sqf`; complete `fn_applyPreset.sqf` | Preserve retained ranges, defaults, preset overrides and CBA priority after the exact authorized revisions through alpha11 listed above. Custom stops preset rewrites; forced mission/server values retain precedence. |
 | Live tuning and resets | 527–760, 772–942 | Preserve live setting refresh, preset application, reserve-ratio preservation when capacity changes, and existing state initialization and reset. Reset also clears movement-history, uphill-brake and coast ownership state. |
 | Sprint intent | 977–998 | Sprint pace requires held Turbo and positive resolved forward input, eligible movement, non-prone stance and no external sprint/walk lock. Actual crouch remains distinct from a crouch-key press. Animation ownership must use a separate condition. |
 | Input resolution | `fn_traversalHelpers.sqf`:8–26 | Preserve opposed-key cancellation, 0.05 deadzone, normalized diagonal input and held-Turbo semantics. TurnLeft/TurnRight are the strafe actions. Do not replace them with rotation actions. |
@@ -88,13 +90,13 @@ These are the main-loop fallbacks/shared Balanced values, not a replacement for 
 | Light / medium / moderate / heavy configured brace relief | 0.55 / 0.35 / 0.18 / 0; applied at 20% strength since alpha6 |
 | Slope-brace range / remembered-stop interval | 15–35° / 2.5 s |
 | Maximum added slope-brace duration / dip | 0.18 s / 0.28 |
-| Stored Shift-release hold / taper / exponent settings | 1.00 s / 0.85 s / 1.45; sustain is inactive and the active release window remains bounded |
+| Shift-release taper / exponent settings | 0.85 s / 1.45; inactive sustain control removed in alpha11; active release window remains bounded |
 | Grade magnitude rise / fall smoothing | 22 / 30 degrees per second |
 | Minimum sprint/walk coefficient ratio / fresh margin | 1.20 / 0.20 |
 | Unarmed sprint normalization | 0.725 |
 | ACE acidosis / muscle-damage penalty factors | 0.45 / 0.25 |
 
-The physical sprint speed must still be measured against walking at the same grade and kit. A coefficient ratio alone does not establish metres per second, especially when the selected animation changes. Any optional measured-pace adapter must default to the unchanged legacy calculation until a valid profile is explicitly supplied. It must not replace brace or momentum tuning.
+The physical sprint speed must still be measured against walking at the same grade and kit. A coefficient ratio alone does not establish metres per second, especially when the selected animation changes. Any optional measured-pace adapter must default to the unchanged legacy calculation until a valid profile is explicitly supplied; alpha11 separately learns guarded destination references for release handoffs. It must not replace brace or momentum tuning.
 
 ## The ownership boundary
 

@@ -33,13 +33,13 @@ for "_gate" from 0 to 4 do {
     ["AmovPercMrunSrasWrflDf","Df",false],["AmovPercMrunSrasWrflDf","Dnon",true],
     ["AmovPercMrunSrasWrflDl","Dr",true],["AmovPercMrunSrasWrflDr","Dr",false],["","Df",false]
 ];
-// The numerical coast never prolongs the sprint animation. Live input wins
-// on first release frame, even before the feature loop refreshes its envelope.
+// This pure policy handles Turbo intent only. The dispatcher separately
+// retains an eligible finite release clip; release_runtime covers that owner.
 {
     _x params ["_args", "_expected", "_label"];
     [(_args call GAIT_fnc_locomotionIntent) isEqualTo _expected, _label] call _assert;
 } forEach [
-    [[true,false,true],false,"release starts jog interpolation while W remains held"],
+    [[true,false,true],false,"Turbo release clears direct sprint intent while W remains held"],
     [[true,true,false],false,"no movement key means no sprint animation"],
     [[true,true,true],true,"raw Turbo accepts forward and lateral movement"],
     [[false,true,true],false,"context gate still prevents entry"]
@@ -78,7 +78,8 @@ private _resumes = 0;
     [[false,false,false,true,true],false,"issued exit observed at source completes cleanup"]
 ];
 // Exercise the real render dispatcher with exit service deliberately deferred.
-// This replaces only the body-effect boundary; no engine movement is mocked.
+// The finite release observer is a boundary stub here; release_runtime
+// executes its actual implementation and common coefficient writer.
 // A new fresh sprint submission cannot reach entry handling while cleanup
 // owns an unobserved entry. Read-only input observation must still record W
 // and Turbo edges during that safe deferral.
@@ -87,6 +88,7 @@ private _actualInput = GAIT_fnc_getMovementInput;
 private _actualDecision = GAIT_fnc_locomotionDecision;
 private _exitCalls = 0;
 GAIT_fnc_serviceLocomotionExit = {_exitCalls = _exitCalls + 1; false};
+GAIT_fnc_observeReleaseMomentum = {false};
 GAIT_fnc_getMovementInput = {[0,0,false]};
 GAIT_fnc_locomotionDecision = {throw "Deferred exit was overtaken by movement/entry handling";};
 missionNamespace setVariable ["GAIT_slopeOwner",player];

@@ -157,6 +157,23 @@ class FoundationGraph(unittest.TestCase):
             for field in ("variantsPlayer", "variantsAI"):
                 self.assertRegex(body, rf"\b{field}\[\]\s*=\s*\{{\s*\}};")
 
+    def test_lowered_pistol_enters_without_a_native_pose_detour(self):
+        lowered = {"AmovPercMstpSlowWpstDnon"}
+        lowered |= {f"AmovPerc{pace}SlowWpst{direction}" for pace in ("Mrun", "Mwlk") for direction in DIRECTIONS}
+        lowered |= {f"AmovPercMevaSlowWpst{direction}" for direction in FORWARD}
+        for name, (_, body) in self.states.items():
+            incoming = set(dict(edges(body, "InterpolateFrom")))
+            outgoing = set(dict(edges(body, "InterpolateTo")))
+            if properties(body)["GAIT_slopeFamily"] == "SrasWpst":
+                self.assertTrue(lowered <= incoming, name)
+                self.assertTrue(lowered <= outgoing, name)
+            else:
+                self.assertFalse(lowered & (incoming | outgoing), name)
+        stop_body = self.stops["AmovPercMstpSrasWpstDnon_GAITStop"][1]
+        self.assertTrue(lowered <= set(dict(edges(stop_body, "InterpolateFrom"))))
+        self.assertTrue(lowered <= set(dict(edges(stop_body, "InterpolateTo"))))
+        self.assertNotRegex(self.text, r"class AmovPerc\w*SlowWpst\w*_GAIT(?:Stop)?:")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

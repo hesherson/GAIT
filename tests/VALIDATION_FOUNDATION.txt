@@ -1,64 +1,61 @@
-GAIT 1.8.0-alpha9 validation
+GAIT 1.8.0-alpha10 validation
 
 HEMTT 1.21.0 build: PASS, with BI Tools staging enabled.
-Config version 1.8.0.9; 16 compiled SQF files; 2 PBOs.
+Config version 1.8.0.10; 17 compiled SQF files; 2 PBOs.
 Nonblocking style advisories remain. No Arma runtime was available.
 
-All 18 actual-helper SQF-VM suites: PASS, zero diagnostics.
+All 20 actual-helper SQF-VM suites: PASS, zero diagnostics.
 Recorded source hashes match the final source. Portable evidence is in
-VALIDATION_RESULTS.json. The runner compiles each suite from current source;
-engine boundary mocks do not simulate animation rendering or physical travel.
+VALIDATION_RESULTS.json. The runner compiles each suite from current source.
+Engine boundary mocks do not simulate animation rendering or physical travel.
 
-Movement coverage includes:
-- current release coefficient/velocity/time snapshots, captured vegetation
-  attenuation removal, stale snapshot rejection and repeated partial releases;
-- both render/main release processing orders, single-consumption tracking,
-  fresh Shift presses and W re-presses while Shift stays held;
-- early brace releases below the ordinary target skip deceleration coast and
-  continue the normal smooth ramp without a low-speed hold;
-- live stop/direction redirection during unfinished jog/stop handoffs;
-- an edge-only ordinary-movement stop, including a short ownership lease for
-  the main-before-render case, exact weapon/restored coefficient matching,
-  setting/context/medical/reload/foreign-coefficient exclusions;
-- existing brace history, uphill braking, input handling, slope state selection,
-  ACE status/native stamina ownership and intermittent fatigue cleanup.
+New coverage:
+- Lowered-pistol blend recognition: the six added cases fail against the
+  alpha9 traversal helper and pass against alpha10. Ordinary lowered-pistol
+  entries now connect to the existing pistol family without another brace.
+- Actual release velocity affects finite duration at the same coefficient.
+  Same-clip conversion, load-window ordering, monotonic decay, exact endpoints,
+  early brace releases, malformed plans, partial retaps and 20/30/60/144 Hz
+  sampling are exercised by the pure planner suite.
+- The runtime suite executes the actual edge observer, finite sampler and
+  native coefficient writer with engine context/clock/I/O boundaries mocked.
+  Reversing main/render coefficient candidate order captures one plan, rejects
+  stale scheduled coefficients and preserves the preexisting ownership value.
+- A late sample applies the endpoint once; retaps return the remaining pace
+  and a main-loop resume seed. A later release captures new velocity and pace.
+- W-up, side/back/diagonal changes, weapon/family/clip changes, disabled settings,
+  invalid context, expired/replaced requests and foreign coefficient writes
+  cancel safely. Uphill braking takes priority and W-up cancels its clip hold.
+- Source integration mutation checks verify observer-before-write/graph order,
+  latest applied pace import, sole writer sampling, endpoint clearing and
+  brace protection on release resume. Full engine scheduler timing remains
+  an in-game check.
 
-Downhill pace: 814 checks PASS. Default peak downhill targets rise about 1.97%
-at 100 displayed lb and 3.29% at 150 lb; loads through 55 lb are unchanged.
-Overall weight penalties, flat/uphill targets, sprint/ordinary pace floor and
-extreme-slope bonus taper remain. The immutable slope model is unchanged.
+Existing suites retain brace history, uphill braking, input and stop/retap
+policies, slope state selection, gear response, ACE status/native stamina
+ownership, downhill pace/trip behavior and intermittent fatigue cleanup.
 
-Downhill trip: 4096 checks PASS. Default risk scales linearly with actual
-horizontal speed above its minimum and continues rising above reference
-speed, within the final probability bound. Per-second probability composes
-across regular/irregular time intervals. Sustained high-speed history and
-already-earned sprint qualification survive Shift release while still fast.
-Unqualified sprint history cannot accrue sprint time after release. Stops,
-invalid movement context and speed dropping below the relevant gate clear
-qualification. Existing slope, weight, cooldown, immunity and recovery rules
-remain; current diagnostics clear before invalid scope branches.
-
-Animation graph: 6 tests PASS. Original 36 slope states/four action maps remain,
-with four additional native-action idle targets. Stop interpolationSpeed is 8,
-versus the native idle value 4 in the supplied gait32 RPT. Native animation
-playback speed and root-motion data are inherited unchanged. Graph checks
-verify blend routes and absence of forced switchMove resets/walk staging.
+Animation graph: 7 tests PASS. The 36 original slope states/four action maps
+and four shortened native-action stop targets remain. Lowered-pistol entry
+and release edges are added to the existing pistol family. No forced walk
+stage, switchMove reset or repeated animation command is introduced.
+Native playback and root-motion data remain inherited.
 
 Heartbeat config: 3 tests PASS. All seven samples and pitches are unchanged.
-Gain is 0.224403691, 20% of ACE's original db+1 amplitude, or 40% of alpha8.
-The optional addon still patches only ACE Medical Feedback heartbeat sounds.
-Compiled config entries are checked again during final packaging.
+Gain remains 0.224403691, 20% of ACE's original db+1 amplitude. Packaging
+checks the compiled variants again. Other audio remains unchanged.
 
 Preservation and mutation self-tests: PASS. All 25 historical RC4 block hashes
-and original file reference hashes remain. Only exact authorized alpha9
-movement and trip fragments/description edits are reversed before comparison.
-Defaults, ranges, presets, base brace tuning, fatigue/visual ownership and
-unrelated feature blocks remain protected. No GAIT aim/native-fatigue/recoil
-writers were introduced.
+and three file reference hashes remain unchanged. Thirteen blocks are intact;
+twelve match after 44 exact reviewed reversals (six alpha10, 38 earlier).
+Four stamina, nine visual and nine release source integrations are protected.
+Defaults, presets, base brace tuning, fatigue/visual ownership and unrelated
+features remain protected. No GAIT aim/native-fatigue/recoil writers were added.
+Alpha9 gear, downhill and settings helpers are byte-identical in packaging.
 
 PBO prefix layout: 4 tests PASS. Core prefix gait and heartbeat prefix
-z\gait\addons\heartbeat remain disjoint. Both PBO SHA1 footers and all 16 raw
-embedded scripts match final source. PowerShell build verification passes.
+z\gait\addons\heartbeat remain disjoint. Both PBO SHA1 footers and all 17
+raw embedded scripts match final source. PowerShell build verification passes.
 Alpha8 deployment cleanup/build-verification behavior is retained.
 
 The ZIP contains full HEMTT source and ready_to_load/GAIT. VERIFY_READY.ps1
@@ -75,10 +72,10 @@ Reproduce from the project root:
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/verify_build.ps1 -BuildPath .hemttout/build -SourceRoot .
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File VERIFY_READY.ps1
 
-Limitations: half-duration stopping is the nominal blend-rate target, not a
-measured guarantee that travel distance is exactly halved. Actual stopping
-distance, cross-clip physical velocity continuity, animation appearance,
-perceived loudness and post-processing appearance require Arma acceptance.
-No measured clip-speed profiles or forced-velocity workaround are included.
-Windows deployment/junction behavior remains a target-platform check;
-PowerShell verification here ran under 7.4.7 on Linux.
+Limits: observed velocity and coefficient form a local current-clip sample,
+not a calibrated native jog/walk target. Actual final cross-clip velocity,
+animation appearance, stopping distance, perceived loudness and visual effects
+require Arma acceptance. The short stop blend is not a measured guarantee of
+halved travel distance. No forced-velocity workaround is included. Windows
+deployment/junction behavior remains a target-platform check; PowerShell
+verification here ran under 7.4.7 on Linux.

@@ -2,14 +2,20 @@
     GAIT 1.8.0-alpha1: one owner for the movement speed coefficient.
     Arma handles direction and collision inside the dedicated sprint action family.
 */
+// Engine boundary kept separate so ownership and both scheduler orders can
+// be executed in the portable regression harness.
+GAIT_fnc_nativeCoefficientLocal = {params ["_unit"]; local _unit};
+GAIT_fnc_readNativeCoefficient = {params ["_unit"]; getAnimSpeedCoef _unit};
+GAIT_fnc_writeNativeCoefficient = {params ["_unit", "_coefficient"]; _unit setAnimSpeedCoef _coefficient;};
+
 // Coefficient ownership can change during an ordinary animation blend.
 // Acquiring it must not issue a second body-animation release.
 GAIT_fnc_releaseSpeedCoefficient = {
     private _owner = missionNamespace getVariable ["GAIT_nativeOwner", objNull];
     private _written = missionNamespace getVariable ["GAIT_nativeLastWritten", -1];
-    if (!isNull _owner && {local _owner} && {_written >= 0}) then {
-        if (abs ((getAnimSpeedCoef _owner) - _written) < 0.001) then {
-            _owner setAnimSpeedCoef (missionNamespace getVariable ["GAIT_nativePreviousCoef", 1]);
+    if (!isNull _owner && {[_owner] call GAIT_fnc_nativeCoefficientLocal} && {_written >= 0}) then {
+        if (abs (([_owner] call GAIT_fnc_readNativeCoefficient) - _written) < 0.001) then {
+            [_owner, missionNamespace getVariable ["GAIT_nativePreviousCoef", 1]] call GAIT_fnc_writeNativeCoefficient;
         };
     };
     if (!isNil "ace_advanced_fatigue_setAnimExclusions") then {
@@ -17,11 +23,13 @@ GAIT_fnc_releaseSpeedCoefficient = {
     };
     missionNamespace setVariable ["GAIT_nativeOwner", objNull];
     missionNamespace setVariable ["GAIT_nativeLastWritten", -1];
+    missionNamespace setVariable ["GAIT_nativeLastPreVegetation", -1];
     missionNamespace setVariable ["GAIT_nativeMovementActive", false];
     missionNamespace setVariable ["GAIT_vegDragFactor", 0];
 };
 
 GAIT_fnc_releaseNativeMovement = {
+    if (!isNil "GAIT_fnc_clearReleaseMomentum") then {[] call GAIT_fnc_clearReleaseMomentum;};
     // Empty arguments prevent inheriting [unit, coefficient, carry] from the
     // speed writer. The release helper expects an input array in slot two.
     if (!isNil "GAIT_fnc_releaseSlopeLocomotion") then {[] call GAIT_fnc_releaseSlopeLocomotion;};
@@ -170,13 +178,18 @@ GAIT_fnc_applyNativeMovement = {
     params [["_unit", player, [objNull]], ["_coefficient", 1, [0]], ["_allowCarry", false, [false]]];
     if !([_unit, _allowCarry] call GAIT_fnc_nativeMovementEligible) exitWith {
         [] call GAIT_fnc_releaseNativeMovement;
+        _coefficient
     };
     private _owner = missionNamespace getVariable ["GAIT_nativeOwner", objNull];
     if (_owner != _unit) then {
         [] call GAIT_fnc_releaseSpeedCoefficient;
         missionNamespace setVariable ["GAIT_nativeOwner", _unit];
-        missionNamespace setVariable ["GAIT_nativePreviousCoef", getAnimSpeedCoef _unit];
+        missionNamespace setVariable ["GAIT_nativePreviousCoef", [_unit] call GAIT_fnc_readNativeCoefficient];
     };
+
+    // The finite release has one speed writer. Rendering and the feature loop
+    // both use it, so a delayed feature tick cannot replace a newer sample.
+    _coefficient = [_unit, _coefficient] call GAIT_fnc_sampleReleaseCoefficient;
 
     // Vegetation contributes to this same write, never a second speed loop.
     private _drag = 0;
@@ -205,7 +218,9 @@ GAIT_fnc_applyNativeMovement = {
         };
     };
     private _final = (_coefficient * (1 - _drag)) max 0.000001;
-    _unit setAnimSpeedCoef _final;
+    [_unit, _final] call GAIT_fnc_writeNativeCoefficient;
     missionNamespace setVariable ["GAIT_nativeLastWritten", _final];
+    missionNamespace setVariable ["GAIT_nativeLastPreVegetation", _coefficient];
     missionNamespace setVariable ["GAIT_nativeMovementActive", true];
+    _coefficient
 };

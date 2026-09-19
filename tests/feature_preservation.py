@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Protect GAIT's retained RC4 tuning with exact user-authorized deltas through alpha9.
+"""Protect GAIT's retained RC4 tuning with exact user-authorized deltas through alpha10.
 
 Run: python tests/feature_preservation.py [project-root] [--self-test]
 No Arma, third-party packages or adjacent old checkout is required.
@@ -760,6 +760,150 @@ MAIN_FILE = "addons/gait/functions/fn_initSprintSystem.sqf"
 # New helpers also require their separate SQF behavior tests.
 # Alpha9 permits only these reviewed release/trip integration changes.
 # The downhill helper and graph/stop additions have separate behavior guards.
+# Alpha10 retires only the broken scheduled coast implementation.
+# These exact reversals restore alpha9 before all earlier reviewed reversals.
+AUTHORIZED_ALPHA10_BLOCK_DELTAS = [('initial_tuning_and_momentum_state',
+  'alpha10 retire obsolete scheduled release timestamp',
+  'private _lastOnGround = true; private _lastSprintStopSlopeDegrees = 0;',
+  'private _lastOnGround = true; private _lastShiftReleaseTime = -999; private _lastSprintStopSlopeDegrees = 0;'),
+ ('initial_tuning_and_momentum_state',
+  'alpha10 retire scheduled coefficient-coast state',
+  'private _shiftReleaseRunTaperHoldDuration = missionNamespace getVariable '
+  '["GAIT_ss_shiftReleaseRunTaperHoldDuration", 1.00];\n'
+  '    private _lastForwardReleaseSerial = -1;',
+  'private _shiftReleaseRunTaperHoldDuration = missionNamespace getVariable '
+  '["GAIT_ss_shiftReleaseRunTaperHoldDuration", 1.00];\n'
+  '    private _shiftReleaseTaperActiveUntil = -999;\n'
+  '    private _shiftReleaseTaperStartKmh = _normalSpeed * 18;\n'
+  '    private _shiftReleaseTaperStartSpeed = _normalSpeed;\n'
+  '    // Snapshot the short release duration, so inventory changes cannot\n'
+  '    // move its deadline. Hold remains zero even with older saved settings.\n'
+  '    private _activeCoastHold = 0;\n'
+  '    private _activeCoastDuration = 0.05;\n'
+  '    private _lastForwardReleaseSerial = -1;'),
+ ('preset_and_reset_state',
+  'alpha10 retire scheduled coast reset fields',
+  '_smoothedSlopeDegrees = 0;\n'
+  '            _sprintReserve = _sprintReserveMax;\n'
+  '            _currentSpeed = _normalSpeed;\n'
+  '            _wasSprinting = false;\n'
+  '            _lastKnownSlopeDegrees = 0;',
+  '_smoothedSlopeDegrees = 0;\n'
+  '            _shiftReleaseTaperActiveUntil = -999;\n'
+  '            _lastShiftReleaseTime = -999;\n'
+  '            _sprintReserve = _sprintReserveMax;\n'
+  '            _currentSpeed = _normalSpeed;\n'
+  '            _wasSprinting = false;\n'
+  '            _lastKnownSlopeDegrees = 0;'),
+ ('step_off_brace_and_sprint_end',
+  'alpha10 render controller replaces scheduled release snapshot and deadline',
+  'player setVariable ["GAIT_sprintReleaseHandled", true];\n'
+  '\n'
+  '                        // The shared finite controller already sampled actual\n'
+  '                        // velocity and applied pace before either scheduler wrote.\n'
+  '                        _lastSprintStopSlopeDegrees = _slopeDegrees;',
+  'player setVariable ["GAIT_sprintReleaseHandled", true];\n'
+  '\n'
+  '                        // v1.1.49: Shift-release carry is separate from W-release coast.\n'
+  '                        // If Shift is released while W remains held, preserve the actual\n'
+  '                        // running speed briefly, then taper toward W-only speed. This fixes\n'
+  '                        // the exhausted snap from ~16 km/h to walk speed.\n'
+  '                        if (_isForwardHeld && {!_isBackHeld} && {!_forwardReleasedSinceTick} && '
+  '{_movementEligible}) then {\n'
+  '                            private _releasePace = [_renderReleaseSnapshot, time, _currentSpeed, '
+  '_horizontalSpeedMS]\n'
+  '                                call GAIT_fnc_releasePaceSnapshot;\n'
+  '                            _lastShiftReleaseTime = _releasePace select 0;\n'
+  '                            _shiftReleaseTaperStartSpeed = _releasePace select 1;\n'
+  '                            _shiftReleaseTaperStartKmh = (_releasePace select 2) * 3.6;\n'
+  '                            _currentSpeed = _shiftReleaseTaperStartSpeed;\n'
+  '                            private _coastWindow = [_shiftReleaseRunTaperHoldDuration, '
+  '_shiftReleaseRunTaperDuration, _coastScale] call GAIT_fnc_gearCoastWindow;\n'
+  '                            _activeCoastHold = _coastWindow select 0;\n'
+  '                            _activeCoastDuration = _coastWindow select 1;\n'
+  '                            _shiftReleaseTaperActiveUntil = _lastShiftReleaseTime + _activeCoastHold + '
+  '_activeCoastDuration;\n'
+  '\n'
+  '                        } else {\n'
+  '                            _lastShiftReleaseTime = -999;\n'
+  '                            _shiftReleaseTaperActiveUntil = -999;\n'
+  '                        };\n'
+  '\n'
+  '                        _lastSprintStopSlopeDegrees = _slopeDegrees;'),
+ ('shift_release_hold_and_taper',
+  'alpha10 same-clip measured release replaces scheduled coefficient-only curve',
+  'private _releaseWindow = [_shiftReleaseRunTaperHoldDuration, _shiftReleaseRunTaperDuration, _coastScale] '
+  'call GAIT_fnc_gearCoastWindow;\n'
+  '                private _releasePermission = _momentumContextOk && {_movementEligible} && {_gaitStanceOk} '
+  '&&\n'
+  '                    {_slopeHandlingEnabled} && {missionNamespace getVariable '
+  '["GAIT_ss_slopeLocomotionEnabled", true]};\n'
+  '                missionNamespace setVariable ["GAIT_releaseMomentumRequest", [player, _pacePair select '
+  '0,\n'
+  '                    _releaseWindow select 1, _shiftReleaseRunTaperCurve, _releasePermission,\n'
+  '                    diag_tickTime + ((4 * _tickRate) max 0.15 min 0.50)]];\n'
+  '                // Brake priority is published before the common writer, so a\n'
+  "                // render-started plan cannot override this tick's uphill brake.\n"
+  '                missionNamespace setVariable ["GAIT_uphillBrakeUnit", player];\n'
+  '                missionNamespace setVariable ["GAIT_uphillBrakeActive", _uphillBrakeActive];\n'
+  '                missionNamespace setVariable ["GAIT_uphillBrakeEndTime", if (_uphillBrakeActive) then '
+  '{_uphillBrakeState select 3} else {-1}];\n'
+  '                [player, _movementInput] call GAIT_fnc_observeReleaseMomentum;',
+  'private _shiftReleaseTaperActiveNow = false;\n'
+  '                private _shiftReleaseTaperHoldActiveNow = false;\n'
+  '                private _shiftReleaseTaperKeepNow = 0;\n'
+  '                private _shiftReleaseTaperTargetKmhNow = 0;\n'
+  '                if (_shiftReleaseRunTaperEnabled && {!_isSprinting} && {_movementEligible} && '
+  '{!_externalWalkLock} && {!_externalSprintLock} && {_isForwardHeld} && {!_isBackHeld} && '
+  '{_shiftReleaseTaperActiveUntil >= 0} &&\n'
+  '                    {[_shiftReleaseTaperStartSpeed, _targetSpeed] call GAIT_fnc_hasReleaseExcess}) then '
+  '{\n'
+  '                    private _releaseCurve = [_shiftReleaseTaperStartSpeed, _targetSpeed,\n'
+  '                        (time - _lastShiftReleaseTime) max 0, _activeCoastDuration, '
+  '_shiftReleaseRunTaperCurve]\n'
+  '                        call GAIT_fnc_forwardCoastPace;\n'
+  '                    _targetSpeed = (_releaseCurve select 0) min _currentSpeed;\n'
+  '                    _shiftReleaseTaperActiveNow = true;\n'
+  '                    _shiftReleaseTaperKeepNow = _releaseCurve select 1;\n'
+  '                    _shiftReleaseTaperTargetKmhNow = _actualSpeedKmh;\n'
+  '                    // Consume the endpoint once even if a delayed tick crosses\n'
+  '                    // the deadline; no residual speed or animation tail remains.\n'
+  '                    if !(_releaseCurve select 2) then {_shiftReleaseTaperActiveUntil = -999;};\n'
+  '                } else {\n'
+  '                    _shiftReleaseTaperActiveUntil = -999;\n'
+  '                };\n'
+  '                missionNamespace setVariable ["GAIT_shiftReleaseRunTaperActive", '
+  '_shiftReleaseTaperActiveNow];\n'
+  '                missionNamespace setVariable ["GAIT_shiftReleaseRunTaperHoldActive", '
+  '_shiftReleaseTaperHoldActiveNow];\n'
+  '                missionNamespace setVariable ["GAIT_shiftReleaseRunTaperKeep", '
+  '_shiftReleaseTaperKeepNow];\n'
+  '                missionNamespace setVariable ["GAIT_shiftReleaseRunTaperStartSpeed", '
+  '_shiftReleaseTaperStartSpeed];\n'
+  '                missionNamespace setVariable ["GAIT_shiftReleaseRunTaperStartKmh", '
+  '_shiftReleaseTaperStartKmh];\n'
+  '                missionNamespace setVariable ["GAIT_shiftReleaseRunTaperTargetKmh", '
+  '_shiftReleaseTaperTargetKmhNow];'),
+ ('brace_or_momentum_speed_ramp',
+  'alpha10 common writer owns finite release while ordinary ramp retains baseline response',
+  'if (!_isAceCarrying && {_isSprinting} && {!_uphillBrakeActive} && {_sprintBraceEndTime <= time} && '
+  '{_rampTarget > _currentSpeed}) then {\n'
+  '                        _ramp = [_ramp, _accelerationScale] call GAIT_fnc_scaleInertiaRamp;\n'
+  '                    };\n'
+  '                    _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call '
+  'GAIT_fnc_stepSpeedCoefficient;',
+  'if (!_isAceCarrying && {_isSprinting} && {!_uphillBrakeActive} && {_sprintBraceEndTime <= time} && '
+  '{_rampTarget > _currentSpeed}) then {\n'
+  '                        _ramp = [_ramp, _accelerationScale] call GAIT_fnc_scaleInertiaRamp;\n'
+  '                    };\n'
+  '                    if (_shiftReleaseTaperActiveNow && {!_uphillBrakeActive} && {!_isAceCarrying}) then '
+  '{\n'
+  '                        _currentSpeed = _rampTarget;\n'
+  '                    } else {\n'
+  '                        _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call '
+  'GAIT_fnc_stepSpeedCoefficient;\n'
+  '                    };')]
+
 AUTHORIZED_ALPHA9_BLOCK_DELTAS = [('step_off_brace_and_sprint_end',
   'alpha9 new sprint rearms one-shot rendered release capture',
   '_wasSprinting = true;\nplayer setVariable ["GAIT_sprintReleaseHandled", false];',
@@ -895,7 +1039,7 @@ AUTHORIZED_ALPHA9_BLOCK_DELTAS = [('step_off_brace_and_sprint_end',
   '{[_shiftReleaseTaperStartSpeed, _targetSpeed] call GAIT_fnc_hasReleaseExcess}) then {',
   '&& {_isForwardHeld} && {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0}) then {')]
 
-AUTHORIZED_BLOCK_DELTAS = AUTHORIZED_ALPHA9_BLOCK_DELTAS + [('trip_ragdoll_recovery',
+AUTHORIZED_BLOCK_DELTAS = AUTHORIZED_ALPHA10_BLOCK_DELTAS + AUTHORIZED_ALPHA9_BLOCK_DELTAS + [('trip_ragdoll_recovery',
   'alpha7 clear intermittent visuals before trip',
   '[] call GAIT_fnc_releaseFatigueVisuals;\n'
   '[] call GAIT_fnc_releaseNativeStaminaOwnership;\n'
@@ -1572,6 +1716,40 @@ FATIGUE_VISUAL_INTEGRATION = [
   '[] call GAIT_fnc_releaseACEFatigueVisualOwnership;\n'
   '};')]
 
+# Actual controller call sites protect the replacement release path beyond
+# the retained historical blocks. Behavioral suites test their outcomes.
+RELEASE_MOMENTUM_INTEGRATION = [('addons/gait/functions/fn_releaseMomentum.sqf',
+  'actual velocity initializes finite release',
+  'private _plan = [_now, _speed, _applied, _ordinary, _window, _curve] call GAIT_fnc_releaseMomentumPlan;'),
+ ('addons/gait/functions/fn_releaseMomentum.sqf',
+  'actual horizontal velocity measurement',
+  'private _velocity = velocity _unit;\n'
+  'private _speed = sqrt (((_velocity select 0) ^ 2) + ((_velocity select 1) ^ 2));'),
+ ('addons/gait/functions/fn_releaseMomentum.sqf',
+  'forward input and native ownership gate release',
+  'private _live = _eligible && {_owns} && {_forward};'),
+ ('addons/gait/functions/fn_releaseMomentum.sqf',
+  'exact current clip identity gates release',
+  'private _identity = [_weapon, _family, _direction, toLower _animation];'),
+ ('addons/gait/functions/fn_releaseMomentum.sqf',
+  'consumed release endpoint clears finite state',
+  'if (!_active) then {_unit setVariable ["GAIT_releaseMomentumState", []];};'),
+ ('addons/gait/functions/fn_nativeController.sqf',
+  'shared writer samples current finite release',
+  '_coefficient = [_unit, _coefficient] call GAIT_fnc_sampleReleaseCoefficient;'),
+ ('addons/gait/functions/fn_slopeLocomotion.sqf',
+  'rendered finite release uses shared movement writer',
+  '[player, missionNamespace getVariable ["GAIT_nativeLastPreVegetation", 1], false]\n'
+  'call GAIT_fnc_applyNativeMovement;'),
+ ('addons/gait/functions/fn_initSprintSystem.sqf',
+  'scheduled loop retains coefficient returned by writer',
+  '_currentSpeed = [player, _coef, _isAceCarrying] call GAIT_fnc_applyNativeMovement;'),
+ ('addons/gait/functions/fn_releaseMomentum.sqf',
+  'release resume uses current sample',
+  'private _sample = [_state select 0, _now] call GAIT_fnc_releaseMomentumSample;\n'
+  '_unit setVariable ["GAIT_releasePendingCoefficient", _sample select 0];\n'
+  '_unit setVariable ["GAIT_releaseResume", [_sample select 0, _now]];')]
+
 # Alpha7 explicitly removes GAIT's aim/fatigue writers. Inspect executable
 # tokens in every shipped function so a second writer cannot reappear outside
 # the historical blocks. ACE's own physiology remains outside GAIT ownership.
@@ -1612,7 +1790,7 @@ def verify(root: Path) -> tuple[list[str], dict[str, str]]:
                 settings = reverse_exact_delta(settings, current, old,
                                                f"{SETTINGS_FILE}: {label}", failures)
             if token_digest(settings) != SETTINGS_RC4_TOKEN_SHA256:
-                failures.append(f"Registration code differs beyond exact authorized settings deltas through alpha9: {relative}")
+                failures.append(f"Registration code differs beyond exact authorized settings deltas through alpha10: {relative}")
         else:
             data = path.read_bytes()
             if relative == PRESETS_FILE:
@@ -1627,7 +1805,7 @@ def verify(root: Path) -> tuple[list[str], dict[str, str]]:
         forbidden = FORBIDDEN_WEAPON_WRITES.intersection(value.lower() for value in values)
         if forbidden:
             failures.append(f"Weapon handling ownership: forbidden GAIT writer {sorted(forbidden)} in {relative}")
-    for relative, label, current in NATIVE_STAMINA_INTEGRATION + FATIGUE_VISUAL_INTEGRATION:
+    for relative, label, current in NATIVE_STAMINA_INTEGRATION + FATIGUE_VISUAL_INTEGRATION + RELEASE_MOMENTUM_INTEGRATION:
         values = sources.get(relative, [])
         needle = tokenize(current)
         matches = sum(values[i:i + len(needle)] == needle
@@ -1671,17 +1849,17 @@ def self_test(root: Path) -> None:
     mutations = [
         ("step_off_brace_and_sprint_end", 'player setVariable ["GAIT_sprintReleaseHandled", false];', 'player setVariable ["GAIT_sprintReleaseHandled", true];'),
         ("step_off_brace_and_sprint_end", 'player setVariable ["GAIT_sprintReleaseHandled", true];', 'player setVariable ["GAIT_sprintReleaseHandled", false];'),
-        ("shift_release_hold_and_taper", "[_shiftReleaseTaperStartSpeed, _targetSpeed] call GAIT_fnc_hasReleaseExcess", "true"),
+        ("shift_release_hold_and_taper", "_releasePermission = _momentumContextOk && {_movementEligible}", "_releasePermission = _momentumContextOk"),
         ("hard_landing_and_sprint_tracking", "&& {_gaitStanceOk} && {_onGroundNow} && {!_externalSprintLock}", "&& {_gaitStanceOk} && {!_externalSprintLock}"),
         ("hard_landing_and_sprint_tracking", "_tripMovementEligible, _isSprinting, _actualSpeedKmh, _downhillTripSustainedSpeedKmh", "_tripMovementEligible && {_isSprinting}, _isSprinting, _actualSpeedKmh, _downhillTripSustainedSpeedKmh"),
         ("directional_grade_trips_and_walk_pace", "private _tripSpeedFactors = [_actualSpeedKmh,", "private _tripSpeedFactors = [_sprintFullSpeed,"),
         ("directional_grade_trips_and_walk_pace", "_cooldownRemaining > 0) || {_immunityRemaining > 0}", "_cooldownRemaining > 0) || {false}"),
         ("directional_grade_trips_and_walk_pace", "[_chancePerSecond, _dt] call GAIT_fnc_downhillTripRollChance", "[_chancePerSecond, 0.05] call GAIT_fnc_downhillTripRollChance"),
         ("step_off_brace_and_sprint_end", "_wasSprinting || {_renderReleasedSinceTick}", "_wasSprinting || {false}"),
-        ("step_off_brace_and_sprint_end", "_lastShiftReleaseTime = _releasePace select 0;", "_lastShiftReleaseTime = time;"),
+        ("shift_release_hold_and_taper", "diag_tickTime + ((4 * _tickRate) max 0.15 min 0.50)", "diag_tickTime + 5"),
         ("step_off_brace_and_sprint_end", "max 0.08", "max 0.10"),
         ("step_off_brace_and_sprint_end", "_reserveRatioForBrace >= _braceMinReserveRatio", "_reserveRatioForBrace > _braceMinReserveRatio"),
-        ("shift_release_hold_and_taper", "_targetSpeed = (_releaseCurve select 0) min _currentSpeed;", "_targetSpeed = (_releaseCurve select 0) max _currentSpeed;"),
+        ("shift_release_hold_and_taper", '["GAIT_releaseMomentumRequest", [player, _pacePair select 0,', '["GAIT_releaseMomentumRequest", [player, _targetSpeed,'),
         ("sprint_pace_gate", "_turboHeld && {_isForwardHeld}", "_turboHeld && {_isForwardHeld || {_isLateralHeld}}"),
         ("frame_rate_independent_ramp", "(_dt max 0 min 0.20) / 0.05", "(_dt max 0 min 0.20) / 0.10"),
         ("step_off_brace_and_sprint_end", "private _canBrace = [_sprintStartBraceEnabled, _hasRetainedSprintMomentum || {_uphillBrakeResumed},", "private _canBrace = [_sprintStartBraceEnabled, false,"),
@@ -1691,9 +1869,9 @@ def self_test(root: Path) -> None:
         ("step_off_brace_and_sprint_end", "_sprintStartBraceDuration +", "(_sprintStartBraceDuration * 1.28) +"),
         ("gear_weight_and_brace_relief", "_braceRelief = _lightBraceRelief;", "_braceRelief = _heavyBraceRelief;"),
         ("gear_weight_and_brace_relief", "(_braceRelief max 0 min 1) * 0.20", "(_braceRelief max 0 min 1) * 0.25"),
-        ("shift_release_hold_and_taper", "&& {_isForwardHeld} && {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0}", "&& {!_isBackHeld} && {_shiftReleaseTaperActiveUntil >= 0}"),
-        ("shift_release_hold_and_taper", "if !(_releaseCurve select 2) then {_shiftReleaseTaperActiveUntil = -999;};", "if !(_releaseCurve select 2) then {_shiftReleaseTaperActiveUntil = time + 6;};"),
-        ("brace_or_momentum_speed_ramp", "_currentSpeed = _rampTarget;", "_currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;"),
+        ("shift_release_hold_and_taper", "_releasePermission = _momentumContextOk", "_releasePermission = true"),
+        ("shift_release_hold_and_taper", '["GAIT_uphillBrakeEndTime", if (_uphillBrakeActive) then {_uphillBrakeState select 3} else {-1}]', '["GAIT_uphillBrakeEndTime", -1]'),
+        ("brace_or_momentum_speed_ramp", "_currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;", "_currentSpeed = _rampTarget;"),
     ]
     with tempfile.TemporaryDirectory(prefix="gait-feature-preservation-") as directory:
         copy = Path(directory)
@@ -1720,6 +1898,19 @@ def self_test(root: Path) -> None:
             original = path.read_text(encoding="utf-8-sig")
             assert original.count(before) == 1, label
             path.write_text(original.replace(before, "", 1), encoding="utf-8")
+            assert any(label in failure for failure in verify(copy)[0]), label
+            path.write_text(original, encoding="utf-8")
+        for relative, label, fragment in RELEASE_MOMENTUM_INTEGRATION:
+            path = copy / relative
+            original = path.read_text(encoding="utf-8-sig")
+            # Match executable tokens so indentation does not affect the probe.
+            values = tokenize(original)
+            needle = tokenize(fragment)
+            indices = [i for i in range(len(values) - len(needle) + 1)
+                       if values[i:i + len(needle)] == needle]
+            assert len(indices) == 1, label
+            start = indices[0]
+            path.write_text(" ".join(values[:start] + values[start + len(needle):]), encoding="utf-8")
             assert any(label in failure for failure in verify(copy)[0]), label
             path.write_text(original, encoding="utf-8")
         # No file outside the legacy sway block may reclaim aim or native
@@ -1749,7 +1940,7 @@ def self_test(root: Path) -> None:
         assert not verify(copy)[0], "Intact extraction should preserve the feature"
         extracted_path.write_text("/*\n" + extracted + "\n*/", encoding="utf-8")
         assert any(feature["name"] in f for f in verify(copy)[0]), "A comment cannot preserve executable code"
-    print("PASS mutation checks: current-velocity trip scaling, high-speed qualification across release, ground/lock gates, immunity, composed roll interval, rendered release capture/deadline, unauthorized brace dip/duration, gear-relief anchors/scale, reserve gate, forward release target/gate/endpoint, sprint gate, ramp timing/direct response, momentum veto, release-resume veto, brake target direction, downhill integration, setting default, missing stamina acquisition/reset, missing vignette watchdog/update/cleanup, and reintroduced aim/fatigue/recoil writers are rejected; intact extraction is accepted")
+    print("PASS mutation checks: current-velocity trip scaling, high-speed qualification across release, ground/lock gates, immunity, composed roll interval, finite release velocity/ownership/identity/endpoint/writer/resume integrations, bounded permission lease, unauthorized brace dip/duration, gear-relief anchors/scale, reserve gate, forward release ordinary target/context and uphill precedence, sprint gate, ordinary ramp timing/response, momentum veto, release-resume veto, brake target direction, downhill integration, setting default, missing stamina acquisition/reset, missing vignette watchdog/update/cleanup, and reintroduced aim/fatigue/recoil writers are rejected; intact extraction is accepted")
 
 
 def main() -> int:
@@ -1764,9 +1955,9 @@ def main() -> int:
             print("FAIL " + failure)
         return 1
     changed_blocks = {delta[0] for delta in AUTHORIZED_BLOCK_DELTAS}
-    print("PASS original slope pace bytes; preset bytes match after eight exact retired-entry restorations; original registrations match after exact reviewed deltas through alpha9")
+    print("PASS original slope pace bytes; preset bytes match after eight exact retired-entry restorations; original registrations match after exact reviewed deltas through alpha10")
     print(f"PASS {len(BLOCKS) - len(changed_blocks)} intact RC4 feature blocks; {len(changed_blocks)} blocks with {len(AUTHORIZED_BLOCK_DELTAS)} exact authorized deltas; all historical hashes retained")
-    print(f"PASS {len(NATIVE_STAMINA_INTEGRATION)} stamina and {len(FATIGUE_VISUAL_INTEGRATION)} visual lifecycle source integrations; no GAIT aim/fatigue/recoil writers")
+    print(f"PASS {len(NATIVE_STAMINA_INTEGRATION)} stamina, {len(FATIGUE_VISUAL_INTEGRATION)} visual and {len(RELEASE_MOMENTUM_INTEGRATION)} release source integrations; no GAIT aim/fatigue/recoil writers")
     for feature, relative in locations.items():
         print(f"  {feature}: {relative}")
     if args.self_test:

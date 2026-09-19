@@ -1,14 +1,14 @@
-# GAIT 1.8.0-alpha9: build and deployment
+# GAIT 1.8.0-alpha10: build and deployment
 
-Save `GAIT_v1_8_0_ALPHA9_HEMTT.zip` to `M:\downloads`. Close Arma before rebuilding. HEMTT and Git must be on PATH. This test build requires Arma 3 2.18 or later.
+Save `GAIT_v1_8_0_ALPHA10_HEMTT.zip` to `M:\downloads`. Close Arma before rebuilding. HEMTT and Git must be on PATH. This test build requires Arma 3 2.18 or later.
 
 Paste this complete block into PowerShell. The installer repairs the old nested heartbeat link and verifies the built PBO contents before committing or pushing:
 
 ```powershell
 & {
     $ErrorActionPreference = 'Stop'
-    $Extract = 'M:\downloads\GAIT_Foundation_1_8_0_ALPHA9'
-    Expand-Archive -LiteralPath 'M:\downloads\GAIT_v1_8_0_ALPHA9_HEMTT.zip' `
+    $Extract = 'M:\downloads\GAIT_Foundation_1_8_0_ALPHA10'
+    Expand-Archive -LiteralPath 'M:\downloads\GAIT_v1_8_0_ALPHA10_HEMTT.zip' `
         -DestinationPath $Extract -Force
     Set-Location 'M:\downloads'
     powershell.exe -NoProfile -ExecutionPolicy Bypass `
@@ -39,9 +39,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\verify_build.ps1
 | Edit gameplay source | `F:\GAIT\addons\gait` |
 | Graph generator | `F:\GAIT\tools\generate_foundation_actions.py` |
 
-The core PBO's virtual prefix remains `gait`, preserving asset and function paths. The heartbeat PBO uses `z\gait\addons\heartbeat`; it must never be nested beneath the core `gait` prefix. The source ZIP contains existing PAA/OGG assets, tests and HEMTT configuration; the verified standalone build is included under `ready_to_load/GAIT`. Other temporary build output is excluded. HEMTT compiles sixteen addon SQF files and builds two PBOs. The optional gait_heartbeat.pbo sets ACE Medical Feedback heartbeat gain to 20% of its original level and skips loading if that ACE component is absent. Python is unnecessary for a normal build because the generated graph is already included.
+The core PBO's virtual prefix remains `gait`, preserving asset and function paths. The heartbeat PBO uses `z\gait\addons\heartbeat`; it must never be nested beneath the core `gait` prefix. The source ZIP contains existing PAA/OGG assets, tests and HEMTT configuration; the verified standalone build is included under `ready_to_load/GAIT`. Other temporary build output is excluded. HEMTT compiles seventeen addon SQF files and builds two PBOs. The optional gait_heartbeat.pbo sets ACE Medical Feedback heartbeat gain to 20% of its original level and skips loading if that ACE component is absent. Python is unnecessary for a normal build because the generated graph is already included.
 
-Load CBA_A3, ACE3 and the new local mod. Unload older GAIT copies and start a fresh mission with GAIT and ACE AF enabled. The runtime/HUD version is **1.8.0-alpha9**. Follow `README_TEST_BUILD.md` for heartbeat, ADS sway, fatigue vignette and movement checks.
+Load CBA_A3, ACE3 and the new local mod. Unload older GAIT copies and start a fresh mission with GAIT and ACE AF enabled. The runtime/HUD version is **1.8.0-alpha10**. Follow `README_TEST_BUILD.md` for heartbeat, ADS sway, fatigue vignette and movement checks.
 
 If HEMTT is missing, install it using the [official instructions](https://hemtt.dev/installation/index.html), then open a new PowerShell window. This package was built with HEMTT 1.21.0. The existing PAA/OGG assets require no raw model/texture binarization.
 

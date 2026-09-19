@@ -51,8 +51,9 @@ def ordinary_states(family):
     """Existing entry/release endpoints, not destinations for held-sprint input.
 
     Keep the RC3 native walk/run/sprint endpoints.  The lowered-rifle variant
-    names also occur in ACE's movement config.  Do not guess unarmed/pistol
-    tactical variants, special turn clips, or injury transitions.
+    names also occur in ACE's movement config.  Lowered pistol movement feeds
+    the same pistol sprint family; omitting it causes a native detour on entry.
+    Do not add unarmed/pistol tactical variants or special action transitions.
     """
     states = [native(family, "Dnon")]
     states += [
@@ -65,6 +66,13 @@ def ordinary_states(family):
             f"AmovPerc{pace}{family}{direction}_ver2"
             for pace in ("Mwlk", "Mtac") for direction in DIRECTIONS
         ]
+    if family == "SrasWpst":
+        states += ["AmovPercMstpSlowWpstDnon"]
+        states += [
+            f"AmovPerc{pace}SlowWpst{direction}"
+            for pace in ("Mrun", "Mwlk") for direction in DIRECTIONS
+        ]
+        states += [f"AmovPercMevaSlowWpst{direction}" for direction in DIRECTIONS if direction in FORWARD]
     return states
 
 

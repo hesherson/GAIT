@@ -1,45 +1,55 @@
-# GAIT 1.8.0-alpha9: movement transitions and downhill velocity
+# GAIT 1.8.0-alpha10: pistol startup and release momentum
 
 Requires Arma 3 2.18+, CBA_A3 and ACE3. Build/deploy commands are in README_HEMTT.md. Load only the new GAIT copy and start a fresh mission.
 
-## Changes
+## Corrected issues
 
-- Stopping from GAIT sprint or ordinary standing movement controlled by GAIT uses a faster, blended stop target. The stop interpolation rate is doubled to target half the previous blend time. Movement input remains live so a new direction or sprint press can interrupt the stop. Releasing W during an unfinished jog transition now redirects into the stop immediately.
-- Releasing Shift while holding W starts its short speed taper from the current release state. Repeated taps must continue from partially decayed speed rather than restoring a full-speed starting value. There is no stationary full-speed hold or extra exponential tail after the taper.
-- Heavy gear gains a little more speed during a sustained downhill run. Light and medium loads through 55 displayed lb keep their previous downhill bonus. The original overall weight penalty, uphill pace and sprint/ordinary pace floor remain intact.
-- Downhill trip risk follows current horizontal velocity, including during deceleration. At the default speed influence, risk starts at zero at the configured minimum speed, rises linearly above it and keeps rising past the reference speed. The original slope, sustained-travel, cooldown, immunity and medical restrictions remain.
-- ACE heartbeat gain is now 20% of the original for all seven variants, down from 50% in alpha8. Original samples, pitch, selection, heart-rate timing and physiology are unchanged. Other audio is unchanged. The optional heartbeat PBO applies this setting while loaded, independently of GAIT's runtime enable switch.
+### Pistol startup interruption
 
-The brief launch brace remains on every gear tier, with the previous modest heavy-gear acceleration improvement. GAIT still does not write weapon sway, native fatigue or recoil coefficients. The alpha8 PBO path fix and deployment repair remain included.
+Alpha9 omitted lowered-pistol movement sources from the sprint graph and its strict blend validator. A legitimate lowered-pistol entry could therefore appear ineligible for one part of the blend. That dropped movement ownership and sprint bookkeeping, allowing a second start/brace when the run resumed.
 
-## Fatigue visuals retained
+The graph now connects the ordinary lowered-pistol sources to the existing pistol sprint family, and the validator accepts their exact movement blends. Brace timing and depth are unchanged. Weapon changes, stance transitions, reloads, medical animations and unsupported launcher poses retain their separate handling.
 
-The subtle fatigue vignette appears only in short pulses. The center stays clear; edge darkening is capped at 14%. Each pulse fades in and out over 1.3 seconds, followed by 5-12 seconds with no GAIT screen effect.
+### Sprint release from current motion
 
-While **Intermittent fatigue vignette** is enabled, GAIT replaces only ACE Advanced Fatigue's blackout effect with these pulses. ACE pain, injury and unconsciousness effects remain under ACE control. Turning the option off restores the previous ACE fatigue-effect enabled state.
+Alpha9 recorded velocity but still tapered only an animation coefficient while immediately switching from the sprint clip to the slower native clip. The coefficient did not represent the same physical speed across that switch.
 
-Recovery, disabling the option/mod, death, unconsciousness, trips, player changes, spectator/remote control and reset clear the pulse. An independent frame watchdog expires stale requests within 0.75 seconds. Brief threshold crossings and quick restarts preserve the minimum clear interval.
+The new release controller captures current horizontal velocity and the currently applied movement coefficient before the handoff. It retains the current GAIT running clip for one short deceleration, samples the finite curve every rendered frame through the existing movement writer, then makes a single normal graph blend into native movement. The actual speed to shed determines the duration, with an 80 ms minimum and the existing gear-scaled window as its ceiling.
+
+Repressing Shift during this interval resumes from the remaining pace without restarting the animation. Releasing W, changing direction, weapon or movement context cancels the release plan promptly. Uphill dig-in braking keeps priority. Releasing during a low-speed brace does not create a slow-speed hold.
+
+The captured speed conversion is local to the current clip and terrain. It is not a calibrated speed for the destination jog/walk animation. There is no forced velocity or continuous feedback that accelerates against obstacles.
+
+## Retained changes
+
+- Shorter stop blends from alpha9, including immediate stop/direction redirection during an unfinished jog handoff.
+- A brief launch brace for every gear tier, with the existing slight acceleration differences and heavy backpack sprint access.
+- Modest heavy downhill improvement: about 2% more peak target speed at 100 displayed lb and 3.3% at 150 lb. Loads through 55 lb remain unchanged.
+- Downhill trip risk follows actual horizontal velocity, including deceleration, with sustained-travel qualification, cooldown and immunity retained.
+- ACE heartbeat gain remains 20% of the original for all seven variants. Samples, rhythm, pitch and other audio remain unchanged.
+- GAIT does not control weapon sway or write native fatigue/recoil coefficients.
+- Fatigue vignette remains intermittent: a 1.3-second pulse, at most 14% edge opacity, then 5-12 seconds fully clear. Context changes and stale requests clear the effect. Other ACE medical effects remain separate.
+- The alpha8 PBO path correction and deployment checks remain included.
 
 ## In-game checks
 
-1. At light, medium and heavy loads, build a full sprint and release both W and Shift. Compare stop time and forward travel with alpha8. Repeat after jogging and on downhill terrain. Confirm the shorter stop remains blended, and A/D/S or a fresh W press takes effect promptly.
-2. Hold W and release Shift at early acceleration, full sprint, exhausted sprint and halfway down an earlier release taper. Speed should start decreasing from its current value without a bump. Retap Shift repeatedly, including entirely between scheduled speed updates. Check uphill braking and downhill release too.
-3. Verify the light-tier brace remains visible and a heavy backpack can still sprint immediately into its brace and acceleration. Repeat W+A > A > D > W+D at steep grades around 32 degrees. Check crouch/prone, reload and weapon switching while stopping.
-4. On the same descent, compare full-momentum heavy gear speeds with alpha8. At 100 displayed lb the target increase is about 2% near the peak downhill angle, with a smaller benefit on extreme slopes. Light/medium speeds through 55 lb should match alpha8.
-5. Observe the trip-risk capture at different actual speeds on the same steep descent. Releasing Shift should not erase risk while still moving fast; risk should fall with velocity. Check cooldown and post-trip recovery, and verify no trip rolls in vehicles, midair or during medical/carry restrictions.
-6. Compare ACE heartbeat at similar heart rates and audio settings. The configured gain is 40% of alpha8's already reduced gain, or 20% of the ACE original. Rhythm and pitch should match.
-7. Check ADS while rested and after sprinting. Exhaust the reserve and confirm vignette pulses have fully clear gaps. Disabling GAIT or becoming unconscious mid-pulse must clear GAIT's effect.
+1. With a pistol selected, start sprinting from stationary and from lowered-pistol jogging. Repeat with the pistol raised. The run should enter once, with one brief brace and no run/skip/run interruption. Compare with rifle and unarmed starts.
+2. Hold W and release Shift at partial acceleration, full speed, after exhaustion, and on a descent. The initial deceleration should begin at the pace reached at release. It should not change to the slower jog clip first.
+3. Rapidly tap Shift while W remains held, including halfway through deceleration. Check for smooth continuation without a new brace, animation restart or recovery of a previous full-speed value.
+4. Release W during deceleration; then repeat with A, D and S. Movement and direction changes must take effect promptly. Repeat while stopping ordinary jogging, with heavy gear, and on an incline.
+5. Check uphill braking, turning, changing weapons, reload, crouch/prone, carry, medical actions, unconsciousness, respawn and disabling GAIT. No stale release curve or held sprint animation should survive an invalid context.
+6. Confirm the 20% heartbeat, light-tier brace, heavy downhill pace, velocity-based trips and fully clear intervals between fatigue vignette pulses remain as in alpha9.
 
 For diagnostics, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
 
 ```sqf
-[90, "alpha9 release transitions and downhill velocity"] execVM "foundation_capture.sqf";
+[90, "alpha10 pistol startup and release momentum"] execVM "foundation_capture.sqf";
 ```
 
-The read-only capture records movement coefficients, observed speed, input, animation, trip risk and fatigue visual ownership. Send the RPT after STOP with approximate event times for any remaining issue.
+The recorder is read-only. Send the RPT after STOP and approximate event times for any remaining issue.
 
-## Packaging and validation
+## Packaging and verification
 
-The main PBO retains prefix `gait`; the heartbeat PBO uses `z\gait\addons\heartbeat`. The installer repairs the obsolete nested heartbeat link and validates both PBOs before committing/pushing. The ZIP includes a verified standalone mod under `ready_to_load/GAIT`.
+The ZIP contains complete HEMTT source and a standalone mod under `ready_to_load/GAIT`. Run VERIFY_READY.ps1 to check the bundled build. Core prefix remains `gait`; heartbeat prefix remains `z\gait\addons\heartbeat`.
 
-Automated build and regression results are in tests/VALIDATION_FOUNDATION.txt. They validate source logic, timing, graph definitions, gain values and cleanup. Arma's actual blend duration, travel distance, physical speed, perceived loudness and visual feel still need the in-game checks above. No measured clip-speed profiles or velocity-forcing workaround are added.
+Automated results are in tests/VALIDATION_FOUNDATION.txt. The tests reproduce the old lowered-pistol blend failures and exercise the release planner/controller. They do not render Arma or measure actual stopping distance, final cross-clip velocity, perceived loudness or visual appearance; those remain in-game acceptance checks.

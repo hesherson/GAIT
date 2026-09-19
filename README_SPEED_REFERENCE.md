@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha9 sprint speed reference
+# GAIT 1.8.0-alpha10 sprint speed reference
 
 Balanced defaults, fresh reserve, weapon out, fully developed sprint/downhill momentum, no vegetation/injury penalty. Speed scales continuously within each gear tier.
 
@@ -32,4 +32,4 @@ The continuous load multiplier interpolates 1.08 at zero load, 1.05 at 35 lb, 1.
 
 There is currently no fixed physical top-speed cap. Native animation root motion, weapon family, terrain, fatigue and other active constraints affect actual speed. No measured clip-speed profiles are bundled, so assigning exact km/h values would be unsupported. The in-game GAIT HUD and acceptance recorder show observed km/h/horizontal m/s for calibration.
 
-Unarmed sprint uses a separate normalizer and the existing walk-relative floor, so it cannot be calculated by simply multiplying this table by 0.725. Other presets and server-forced Addon Options change these figures. Alpha5 restores original brace tuning and uses a short forward release curve. Alpha9 modestly increases heavy downhill targets while preserving flat/uphill targets and sprint access for every gear tier.
+Unarmed sprint uses a separate normalizer and the existing walk-relative floor, so it cannot be calculated by simply multiplying this table by 0.725. Other presets and server-forced Addon Options change these figures. Alpha10 preserves the original brace tuning and alpha9's pace targets and sprint access for every gear tier. Its short W-held release samples actual velocity and the applied coefficient together, finishes a finite deceleration in the current running clip, then requests the ordinary jog/walk blend. That local sample does not calibrate physical speed across different animation clips.

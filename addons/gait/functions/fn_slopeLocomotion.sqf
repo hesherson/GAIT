@@ -265,6 +265,7 @@ GAIT_fnc_releaseSlopeLocomotion = {
         ["_movementInput", [], [[]]],
         ["_walkOnly", false, [false]]
     ];
+    if (!isNil "GAIT_fnc_clearReleaseMomentum") then {[_unit] call GAIT_fnc_clearReleaseMomentum;};
     // Cancel intent atomically. Only Draw3D may issue the eventual body exit.
     // Retain cleanup ownership while a reload/ground/weapon handoff defers it.
     isNil {
@@ -449,9 +450,8 @@ GAIT_fnc_updateSlopeLocomotion = {
     missionNamespace getVariable ["GAIT_slopeLocomotionActive", false]
 };
 
-// Animation follows live Turbo immediately. The short scalar speed taper
-// and uphill braking remain in the feature loop, but neither holds the
-// sprint animation after its button is released.
+// Turbo starts/resumes immediately. A live finite W-held release may retain
+// its current clip until the single ordinary graph handoff is due.
 GAIT_fnc_locomotionIntent = {
     params ["_featureRequest", "_turbo", "_moving"];
     _featureRequest && {_moving} && {_turbo}
@@ -523,6 +523,12 @@ GAIT_fnc_tickLocomotion = {
         // These variables are client-local input history, never public body
         // control. The normal ownership gates still guard every body action.
         [player, _input] call GAIT_fnc_observeLocomotionInput;
+        [player, _input] call GAIT_fnc_observeReleaseMomentum;
+        if ((player getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo [] ||
+            {(player getVariable ["GAIT_releasePendingCoefficient", -1]) >= 0}) then {
+            [player, missionNamespace getVariable ["GAIT_nativeLastPreVegetation", 1], false]
+                call GAIT_fnc_applyNativeMovement;
+        };
     };
     if ([player] call GAIT_fnc_beginNativeLocomotionStop) exitWith {};
     private _owner = missionNamespace getVariable ["GAIT_slopeOwner", objNull];
@@ -555,6 +561,11 @@ GAIT_fnc_tickLocomotion = {
     private _requested = _enabled && {!_locked} && {[
         _request select 1, _input select 2, _moving
     ] call GAIT_fnc_locomotionIntent};
+    // No repeated animation command: this only keeps existing graph ownership
+    // until the finite speed plan or existing uphill brake completes.
+    private _releaseHeld = (_unit getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo [] ||
+        {(_unit getVariable ["GAIT_releaseBrakeHold", []]) isNotEqualTo []};
+    _requested = _requested || {_enabled && {!_locked} && {_releaseHeld}};
     private _eligible = (stance _unit) isEqualTo "STAND" && {[_unit, false] call GAIT_fnc_nativeMovementEligible};
     private _animation = animationState _unit;
     private _activeFamily = [_animation] call GAIT_fnc_slopeAnimationFamily;

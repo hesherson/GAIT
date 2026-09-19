@@ -61,8 +61,20 @@ GAIT_fnc_isStandingLocomotionBlend = {
         if !(_suffix in ["", "gait", "gaitstop", "ver2"]) exitWith {""};
         if (!((_base select [0, 8]) isEqualTo "amovperc") ||
             {!((_base select [8, 4]) in ["mstp", "mwlk", "mrun", "mtac", "meva", "mspr"])} ||
-            {!((_base select [12, 8]) in ["sraswrfl", "slowwrfl", "sraswpst", "snonwnon"])} ||
+            {!((_base select [12, 8]) in ["sraswrfl", "slowwrfl", "sraswpst", "slowwpst", "snonwnon"])} ||
             {!((_base select [20]) in ["dnon", "df", "dfl", "dl", "dbl", "db", "dbr", "dr", "dfr"])}) exitWith {""};
+        // Lowered pistol clips are native entry/release endpoints for the
+        // existing pistol family, never a guessed custom or tactical family.
+        // Keep their complete identity so a native pose change is not confused
+        // with an arbitrary weapon, gesture or stance handoff.
+        if ((_base select [12, 8]) isEqualTo "slowwpst") exitWith {
+            private _pace = _base select [8, 4];
+            private _direction = _base select [20];
+            private _ordinary = (_pace isEqualTo "mstp" && {_direction isEqualTo "dnon"}) ||
+                {_pace in ["mrun", "mwlk"] && {_direction isNotEqualTo "dnon"}} ||
+                {_pace isEqualTo "meva" && {_direction in ["df", "dfl", "dfr"]}};
+            if (_suffix isEqualTo "" && {_ordinary}) then {_base} else {""}
+        };
         if (_suffix isEqualTo "gaitstop") exitWith {
             if ((_base select [8, 4]) isEqualTo "mstp" && {(_base select [20]) isEqualTo "dnon"}) then {_base + "_gaitstop"} else {""}
         };
@@ -80,6 +92,10 @@ GAIT_fnc_isStandingLocomotionBlend = {
     private _right = [_name select [_divider + 1]] call _canonicalState;
     private _expectedLeft = [_source] call _canonicalState;
     private _expectedRight = [_target] call _canonicalState;
+    if (_left isEqualTo "" || {_right isEqualTo ""}) exitWith {false};
+    // Adding lowered-pistol sources must not authorize a real weapon switch.
+    if (((_left select [12, 8]) isEqualTo "slowwpst" || {(_right select [12, 8]) isEqualTo "slowwpst"}) &&
+        {(_left select [16, 4]) isNotEqualTo (_right select [16, 4])}) exitWith {false};
     _left isNotEqualTo "" && {_right isNotEqualTo ""} &&
         {_left isEqualTo _expectedLeft} && {_right isEqualTo _expectedRight}
 };

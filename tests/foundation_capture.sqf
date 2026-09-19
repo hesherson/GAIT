@@ -1,5 +1,5 @@
 /*
-    GAIT alpha9 foundation acceptance recorder: read-only, 10 Hz, one file.
+    GAIT alpha10 foundation acceptance recorder: read-only, 10 Hz, one file.
     Copy into a saved Eden mission. With GAIT and ACE AF enabled, LOCAL EXEC:
       [60, "foundation first hill"] execVM "foundation_capture.sqf";
     Test step-off, W+Turbo, W+A/W+D, pure A/D, stop/restart and the steep hill.
@@ -23,7 +23,7 @@ private _emit = {
 };
 private _seq = 0;
 ["START", [_label, missionNamespace getVariable ["GAIT_versionString", "unknown"], productVersion,
-    "rows: tick,frame,phase,input,animation,gesture,engine,pace,brace,features,uphillBrake,gearInertia,inputHistory,lockDiagnostics,feedback,release,trip",
+    "rows: tick,frame,phase,input,animation,gesture,engine,pace,brace,features,uphillBrake,gearInertia,inputHistory,lockDiagnostics,feedback,release,trip,releaseMotion",
     "engine: ground,stance,sprintAllowed,forcedWalk,ACEblock,ACEwalk,life,unconscious,staminaEnabled,stamina,fatigue",
     "pace: coefficient,horizontalMS,grade,walkCoef,sprintCoef,calibrated,walkTargetMS,sprintTargetMS,loadAbs",
     "brace: active,configuredDuration,activeDuration,activeCoefficient,factor,plannedCoefficient,momentumProtected,downhillMomentum,endTime",
@@ -35,6 +35,7 @@ private _seq = 0;
     "feedback: exhaustion,vignetteAlpha,vignetteHandle,ACEfatigueVisualOwned,pulseState",
     "release: active,startCoefficient,startKmh,targetKmh,keep",
     "trip: eligible,currentKmh,speedSeverity,speedMultiplier,chancePerSecond,sustainedGate,sprintSeconds,highSpeedSeconds,cooldownRemaining,immunityRemaining",
+    "releaseMotion: active,startMS,targetMS,duration,planAndClipIdentity,brakeHoldIdentity,lastPreVegetationCoefficient,currentWeapon",
     "lock observations describe reported state; unassigned engine restrictions do not establish a stamina or load cause"]] call _emit;
 systemChat format ["GAIT foundation capture started for %1 seconds. Stop early with GAIT_foundationCaptureEnabled = false.", _duration];
 private _deadline = diag_tickTime + _duration;
@@ -122,8 +123,15 @@ waitUntil {
             missionNamespace getVariable ["GAIT_tripSustainedHighSpeedSeconds", 0],
             missionNamespace getVariable ["GAIT_tripCooldownRemaining", 0],
             missionNamespace getVariable ["GAIT_tripImmunityRemaining", 0]];
+        private _releaseMotion = [_unit getVariable ["GAIT_releaseMomentumActive", false],
+            missionNamespace getVariable ["GAIT_releaseStartMS", -1],
+            missionNamespace getVariable ["GAIT_releaseTargetMS", -1],
+            missionNamespace getVariable ["GAIT_releaseDuration", -1],
+            _unit getVariable ["GAIT_releaseMomentumState", []],
+            _unit getVariable ["GAIT_releaseBrakeHold", []],
+            missionNamespace getVariable ["GAIT_nativeLastPreVegetation", -1], currentWeapon _unit];
         ["SAMPLE", [diag_tickTime, diag_frameNo, _unit getVariable ["GAIT_locomotionPhase", "native"], _input,
-            animationState _unit, gestureState _unit, _engine, _pace, _brace, _features, _uphillBrake, _gearInertia, _inputHistory, _lockDiagnostics, _feedback, _release, _trip]] call _emit;
+            animationState _unit, gestureState _unit, _engine, _pace, _brace, _features, _uphillBrake, _gearInertia, _inputHistory, _lockDiagnostics, _feedback, _release, _trip, _releaseMotion]] call _emit;
     };
     uiSleep 0.1;
     diag_tickTime >= _deadline || {!(missionNamespace getVariable ["GAIT_foundationCaptureEnabled", false])} ||

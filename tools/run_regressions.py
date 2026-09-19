@@ -34,6 +34,8 @@ SUITES = {
     "input_and_ramp": ("traversalHelpers",),
     "ace_status_bridge": ("nativeController",),
     "native_stamina_ownership": ("nativeController",),
+    "fatigue_visuals": ("fatigueVisuals",),
+    "ace_fatigue_visual_bridge": ("aceFatigueVisualBridge",),
     "slope_direction": ("slopeLocomotion",),
     "slope_state_selection": ("slopeLocomotion",),
     "locomotion_pace": ("slopePaceModel", "locomotionPace"),

@@ -23,7 +23,7 @@ private _emit = {
 };
 private _seq = 0;
 ["START", [_label, missionNamespace getVariable ["GAIT_versionString", "unknown"], productVersion,
-    "rows: tick,frame,phase,input,animation,gesture,engine,pace,brace,features,uphillBrake,gearInertia,inputHistory,lockDiagnostics",
+    "rows: tick,frame,phase,input,animation,gesture,engine,pace,brace,features,uphillBrake,gearInertia,inputHistory,lockDiagnostics,feedback",
     "engine: ground,stance,sprintAllowed,forcedWalk,ACEblock,ACEwalk,life,unconscious,staminaEnabled,stamina,fatigue",
     "pace: coefficient,horizontalMS,grade,walkCoef,sprintCoef,calibrated,walkTargetMS,sprintTargetMS,loadAbs",
     "brace: active,configuredDuration,activeDuration,activeCoefficient,factor,plannedCoefficient,momentumProtected,downhillMomentum,endTime",
@@ -32,6 +32,7 @@ private _seq = 0;
     "gearInertia: loadLbs,responseProfile,coastActive,coastPrearmUntil",
     "inputHistory: forwardReleaseSerial,canceledBraceEnd,turboPressedThisFrame,entrySource,entryTarget,exitSource,exitTarget",
     "lockDiagnostics: observation,sprintRequested,nativeStaminaOwned,staminaOwnerMatches,staminaPolicyEligible,ACEbridgeInstalled,clearACElocksEnabled,compatibilityMode,backpack,normalizedLoad",
+    "feedback: exhaustion,vignetteAlpha,vignetteHandle,ACEfatigueVisualOwned,pulseState",
     "lock observations describe reported state; unassigned engine restrictions do not establish a stamina or load cause"]] call _emit;
 systemChat format ["GAIT foundation capture started for %1 seconds. Stop early with GAIT_foundationCaptureEnabled = false.", _duration];
 private _deadline = diag_tickTime + _duration;
@@ -99,8 +100,13 @@ waitUntil {
             missionNamespace getVariable ["GAIT_nativeAceBridgeInstalled", false],
             missionNamespace getVariable ["GAIT_ss_clearAceMovementLocks", true],
             missionNamespace getVariable ["GAIT_ss_compatibilityMode", -1], backpack _unit, load _unit];
+        private _feedback = [missionNamespace getVariable ["GAIT_exhaustionLevel", 0],
+            missionNamespace getVariable ["GAIT_fatigueVignetteAlpha", 0],
+            missionNamespace getVariable ["GAIT_fatigueVignetteHandle", -1],
+            missionNamespace getVariable ["GAIT_aceFatigueVisualOwned", false],
+            missionNamespace getVariable ["GAIT_fatigueVisualPulse", []]];
         ["SAMPLE", [diag_tickTime, diag_frameNo, _unit getVariable ["GAIT_locomotionPhase", "native"], _input,
-            animationState _unit, gestureState _unit, _engine, _pace, _brace, _features, _uphillBrake, _gearInertia, _inputHistory, _lockDiagnostics]] call _emit;
+            animationState _unit, gestureState _unit, _engine, _pace, _brace, _features, _uphillBrake, _gearInertia, _inputHistory, _lockDiagnostics, _feedback]] call _emit;
     };
     uiSleep 0.1;
     diag_tickTime >= _deadline || {!(missionNamespace getVariable ["GAIT_foundationCaptureEnabled", false])} ||

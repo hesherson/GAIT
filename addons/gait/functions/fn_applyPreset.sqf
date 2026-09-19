@@ -78,8 +78,6 @@ private _set = {
     ["GAIT_ss_tunnelMaxStrength", 1.00],
     ["GAIT_ss_tinnitusMaxVolume", 0.55],
     ["GAIT_ss_hearingMinVolume", 0.20],
-    ["GAIT_ss_runningAimCoef", 2.00],
-    ["GAIT_ss_swayRecoveryTime", 6.00],
     ["GAIT_ss_slopeHandlingEnabled", true],
     ["GAIT_ss_slopeSampleDistance", 2.0],
     ["GAIT_ss_uphillSlowdownEnabled", true],
@@ -99,7 +97,6 @@ private _set = {
     ["GAIT_ss_uphillFatigueDrainStartDegrees", 10.0],
     ["GAIT_ss_uphillFatigueDrainMaxDegrees", 35.0],
     ["GAIT_ss_uphillFatigueDrainMaxMultiplier", 1.75],
-    ["GAIT_ss_uphillVanillaFatigueExtraPerSecond", 0.018],
     ["GAIT_ss_downhillBoostEnabled", true],
     ["GAIT_ss_downhillBoostStartDegrees", 4.0],
     ["GAIT_ss_downhillBoostMaxDegrees", 18.0],
@@ -145,7 +142,6 @@ switch (_preset) do {
             ["GAIT_ss_moderateSpeedBonus", 1.00],
             ["GAIT_ss_heavySpeedBonus", 0.96],
             ["GAIT_ss_tunnelMaxStrength", 1.10],
-            ["GAIT_ss_runningAimCoef", 2.35],
             ["GAIT_ss_uphillMaxPenalty", 0.45],
             ["GAIT_ss_downhillMaxBoost", 0.04]
         ];
@@ -167,8 +163,6 @@ switch (_preset) do {
             ["GAIT_ss_tunnelMaxStrength", 0.45],
             ["GAIT_ss_tinnitusMaxVolume", 0.25],
             ["GAIT_ss_hearingMinVolume", 0.60],
-            ["GAIT_ss_runningAimCoef", 1.25],
-            ["GAIT_ss_swayRecoveryTime", 3.00],
             ["GAIT_ss_uphillMaxPenalty", 0.22],
             ["GAIT_ss_downhillMaxBoost", 0.12]
         ];
@@ -181,8 +175,7 @@ switch (_preset) do {
             ["GAIT_ss_sprintExhaustedSpeed", 0.88],
             ["GAIT_ss_tunnelMaxStrength", 1.25],
             ["GAIT_ss_tinnitusMaxVolume", 0.65],
-            ["GAIT_ss_hearingMinVolume", 0.15],
-            ["GAIT_ss_runningAimCoef", 2.20]
+            ["GAIT_ss_hearingMinVolume", 0.15]
         ];
     };
 
@@ -220,7 +213,6 @@ switch (_preset) do {
             ["GAIT_ss_mediumBraceRelief", 0.25],
             ["GAIT_ss_moderateBraceRelief", 0.10],
             ["GAIT_ss_heavyBraceRelief", 0.00],
-            ["GAIT_ss_runningAimCoef", 2.50],
             ["GAIT_ss_uphillMaxPenalty", 0.50],
             ["GAIT_ss_downhillMaxBoost", 0.03]
         ];

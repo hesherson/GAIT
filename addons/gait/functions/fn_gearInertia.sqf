@@ -1,5 +1,5 @@
 /*
-    Alpha6 keeps the original heavy launch rate with small lighter-load boosts.
+    Alpha7 gives heavy launch a further 2% rate boost; lighter ordering is preserved.
     Load changes acceleration, never sprint permission or steady pace.
     A released sprint has one short forward-only taper, with no hold and no
     secondary exponential tail. The separate uphill brake has priority.
@@ -19,7 +19,7 @@ GAIT_fnc_gearInertia = {
     private _mediumMax = (_thresholds param [1, 55, [0]]) max (_lightMax + 1);
     private _moderateMax = (_thresholds param [2, 75, [0]]) max (_mediumMax + 1);
     private _landmarks = [0, _lightMax, _mediumMax, _moderateMax, _moderateMax + 25, _moderateMax + 50];
-    private _acceleration = [1.06, 1.04, 1.02, 1, 1, 1];
+    private _acceleration = [1.06, 1.04, 1.02, 1.02, 1.02, 1.02];
     private _coast = [0.90, 0.95, 1, 1.05, 1.10, 1.15];
     private _load = _gearLbs max 0 min (_landmarks select 5);
     private _segment = 0;

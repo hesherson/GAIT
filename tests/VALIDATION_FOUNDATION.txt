@@ -1,58 +1,52 @@
-GAIT 1.8.0-alpha6 validation
+GAIT 1.8.0-alpha7 validation
 
-HEMTT 1.21.0: PASS; config 1.8.0.6, 14 compiled SQF files, one PBO.
-Build retains nonblocking style advisories. No Arma runtime was available.
-Final archive validation checks prefix gait, config.bin, matching source bytes
-for all fourteen embedded scripts, source manifest and ZIP integrity.
+HEMTT 1.21.0: PASS; config 1.8.0.7, 16 compiled SQF files, 2 PBOs.
+Nonblocking style advisories remain. No Arma runtime was available.
+Both PBO prefixes and all 16 embedded scripts match source. The compiled
+heartbeat config contains all 7 original sample paths, unchanged pitch and
+half-gain values of 0.561009227. ZIP integrity and source manifest pass.
 
-Source preservation and mutation checks: PASS.
-All 25 historical RC4 block hashes retained: 17 intact blocks and 8 blocks
-with 16 exact authorized reversals. Original presets and slope pace model
-remain byte-identical. Original settings ranges/defaults remain; descriptions
-explain alpha6 brace relief and the shorter forward ramp. Four additional
-source assertions protect native stamina acquisition order and trip/player
-change/reset cleanup. Removal and tuning mutations are rejected.
+All 17 actual-helper SQF-VM suites: PASS, zero diagnostics.
+Recorded source hashes match the final checkout. All 15 alpha6 suites remain.
+New coverage:
+- fatigue_visuals: 1.30-second pulse, 14% opacity cap, 5-12-second clear gaps,
+  smooth rise/fall, late-frame completion, recovery, cooldown retention through
+  brief zero/rebound input, owned-handle cleanup, 0.75-second stale request
+  expiry, setting/context/player cleanup, and ACE visual bridge dispatch.
+- ace_fatigue_visual_bridge: acquisition and restoration of only the published
+  ACE Advanced Fatigue blackout handle, original enabled flag preservation,
+  pre-disabled handles, external enable, ACE disable, player replacement,
+  handle replacement/removal, and avoiding commands to stale numeric IDs.
+Engine post-processing access is mocked; tests do not render pixels.
+The gear suite checks heavy acceleration 1.02, lighter maximum 1.06, and
+unchanged brace duration, release curve, endpoints and input cancellation.
 
-Graph: PASS, 5 contracts. 36 states and 4 action maps. Every forward custom
-movement state inherits a real Meva sprint clip. No custom walking-brace
-states or switchMove calls remain. Graph generation matches shipped config.
+Graph contracts: 5/5 PASS; 36 states and 4 maps unchanged from alpha6.
+Heartbeat contracts: 3/3 PASS; all 7 variants use half the original gain,
+unchanged samples/pitch, and an optional ACE Medical Feedback dependency.
 
-All 15 actual-helper-source SQF-VM suites: PASS, zero diagnostics.
-- native_stamina_ownership: acquisition/release, original enabled flag, player
-  replacement, disabled settings/context, pre-disabled flag, external enable,
-  locality loss and unchanged ACE medical masks. Engine flag access is mocked.
-- brace_momentum: 6 m/s sprint to settled 4 m/s W-only jog rearms brace across
-  three pace coefficients; quick moving retap avoids another brace; ongoing
-  steep sprint and actual-stop behavior remain protected. The new settled-jog
-  case fails against the alpha5 helper, demonstrating the old regression.
-- gear_inertia: original relief settings and duration, bounded acceleration
-  scale 1.00-1.06, heavy baseline 1.00, default finite release 0.268-0.342 s,
-  configured bounds 0.15-0.45 s, monotonic endpoints across ten loads/five
-  pace pairs/five tick rates, no-W/stop/retap cancellation and uphill priority.
-- locomotion_coast: immediate raw release, safe fresh-press exit reversal,
-  no held-key restarting, deferred unsafe cleanup and W-release history.
-- locomotion_handoff: exact entry/exit blend recognition, interrupted-blend
-  source grace, numeric brace cancellation and no walking-stage promotion.
-- release_and_blend: strict native/custom movement endpoints and supported
-  lowered-rifle variants; unrelated suffixes and unsafe transitions rejected.
-- uphill_brake_handoff: brake remains numerical, cannot hold sprint clip.
-- uphill_brake: signed grade, release edges, scaling, retap and bounded brake.
-- downhill_pace: angle/load ordering, bounds, time consistency and recovery.
-- locomotion_state_machine: entry/release, escape, direction and ownership.
-- input_and_ramp: immediate input samples and time-based coefficients.
-- slope_direction: direction selection, reversal and release.
-- slope_state_selection: genuine sprint and appropriate lateral/rear clips.
-- locomotion_pace: fallback/physical-unit interface and invalid calibration.
-- ace_status_bridge: event order, medical masks and physiology ownership.
+Preservation and mutation checks: PASS. All 25 historical RC4 block hashes
+remain: 14 intact blocks and 11 blocks with 26 exact authorized reversals.
+The original slope model remains byte-identical. Exact preset reversals
+restore 8 retired sway/native-fatigue entries; all other preset bytes remain
+protected. Settings permit only reviewed changes.
+Four stamina and nine visual integration assertions protect call ordering,
+per-tick updates, watchdog installation, context guards and cleanup. Mutations
+that add aim, native-fatigue or recoil writers fail. Existing brace, reserve,
+ramp, momentum and uphill regression mutations continue to fail.
 
-Reproduce with tools/run_regressions.py and caller-supplied SQF-VM.
-The runner combines current helper sources and records commands, source
-SHA256 hashes, PASS evidence and completion markers. Tests do not execute
-live animation commands or simulate Arma's native stamina system.
+Package comparison confirms that the alpha6 locomotion controller, input
+helpers, brace history, uphill/downhill helpers, slope model, generated graph
+and existing PAA/OGG assets are byte-identical. The gear adjustment is limited
+to a 2% faster heavy acceleration rate, blended into lighter-load ordering.
 
-Limits: these checks cannot establish heavy-backpack sprint permission,
-root motion, animation/camera blending, collision or multiplayer in Arma.
-Check the focused acceptance cases in README_TEST_BUILD.md in a fresh mission.
-The read-only foundation capture records native stamina ownership, permission
-flags, ACE masks, backpack/load and exact entry/exit animation observations.
-Windows deployment remains a target-platform check.
+Reproduce from the project root:
+  python tests/feature_preservation.py --self-test
+  python tests/foundation_graph.py
+  python tests/heartbeat_audio.py
+  python tools/run_regressions.py --sqfvm /path/to/sqfvm --output /tmp/gait-tests
+
+Limitations: automated checks cannot render Arma post processing, simulate
+engine aim/animation behavior or measure perceived loudness. Heavy gear feel,
+ADS sway, vignette appearance and coexistence with medical effects require
+in-game verification. Windows deployment remains a target-platform check.

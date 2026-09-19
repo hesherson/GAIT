@@ -1,56 +1,40 @@
-# GAIT 1.8.0-alpha6: sprint entry and animation correction
+# GAIT 1.8.0-alpha7: fatigue feedback and weapon handling
 
-Complete HEMTT source based on alpha5. Requires Arma 3 2.18+, CBA_A3 and ACE3. Deployment commands are in README_HEMTT.md. Load the new GAIT copy and start a fresh mission.
+Complete source based on alpha6. Requires Arma 3 2.18+, CBA_A3 and ACE3. Build/deploy commands are in README_HEMTT.md. Load only the new GAIT copy and start a fresh mission.
 
-## What changed
+## Changes
 
-The brace now applies its brief speed dip inside the running animation, as the original implementation did. The additional walking stage and its promotion timer are removed. Holding sprint and forward requests the sprint family directly, regardless of gear tier.
+- ACE heartbeat gain is halved for all seven variants. Original samples, pitch, selection, heart-rate timing and physiology remain unchanged. These sounds belong to ACE Medical Feedback and can play for exertion or medical reasons. Other audio is unchanged. The optional heartbeat PBO applies this setting while loaded, independently of GAIT's runtime enable switch.
+- Heavy-gear acceleration after the brief brace is 2% faster. The adjustment blends smoothly into the existing lighter-load rates. Brace duration, depth, release response, maximum speeds, slope behavior and animation graph remain as in alpha6.
+- GAIT's weapon-sway controller is removed, including its startup, disabled-state and reset writes. Old sway options cannot reactivate it. Native fatigue writes are also removed because they can affect aim; GAIT still uses its reserve for movement and feedback. ACE/native weapon handling and ACE physiology remain active.
+- A subtle vignette appears only in short fatigue pulses. The center stays clear; edge darkening is capped at 14%. Each pulse fades in, briefly holds and fades out over 1.3 seconds, followed by 5-12 seconds with no GAIT screen effect.
 
-The native stamina override removed during the rebuild is restored with explicit ownership. GAIT saves the original enabled flag and restores it when movement ownership ends. This addresses the native load/stamina gate while retaining GAIT's existing continuous weight and fatigue pace calculations. ACE injury restrictions remain respected. This corrects a source regression; heavy-backpack behavior still needs an in-game check.
+## Fatigue visual ownership
 
-All tiers keep the original 0.15-second base brace, 0.42 base coefficient and 0.575 brace response. Existing tier relief now contributes at 20% strength, making the brace more similar across tiers and giving light gear a clearer step. This deliberately strengthens light bracing compared with the original relief formula. Heavy gear retains the original acceleration rate; lighter gear gets a small continuous boost, up to 6%. Original steady speed/load targets and presets are unchanged.
+While the new **Intermittent fatigue vignette** option is enabled, GAIT replaces only ACE Advanced Fatigue's blackout effect with these pulses. That prevents the two fatigue effects from stacking or the ACE fatigue blackout becoming continuous at high exhaustion. ACE pain, injury and unconsciousness effects remain under ACE control.
 
-Light gear also had a rearming bug: ordinary jogging could remain above the old fixed 2 m/s cutoff indefinitely. Returning to settled ordinary pace now rearms using the existing cooldown and settling periods. A quick moving sprint re-tap still avoids a second brace.
+The effect handle is destroyed after each pulse. Recovery, disabling the option/mod, death, unconsciousness, trips, player changes, spectator/remote control and reset clear it. An independent frame watchdog expires the request within 0.75 seconds if the scheduled update loop stops. The minimum clear interval survives brief threshold crossings and quick restarts.
 
-## Sprint release and animation blending
+Turning this option off restores ACE's previous fatigue-effect enabled state. It does not disable unrelated medical screen effects. No permanent blur, chromatic aberration or resting vignette is added.
 
-Entry and release now request the movement graph's interpolation with one `playMoveNow` call. The previous `switchMove` pose-weight argument did not provide a timed animation transition. The graph contains 36 locomotion states, with direct ordinary entry/exit connections and no separate walking-brace family.
+The new option defaults on, so the old disabled visual-effect setting does not silently suppress it. Existing exhaustion threshold and maximum visual-strength options control the new pulses, with the hard opacity and duration caps always enforced.
 
-Releasing sprint begins the native movement transition promptly. A fresh sprint press can replace an ordinary exit in progress once, through the graph. Holding the same key does not repeatedly restart the animation. Stance changes, medical actions, weapon changes and other incompatible actions retain priority.
+## In-game checks
 
-Releasing sprint while W remains held also starts a short, finite coefficient ramp:
+1. Compare the ACE heartbeat with alpha6 at similar heart rates and audio settings. Check both fast and slow variants when available; all should be quieter without changing their rhythm.
+2. Aim down sights while rested, moving and recovering from sprint. GAIT should no longer alternate sway coefficients. Confirm ACE's own sway and breath-hold behavior remain available.
+3. Sprint until fatigued. Observe brief, subtle edge darkening with fully clear gaps, including at high exhaustion. Rest and confirm the vignette clears.
+4. During a pulse, disable the new vignette option, disable GAIT, use Reset GAIT Effects, switch player or enter spectator. Confirm GAIT's overlay disappears. Other ACE medical effects may still appear when medically appropriate.
+5. With a heavy backpack, compare acceleration out of the brace. The change should be small. Confirm light gear still braces, sprint taps still blend, W release cancels forward coast and steep slopes retain their movement behavior.
 
-| Displayed load | Default forward release ramp |
-| --- | --- |
-| 0 lb | 0.268 s |
-| 35 lb | 0.283 s |
-| 55 lb | 0.298 s |
-| 75 lb | 0.312 s |
-| 100 lb | 0.327 s |
-| 125+ lb | 0.342 s |
-
-These are coefficient timings, not measured stopping distances or animation-blend durations. The stored taper setting scales this ramp within 0.15-0.45 seconds. There is no full-speed hold or extra decay tail.
-
-W+A/D keeps forward response and direction control. Releasing W, choosing pure strafe/back movement, or stopping cancels stored forward coast. A render-time input serial catches a W release even between scheduled updates. No input, velocity or position is synthesized to keep the player moving forward.
-
-The existing uphill brake still applies its numerical speed dip when sprint is released with W held. Its angle, strength and timing tuning remain. It does not insert a walking clip. Sprint re-taps resume from the remaining coefficient without another launch brace.
-
-## Focused in-game check
-
-1. With a heavy backpack, hold W and sprint from rest, then from a jog. Check that the running animation starts with the brief brace and builds into full sprint. Repeat with medium and light gear.
-2. Sprint, release sprint while holding W, then tap it repeatedly during the slowdown. Check interpolation in both directions, especially with light gear. There should be no walking-stage pause or new brace on quick moving re-taps.
-3. Return to ordinary W-only jogging for several seconds, then sprint again. Confirm the brace returns in every tier.
-4. Release every movement key. Repeat by switching to pure A/D or S. Check prompt stop/direction response. W+A/D should remain responsive during the short forward ramp.
-5. Repeat on the working downhill slope and steep uphill terrain. Check the uphill release brake, reload, weapon changes, crouch/prone and ACE medical restrictions.
-
-For a remaining problem, copy tests/foundation_capture.sqf into the saved Eden mission and use Local Exec:
+For diagnostics, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
 
 ```sqf
-[90, "alpha6 heavy sprint and sprint taps"] execVM "foundation_capture.sqf";
+[90, "alpha7 fatigue feedback"] execVM "foundation_capture.sqf";
 ```
 
-The read-only recorder now includes native stamina ownership, engine sprint/walk permission, ACE restriction masks, backpack and load. Send the RPT after STOP with the key sequence and gear weight.
+The read-only capture includes fatigue intensity, vignette opacity/handle, pulse timing and ACE fatigue visual ownership alongside existing movement diagnostics. Send the RPT after STOP with the approximate event time.
 
 ## Validation limits
 
-HEMTT and the actual-helper SQF-VM suites check compilation, ownership lifecycle, brace rearming, finite ramps and controller requests. They cannot simulate Arma animation blending, root motion, camera, collision or multiplayer. Smoothness and heavy-backpack behavior require the focused game checks above.
+Build and regression results are in tests/VALIDATION_FOUNDATION.txt. Automated tests check gain values, source ownership, timing and cleanup, but cannot render Arma's post processing, measure perceived loudness, or confirm ADS and movement feel. Those require the game checks above.

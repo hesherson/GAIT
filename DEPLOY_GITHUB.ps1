@@ -109,7 +109,7 @@ param(
         Run-Git diff --cached --check
         $ChangedFiles = @(Run-Git diff --cached --name-only)
         if ($ChangedFiles.Count -gt 0) {
-            Run-Git commit -m 'Restore sprint entry, shared brace and graph interpolation in GAIT alpha6'
+            Run-Git commit -m 'Refine fatigue feedback and remove GAIT weapon sway in alpha7'
         }
         if (-not $NoPush) { Run-Git push -u origin $Branch }
         Write-Host "Built $Branch. Load local mod: $RepoPath\.hemttout\build"

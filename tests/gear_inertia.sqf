@@ -26,7 +26,7 @@ private _maximum = [125] call GAIT_fnc_gearInertia;
 for "_weight" from 0 to 200 do {
     private _response = [_weight] call GAIT_fnc_gearInertia;
     private _acceleration = _response select 0;
-    [_acceleration >= 1 && {_acceleration <= 1.06001},"heavy keeps base acceleration with only small lighter boosts"] call _assert;
+    [_acceleration >= 1 && {_acceleration <= 1.06001},"heavy gains a small 2% acceleration boost with bounded lighter rates"] call _assert;
     [_acceleration <= (_lastAcceleration + _epsilon),"heavier gear does not accelerate faster"] call _assert;
     _lastAcceleration = _acceleration;
     private _window = [1,0.85,_response select 2] call GAIT_fnc_gearCoastWindow;
@@ -46,7 +46,7 @@ for "_weight" from 0 to 200 do {
 private _light = [15] call GAIT_fnc_gearInertia;
 private _medium = [55] call GAIT_fnc_gearInertia;
 private _heavy = [100] call GAIT_fnc_gearInertia;
-[(_heavy select 0) isEqualTo 1 && {(_maximum select 0) isEqualTo 1},"heavy and extreme loads retain original acceleration rate"] call _assert;
+[(_heavy select 0) isEqualTo 1.02 && {(_maximum select 0) isEqualTo 1.02},"heavy and extreme loads use only a 2% faster acceleration rate"] call _assert;
 private _accelerated = [];
 {
     private _ramp = [0.05,_x select 0] call GAIT_fnc_scaleInertiaRamp;
@@ -55,7 +55,7 @@ private _accelerated = [];
     [_speed > 0.65 && {_speed < 1.3},"all loads continue building toward sprint"] call _assert;
     _accelerated pushBack _speed;
 } forEach [_light,_medium,_heavy];
-[(_accelerated select 0) > (_accelerated select 1) && {(_accelerated select 1) > (_accelerated select 2)},"load preserves modest buildup differences"] call _assert;
+[(_accelerated select 0) > (_accelerated select 1) && {(_accelerated select 1) >= (_accelerated select 2)},"load preserves modest buildup differences"] call _assert;
 private _frames = [];
 private _heavyRamp = [0.05,_heavy select 0] call GAIT_fnc_scaleInertiaRamp;
 {

@@ -11,9 +11,8 @@ private _categoryMove = ["GAIT", "03 Movement and Sprint"];
 private _categoryCarry = ["GAIT", "04 ACE Carry Movement"];
 private _categoryWeight = ["GAIT", "05 Gear Weight Gates"];
 private _categoryBrace = ["GAIT", "06 Brace Step and Momentum"];
-private _categorySway = ["GAIT", "07 Weapon Sway"];
 private _categoryAudio = ["GAIT", "08 Audio and Hearing"];
-private _categoryVisual = ["GAIT", "09 Tunnel Vision Visuals"];
+private _categoryVisual = ["GAIT", "09 Fatigue Vignette"];
 private _categorySlope = ["GAIT", "10 Terrain, Slopes, and Tripping"];
 private _categoryQoL = ["GAIT", "11 QoL, Presets, and Compatibility"];
 
@@ -62,7 +61,7 @@ private _addList = {
 // -----------------------------------------------------
 // 01 General
 // -----------------------------------------------------
-["GAIT_ss_enabled", "Enable GAIT", "Master switch for GAIT's sprint, brace, momentum, sway, audio, and visual systems. Turn off to release GAIT runtime control. The addon terrainSpeedCoef config remains until the addon is unloaded.", _categoryGeneral, true] call _addCheckbox;
+["GAIT_ss_enabled", "Enable GAIT", "Master switch for GAIT's sprint, brace, momentum, audio, and visual systems. Turn off to release GAIT runtime control. The addon terrainSpeedCoef config remains until the addon is unloaded.", _categoryGeneral, true] call _addCheckbox;
 ["GAIT_ss_tickRate", "Update rate", "Movement update interval in seconds. Acceleration timing stays consistent across update rates. Default: 0.05.", _categoryGeneral, 0.01, 0.20, 0.05, 2] call _addSlider;
 
 ["GAIT_ss_masterTripFrequency", "Master: trip frequency", "Meta-knob that scales downhill trip chance without changing thresholds. 1.00 is baseline.", _categoryGeneral, 0.00, 3.00, 1.00, 2] call _addSlider;
@@ -93,8 +92,6 @@ private _addList = {
 ["GAIT_ss_shiftReleaseRunTaperHoldDuration", "Shift-release sustain (inactive)", "Legacy setting retained for saved profiles. Slowdown now begins immediately, so this value no longer changes movement.", _categoryMove, 0.00, 3.00, 1.00, 2] call _addSlider;
 ["GAIT_ss_shiftReleaseRunTaperCurve", "Shift-release taper curve", "Shapes the smooth release curve: higher values lose pace sooner. Effective range is 1-3. The slowdown still reaches its endpoint within the bounded duration. Default: 1.45.", _categoryMove, 0.25, 5.00, 1.45, 2] call _addSlider;
 ["GAIT_ss_unarmedSprintNormalizer", "Unarmed sprint normalizer", "Multiplier applied when sprinting with no weapon out so holstering does not create an unrealistic speed boost. Default: 0.725.", _categoryMove, 0.30, 1.20, 0.725, 3] call _addSlider;
-["GAIT_ss_freshFatigue", "Rested visual fatigue", "Lowest vanilla fatigue value used when ACE Advanced Fatigue is not active. Default: 0.05.", _categoryMove, 0.00, 0.50, 0.05, 2] call _addSlider;
-["GAIT_ss_exhaustedFatigue", "Exhausted visual fatigue", "Highest vanilla fatigue value used when ACE Advanced Fatigue is not active. Default: 0.85.", _categoryMove, 0.10, 1.00, 0.85, 2] call _addSlider;
 
 // -----------------------------------------------------
 // 04 ACE Carry Movement
@@ -140,19 +137,13 @@ private _addList = {
 ["GAIT_ss_uphillReleaseBraceEnabled", "Uphill sprint-release brace", "Dig-in braking when releasing a moving uphill sprint. Uses the slope brace start/max angles, duration and dip; steeper slopes brake harder. Flat/downhill momentum is preserved. Default: enabled.", _categoryBrace, true] call _addCheckbox;
 
 // -----------------------------------------------------
-// 07 Weapon Sway
+// Weapon handling is left to ACE/native systems; no GAIT sway controls.
 // -----------------------------------------------------
-["GAIT_ss_swayEnabled", "Enable GAIT weapon sway", "Lets GAIT control sprint sway, walking steadiness, and recovery. Turn off to leave custom aim coefficient at vanilla.", _categorySway, true] call _addCheckbox;
-["GAIT_ss_restingAimCoef", "Rested aim coefficient", "Aim sway coefficient when fully recovered and not moving. Lower is steadier. Default: 0.02.", _categorySway, 0.00, 2.00, 0.02, 2] call _addSlider;
-["GAIT_ss_walkingAimCoef", "Walking aim coefficient", "Aim sway coefficient while moving but not sprinting. Default: 0.01.", _categorySway, 0.00, 2.00, 0.01, 2] call _addSlider;
-["GAIT_ss_runningAimCoef", "Sprint aim penalty", "Aim sway coefficient while sprinting. Higher is more sway. Default: 2.0.", _categorySway, 0.00, 10.00, 2.00, 2] call _addSlider;
-["GAIT_ss_swayRecoveryTime", "Sway recovery time", "Seconds for sway to recover after sprinting. Default: 6.", _categorySway, 0.10, 30.00, 6.00, 1] call _addSlider;
-["GAIT_ss_walkingSpeedThreshold", "Walking sway speed threshold", "Minimum movement speed needed to use the walking aim coefficient. Default: 0.6.", _categorySway, 0.00, 5.00, 0.60, 2] call _addSlider;
 
 // -----------------------------------------------------
 // 08 Audio and Hearing
 // -----------------------------------------------------
-["GAIT_ss_tinnitusEnabled", "Enable tinnitus loop", "Enables GAIT tinnitus at high exhaustion. ACE Advanced Fatigue already owns heartbeat/pulse audio.", _categoryAudio, true] call _addCheckbox;
+["GAIT_ss_tinnitusEnabled", "Enable tinnitus loop", "Enables GAIT tinnitus at high exhaustion. ACE Medical Feedback owns heartbeat audio; GAIT halves its sample volume.", _categoryAudio, true] call _addCheckbox;
 ["GAIT_ss_tinnitusStartExhaustion", "Tinnitus starts at exhaustion", "Exhaustion level where tinnitus begins. 0 = immediately, 1 = only at max exhaustion. Default: 0.70.", _categoryAudio, 0.00, 1.00, 0.70, 2] call _addSlider;
 ["GAIT_ss_audioStopExhaustion", "Audio stops below exhaustion", "Exhaustion level below which GAIT exhaustion audio fades out. Default: 0.10.", _categoryAudio, 0.00, 1.00, 0.10, 2] call _addSlider;
 ["GAIT_ss_tinnitusMaxVolume", "Tinnitus max volume", "Maximum volume of the GAIT tinnitus loop. Default: 0.55.", _categoryAudio, 0.00, 2.00, 0.55, 2] call _addSlider;
@@ -162,11 +153,11 @@ private _addList = {
 ["GAIT_ss_hearingFadeDuration", "Hearing fade duration", "Seconds used when changing hearing volume. Default: 0.20.", _categoryAudio, 0.00, 5.00, 0.20, 2] call _addSlider;
 
 // -----------------------------------------------------
-// 09 Tunnel Vision Visuals
+// 09 Intermittent Fatigue Vignette
 // -----------------------------------------------------
-["GAIT_ss_visualFxEnabled", "Enable tunnel vision visuals", "v1.6.0: GAIT post-process FX (tunnel vision, blur, chromatic aberration, color correction) are removed; ACE Advanced Fatigue owns visual fatigue. This toggle no longer applies any screen effect. Default: disabled.", _categoryVisual, false] call _addCheckbox;
-["GAIT_ss_tunnelStartExhaustion", "Visuals start at exhaustion", "Exhaustion level where tunnel vision begins. Default: 0.18.", _categoryVisual, 0.00, 1.00, 0.18, 2] call _addSlider;
-["GAIT_ss_tunnelMaxStrength", "Maximum visual strength", "Overall cap for exhaustion visual strength. Default: 1.0.", _categoryVisual, 0.00, 2.00, 1.00, 2] call _addSlider;
+["GAIT_ss_fatigueVignetteEnabled", "Intermittent fatigue vignette", "Brief, subtle edge darkening when tired, separated by fully clear intervals. Replaces only ACE Advanced Fatigue blackout while active. Clears on recovery, disable or lost updates. Default: enabled.", _categoryVisual, true] call _addCheckbox;
+["GAIT_ss_tunnelStartExhaustion", "Visuals start at exhaustion", "Exhaustion level where intermittent vignette pulses begin. Default: 0.18.", _categoryVisual, 0.00, 1.00, 0.18, 2] call _addSlider;
+["GAIT_ss_tunnelMaxStrength", "Maximum visual strength", "Scales fatigue vignette pulses; peak edge opacity is always capped at 14%. Default: 1.0.", _categoryVisual, 0.00, 2.00, 1.00, 2] call _addSlider;
 
 
 // -----------------------------------------------------
@@ -195,7 +186,6 @@ private _addList = {
 ["GAIT_ss_uphillFatigueDrainStartDegrees", "Uphill drain starts", "Incline angle where additional uphill fatigue drain begins. Default: 10 degrees.", _categorySlope, 0.00, 45.00, 10.00, 1] call _addSlider;
 ["GAIT_ss_uphillFatigueDrainMaxDegrees", "Uphill drain max angle", "Incline angle where additional uphill fatigue drain reaches full strength. Default: 35 degrees.", _categorySlope, 5.00, 80.00, 35.00, 1] call _addSlider;
 ["GAIT_ss_uphillFatigueDrainMaxMultiplier", "Uphill max drain multiplier", "Maximum multiplier applied to sprint stamina drain on steep uphill terrain. 1.75 means 75% faster drain. Default: 1.75.", _categorySlope, 1.00, 4.00, 1.75, 2] call _addSlider;
-["GAIT_ss_uphillVanillaFatigueExtraPerSecond", "Uphill visual fatigue gain", "Extra vanilla/visual fatigue added per second at max uphill drain severity. Default: 0.018.", _categorySlope, 0.00, 0.20, 0.018, 3] call _addSlider;
 
 ["GAIT_ss_downhillBoostEnabled", "Enable downhill boost", "When sprinting downhill, GAIT gives a small speed bonus as the descent gets steeper. Keep this subtle to avoid arcade movement. Default: enabled.", _categorySlope, true] call _addCheckbox;
 ["GAIT_ss_downhillBoostStartDegrees", "Downhill boost starts", "Decline angle in degrees where the downhill speed boost begins. Default: 4 degrees.", _categorySlope, 0.00, 30.00, 4.00, 1] call _addSlider;
@@ -241,14 +231,14 @@ private _addList = {
 [
     "GAIT_ss_compatibilityMode",
     "Compatibility mode",
-    "Controls how aggressively GAIT overrides movement. Full/Hybrid are intended modes. Minimal keeps fatigue effects but avoids movement control. Visuals Only avoids movement, sway, and hearing changes. Disabled safely resets GAIT effects.",
+    "Controls how aggressively GAIT overrides movement. Full/Hybrid are intended modes. Minimal keeps fatigue effects but avoids movement control. Visuals Only avoids movement and hearing changes. Disabled safely resets GAIT effects.",
     _categoryQoL,
     [0, 1, 2, 3, 4],
     ["Full GAIT Control", "ACE-Friendly Hybrid", "Minimal Movement Override", "Visuals/Audio Only", "Disabled"],
     1
 ] call _addList;
 
-["GAIT_ss_resetOnRespawn", "Reset effects on respawn", "Automatically clears GAIT movement speed, sway, hearing, tinnitus, and visual effects when the local player respawns or changes player object. Recommended: enabled.", _categoryQoL, true] call _addCheckbox;
+["GAIT_ss_resetOnRespawn", "Reset effects on respawn", "Automatically clears GAIT movement speed, hearing, tinnitus, and visual effects when the local player respawns or changes player object. Recommended: enabled.", _categoryQoL, true] call _addCheckbox;
 ["GAIT_ss_suspendInSpectator", "Suspend while spectating", "Suspends GAIT movement and effect writes when your camera is no longer attached to your player. Helps prevent stuck visuals during spectator, Zeus camera, or remote-control edge cases.", _categoryQoL, true] call _addCheckbox;
 ["GAIT_ss_suspendWhileUnconscious", "Suspend while unconscious", "Suspends GAIT movement control while ACE reports the player unconscious. This avoids fighting ACE medical states and clears local fatigue effects cleanly.", _categoryQoL, true] call _addCheckbox;
 ["GAIT_ss_showStartupMessage", "Show startup message", "Shows a short systemChat message after mission start with the active preset, compatibility mode, and ACE Advanced Fatigue bridge state.", _categoryQoL, true] call _addCheckbox;

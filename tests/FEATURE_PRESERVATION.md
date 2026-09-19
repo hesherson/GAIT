@@ -1,28 +1,31 @@
-# GAIT alpha6 restoration: feature preservation contract
+# GAIT alpha7 fatigue feedback: feature preservation contract
 
-Alpha6 restores the original brief brace inside the running animation, including for light gear. Heavy gear must still sprint. The base brace duration, dip and ramp remain unchanged; tier relief contributes at 20% strength so the brace feels similar across kits. Heavy gear uses the original acceleration rate, with only small boosts for lighter loads. Sprint-release momentum requires held forward input and ends within a short interval. Live animation requests follow sprint input immediately through graph transitions. The alpha3 uphill release brake remains intact. These source and helper checks cannot establish animation smoothness or physical speed in Arma.
+Alpha7 removes all GAIT aim-coefficient and native-fatigue writes, adds intermittent peripheral fatigue cues, halves the seven ACE heartbeat samples' gain, and increases heavy-kit acceleration by 2%. The alpha6 brief brace inside the running animation, original brace duration/dip, short forward-only release taper, slope targets and animation graph remain. The alpha3 uphill release brake remains intact. These source and helper checks cannot establish aim feel, rendered appearance, perceived loudness or physical speed in Arma.
 
 The reference is GAIT 1.7.0-rc4 from this investigation. The fixed historical hashes are retained. Unless another file is named, baseline line references below identify `addons/gait/functions/fn_initSprintSystem.sqf` in RC4.
 
-## Authorized changes through alpha6
+## Authorized changes through alpha7
 
-The guard retains all 25 original RC4 block hashes and all three file reference hashes. Seventeen executable blocks remain intact; eight require sixteen exact reversals. Changes are allowed only as exact reviewed fragments that are reversed in memory before comparison with RC4. A missing fragment, additional edit, reordered relief tier or retuned preserved value fails. Reference hashes must never be regenerated from current code to silence failures.
+The guard retains all 25 original RC4 block hashes and all three file reference hashes. Fourteen executable blocks remain intact; eleven require twenty-six exact reversals. Changes are allowed only as exact reviewed fragments that are reversed in memory before comparison with RC4. A missing fragment, additional edit, reordered relief tier or retuned preserved value fails. Reference hashes must never be regenerated from current code to silence failures.
 
 | Area | Authorized change | What stays protected |
 | --- | --- | --- |
-| Initialization and reset | Release-time coast snapshots and new momentum/brake/controller ownership state. | Original setting reads, values, resets and preset selection. |
+| Initialization and reset | Release-time coast snapshots and new momentum/brake/controller ownership state; remove retired sway/native-fatigue state and add visual cleanup. | Every shared movement/trip initializer, retained setting read, reserve reset and preset selection. |
 | Gear and launch brace | Preserve original tier selection; multiply bounded relief by 0.20 for a similar visible brace across tiers. The brace is numerical within the running clip. | All four configured relief values, tier boundaries, base dip/duration/ramp, slope additions and minimum coefficient. |
 | Native stamina ownership | Restore the original mod's native stamina suspension while GAIT owns eligible movement. Release that ownership before trips and during reset or player replacement. | External sprint/walk restrictions, ACE source masks and physiological values. The previously enabled stamina flag is restored when ownership ends. |
 | Downhill speed | Retain the alpha2 sustained, load-aware bonus. | Directional grade sampling, smoothing, uphill targets, trips and hill-walk policy. |
 | Brace readiness | Recognize actual stopped movement, veto a repeated launch brace during established momentum, and avoid a second brace when resuming the uphill release brake. | Original reserve gate, slope memory, dip formula and sprint-end bookkeeping. |
 | Forward sprint release | Replace the long hold and trailing coefficient lag with a short, bounded taper that requires forward input. | Direction, eligibility, external restriction, sprint-resume and uphill-brake precedence. |
-| Speed ramp | Original heavy acceleration and up to 6% faster light acceleration; original ordinary response elsewhere; a direct finite forward-release taper. | Frame-time response, launch-brace snap, uphill braking and ACE carrying. |
+| Speed ramp | Heavy acceleration is now 2% above the original rate; light remains up to 6% faster. Ordinary response and the finite forward-release taper remain unchanged. | Frame-time response, launch-brace snap, uphill braking and ACE carrying. |
+| Weapon handling | Remove the entire GAIT sway loop, all startup/disabled/reset aim writes, six sway controls, seven sway preset entries, and native-fatigue writes plus their dead arithmetic/settings/preset entry. | Native/ACE weapon handling, ACE physiology, GAIT local reserve and all shared movement/trip state. |
+| Fatigue visuals | Replace the retired visual toggle with a brief vignette, refreshed each tick and supervised independently. Suspend only ACE Advanced Fatigue's published blackout handle during valid visual ownership. | Existing legacy-handle cleanup, owned handle restoration, medical effects and clear intervals between pulses. |
+| Heartbeat audio | Optional config addon halves gain for all seven ACE Medical Feedback heartbeat variants. | Sample paths, pitch, ACE playback logic, unrelated sounds and standalone operation without ACE. |
 
 The original launch duration is protected without a tier multiplier. Alpha6 deliberately compresses the relief contribution, while preserving configured relief values and their tier selection. The exact formula and trip-cleanup deltas are recorded in `feature_preservation.py`, alongside the retained release taper and acceleration integration. Separate behavioral suites check their bounds and input policy.
 
-`fn_applyPreset.sqf` and `fn_slopePaceModel.sqf` remain byte-identical to RC4. Settings registration allows the two alpha2 description edits, one associated display-label edit and two new sliders, plus one alpha3 uphill-release checkbox. Alpha5 updates four release-setting descriptions and marks the saved sustain setting inactive. Alpha6 updates the shorter release-duration description and four brace-relief descriptions. Reversing those exact edits must reproduce the fixed RC4 registration token digest. Every original range, default, category, callback and CBA priority rule remains protected.
+`fn_slopePaceModel.sqf` remains byte-identical to RC4. The complete original preset-file digest is retained: six exact byte reversals restore the eight removed sway/native-fatigue entries before comparison. Every other preset byte remains protected. Settings registration keeps the exact earlier alpha2-alpha6 revisions and permits only the reviewed alpha7 removals, replacement visual toggle, category changes and descriptions. Reversing those edits must reproduce the fixed RC4 registration token digest. Remaining ranges, defaults, callbacks and CBA priority rules remain protected.
 
-The active forward release has no hold and lasts 0.15-0.45 seconds, approximately 0.27-0.34 seconds at the stored 0.85-second default. The sprint acceleration scale varies continuously from 1.06 at zero load, through 1.04 at 35 lb and 1.02 at 55 lb, to 1.00 at 75 lb and above. Ordinary response and launch duration retain their original scales. These are animation-coefficient timings, not measured physical stopping distances.
+The active forward release has no hold and lasts 0.15-0.45 seconds, approximately 0.27-0.34 seconds at the stored 0.85-second default. The sprint acceleration scale varies continuously from 1.06 at zero load, through 1.04 at 35 lb and 1.02 at 55 lb, remaining at 1.02 for heavier loads. Ordinary response and launch duration retain their original scales. These are animation-coefficient timings, not measured physical stopping distances.
 
 The two added sliders retain their 0.12 unloaded sustained downhill bonus and 2.5-second momentum build defaults. The added uphill-release checkbox remains enabled by default and uses the original slope-brace angles, duration, dip and ramp tuning.
 
@@ -32,7 +35,7 @@ The custom graph has 36 directional sprint/idle states and no walking-brace fami
 
 | Feature | Baseline code | Contract |
 | --- | --- | --- |
-| Player configuration and presets | Existing registrations in `fn_registerSettings.sqf`; complete `fn_applyPreset.sqf` | Preserve original ranges, defaults, preset overrides and CBA priority. Only the reviewed labels and descriptions through alpha6, two added sliders and uphill-release checkbox above may differ. Custom stops preset rewrites; forced mission/server values retain precedence. |
+| Player configuration and presets | Existing registrations in `fn_registerSettings.sqf`; complete `fn_applyPreset.sqf` | Preserve retained ranges, defaults, preset overrides and CBA priority after the exact authorized revisions through alpha7 listed above. Custom stops preset rewrites; forced mission/server values retain precedence. |
 | Live tuning and resets | 527–760, 772–942 | Preserve live setting refresh, preset application, reserve-ratio preservation when capacity changes, and existing state initialization and reset. Reset also clears movement-history, uphill-brake and coast ownership state. |
 | Sprint intent | 977–998 | Sprint pace requires held Turbo and positive resolved forward input, eligible movement, non-prone stance and no external sprint/walk lock. Actual crouch remains distinct from a crouch-key press. Animation ownership must use a separate condition. |
 | Input resolution | `fn_traversalHelpers.sqf`:8–26 | Preserve opposed-key cancellation, 0.05 deadzone, normalized diagonal input and held-Turbo semantics. TurnLeft/TurnRight are the strafe actions. Do not replace them with rotation actions. |
@@ -45,7 +48,7 @@ The custom graph has 36 directional sprint/idle states and no walking-brace fami
 | Slope stop/restart brace | 1299–1329, 1356–1357 | Keep slope-stop memory, slope severity, additional dip and duration, and the minimum brace coefficient. Both ascent and descent can affect a restart after momentum has ended. A recent slope stop cannot override established retained momentum for a new launch brace. The new release brake is a separate event and intentionally slows a moving uphill body. |
 | Sprint-end bookkeeping | 1335–1368 | Preserve last-sprint time/grade, clear the active brace, and do not reintroduce a forced post-run weapon/posture correction. |
 | Shift-release carry and taper | 1339–1353, 1578–1609 | Only with forward input held, use a short release-time taper with no full-speed hold. Heavy gear can taper slightly longer than light gear within the same short bound. Uphill severity shortens the window and caps stored speed at the post-brake coefficient. Forward release, pure sideways/backwards input, renewed sprint, ineligibility or external restrictions cancel forward-only carry. Forward diagonals remain valid. There is no trailing exponential slowdown after the finite taper. |
-| Acceleration/deceleration | 1614–1621; `fn_traversalHelpers.sqf`:28–32 | Keep the original base ramp setting, frame-time adjustment and sideways/external-lock speed caps. Extra scaling applies only to sprint acceleration, from the original heavy rate to a small lighter-kit boost. Ordinary response, launch-brace snap, uphill braking and ACE-carry behavior remain intact. Short forward-release tapering takes precedence over the ordinary exponential response. Do not reset momentum merely because a custom directional state changes. |
+| Acceleration/deceleration | 1614–1621; `fn_traversalHelpers.sqf`:28–32 | Keep the original base ramp setting, frame-time adjustment and sideways/external-lock speed caps. Extra scaling applies only to sprint acceleration, from a 2% heavy-kit boost to a 6% unloaded boost. Ordinary response, launch-brace snap, uphill braking and ACE-carry behavior remain intact. Short forward-release tapering takes precedence over the ordinary exponential response. Do not reset momentum merely because a custom directional state changes. |
 | Standalone reserve | 1373–1455 | Keep sprint drain, uphill drain severity, recovery time, exhaustion clamps and temporary fallback before ACE publishes its first reserve. Sideways ownership alone must not count as sprint drain. |
 | ACE reserve bridge | 1390–1417 | Read the minimum anaerobic/aerobic reserve with the existing acidosis and muscle-damage penalties. Do not write ACE physiological values. |
 | Continuous grade and weight pace | 1085–1223, 1553–1566; complete `fn_slopePaceModel.sqf` | Preserve directional sampling, slope smoothing, uphill decay, hill-walk penalties, continuous load scaling, fresh/exhausted targets and the sprint/walk coefficient floor. The downhill bonus is intentionally replaced with sustained, angle-dependent, load-scaled gain that tapers on extreme descents. No new slope cutoff may replace the continuous model. |
@@ -55,9 +58,9 @@ The custom graph has 36 directional sprint/idle states and no walking-brace fami
 | Downhill trip risk | 1024–1046, 1125–1198 | Keep the slope/speed/weight factors, sustained-movement gates, cooldown/immunity and chance-per-second calculation. Directional graph membership does not itself imply a valid sprint. |
 | Trip recovery | 205–260 | Keep the trip impulse, minimum ragdoll interval, actual horizontal-speed recovery check and maximum duration. Release native stamina ownership before tripping; preserve ACE unconsciousness when releasing GAIT's trip. |
 | Landing feedback | 1000–1009 | Preserve the ground-contact transition, vertical-speed threshold and severity-scaled camera shake. |
-| Weapon sway | 377–506 | Keep the separate sprint sway and linear recovery loop, resting/walking baselines, settings and context gates. Locomotion ownership must not become another aim-coefficient writer. |
-| Tinnitus and hearing | 139–164, 575–607, 1457–1548 | Keep exhaustion thresholds, fades, volume scaling and restoration. ACE Advanced Fatigue continues owning heartbeat audio. |
-| Visual-effect policy | 318–373, 1480–1512 | RC4 deliberately cleans up legacy post-processing rather than recreating it. Preserve that current policy even though the older feature description advertises tunnel vision. Do not silently restore blur or aberration during this rebuild. |
+| Weapon sway | 377–506 | Remove all GAIT sway control as requested. Preserve shared movement/trip initialization from this block. The guard rejects executable aim-coefficient, native-fatigue or recoil writers in every GAIT function, including cleanup paths. |
+| Tinnitus and hearing | 139–164, 575–607, 1457–1548 | Keep exhaustion thresholds, fades, volume scaling and restoration. ACE Medical Feedback continues owning heartbeat playback; the optional config patch scales only its seven heartbeat gains by 0.5. |
+| Visual-effect policy | 318–373, 1480–1512 | Keep the legacy cleanup and add only the requested intermittent vignette. Pulses have a fixed 1.30-second envelope, peak edge opacity capped at 14%, and at least 5 seconds fully clear between pulses. Recovery and context/ownership loss destroy the vignette; stale caller updates expire after 0.75 seconds. No blur or chromatic aberration is recreated. |
 
 ## Important tuned values
 
@@ -73,15 +76,14 @@ These are the main-loop fallbacks/shared Balanced values, not a replacement for 
 | Non-ACE brace reserve gate / zero-momentum margin | 0.98 / 0.04 |
 | Brace-ready movement threshold / forward-release rearm delay | 4 km/h / 0.50 s |
 | Gear boundaries | 35 / 55 / 75 displayed lb |
-| Light / medium / moderate / heavy configured brace relief | 0.55 / 0.35 / 0.18 / 0; applied at 20% strength in alpha6 |
+| Light / medium / moderate / heavy configured brace relief | 0.55 / 0.35 / 0.18 / 0; applied at 20% strength since alpha6 |
 | Slope-brace range / remembered-stop interval | 15–35° / 2.5 s |
 | Maximum added slope-brace duration / dip | 0.18 s / 0.28 |
-| Stored Shift-release hold / taper / exponent settings | 1.00 s / 0.85 s / 1.45; sustain is inactive and alpha6 bounds the active release window |
+| Stored Shift-release hold / taper / exponent settings | 1.00 s / 0.85 s / 1.45; sustain is inactive and the active release window remains bounded |
 | Grade magnitude rise / fall smoothing | 22 / 30 degrees per second |
 | Minimum sprint/walk coefficient ratio / fresh margin | 1.20 / 0.20 |
 | Unarmed sprint normalization | 0.725 |
 | ACE acidosis / muscle-damage penalty factors | 0.45 / 0.25 |
-| Resting / walking / sprint aim coefficient; recovery | 0.02 / 0.01 / 2.0; 6 s |
 
 The physical sprint speed must still be measured against walking at the same grade and kit. A coefficient ratio alone does not establish metres per second, especially when the selected animation changes. Any optional measured-pace adapter must default to the unchanged legacy calculation until a valid profile is explicitly supplied. It must not replace brace or momentum tuning.
 
@@ -93,6 +95,8 @@ The source-preservation check intentionally permits new animation graph code, ne
 
 Native stamina ownership uses eligible movement context, independently of an animation frame or current sprint permission. It runs before the active-context and engine-permission gates, avoiding a circular prerequisite for heavy-kit entry. Temporary animation handoffs do not restore native stamina. Mode/context exit, reset, trips and player replacement release the saved ownership. Cleanup does not enable stamina that was already disabled on acquisition and does not reset fatigue or erase medical restrictions. The helper suite mocks only the engine boundary; four executable-fragment assertions separately protect acquisition ordering and cleanup call sites.
 
+The fatigue vignette watchdog reads a fresh main-loop request on each rendered frame. A missing request, a 0.75-second stale lease or invalid body/camera context releases both visual owners. The vignette handle is destroyed at pulse end and during every clear interval; recovery/reentry keeps the cooldown so rapid toggles cannot create a permanent series of pulses. The separate ACE bridge changes only the published Advanced Fatigue blackout handle, remembers its prior enabled state and restores it when ownership ends. Replaced/deleted numeric handles are not queried or restored. Medical/pain effects remain outside GAIT ownership.
+
 ## Automated preservation check
 
 From the project root:
@@ -101,11 +105,11 @@ From the project root:
 python .\tests\feature_preservation.py --self-test
 ```
 
-The script carries fixed RC4 reference digests and needs no earlier checkout or third-party Python package. It checks original presets and slope pace bytes, normalized original settings registrations and all 25 executable-token blocks after exact authorized reversals. Comments and whitespace may change; a block preserved only in comments fails.
+The script carries fixed RC4 reference digests and needs no earlier checkout or third-party Python package. It checks original slope pace bytes, restored original preset bytes, normalized original settings registrations and all 25 executable-token blocks after exact authorized reversals. It also checks four stamina and nine visual lifecycle integration fragments and rejects executable GAIT aim/fatigue/recoil writers. Comments and whitespace may change; a block preserved only in comments fails.
 
-The mutation self-test changes brace dip/duration, original relief selection and the new relief scale, reserve gating, release-taper input and completion behavior, lateral sprint eligibility, ramp timing, momentum veto, uphill resume/brake behavior, downhill integration and a settings default. It also removes stamina acquisition and reset cleanup. Each mutation must be rejected. Intact extraction to a helper must remain accepted.
+The mutation self-test changes brace dip/duration, original relief selection and the new relief scale, reserve gating, release-taper input and completion behavior, lateral sprint eligibility, ramp timing, momentum veto, uphill resume/brake behavior, downhill integration and a settings default. It also removes stamina acquisition/reset cleanup, visual watchdog startup, unconditional lease refresh, reset cleanup, ACE feedback restoration and the native/ACE incapacitation and trip context guard; separate probes reintroduce forbidden aim/fatigue/recoil writers. Each mutation must be rejected. Intact extraction to a helper must remain accepted.
 
-Run all fifteen behavioral suites against actual helper source with an installed SQF-VM:
+Run all seventeen behavioral suites against actual helper source with an installed SQF-VM:
 
 ```powershell
 python .\tools\run_regressions.py --sqfvm 'C:\tools\sqfvm.exe' --output "$env:TEMP\GAIT-regressions"
@@ -125,3 +129,7 @@ This is a preservation guard, not proof of runtime reachability or engine behavi
 6. Repeat with ACE active at reduced reserves: standing step-off still works, ACE fatigue consequences continue, and medical movement restrictions win. Test standalone reserve drain/recovery separately with ACE Advanced Fatigue disabled.
 7. Verify carry/pickup, crouch/prone, reload, medical actions, unconsciousness, respawn, remote control and spectator transitions. The controller must release appropriately without resetting unrelated physiology. Toggle GAIT off and change player while native stamina ownership is active; verify restoration of the prior enabled flag. Record engine sprint/walk flags, stamina ownership and ACE lock masks if heavy sprint still fails.
 8. Compare sustained physical sprint and walk speeds at matched kit and grade, including both sides of ±32°. Repeat downhill with light, medium and heavy kits; gain should build over travel time and vary smoothly with grade, with less bonus under heavier loads. A working graph and preserved tuning do not by themselves prove the speed requirement.
+
+9. Aim down sights while stationary, jogging and recovering from a sprint with ACE on and off. GAIT must issue no aim/fatigue/recoil writes and must not add the previous repeated sway/stop pattern. Test respawn, disabled mode and preset changes as well; these must not reset aim coefficients.
+10. Exhaust the reserve and observe a brief subtle peripheral darkening followed by a fully clear interval. Sustained fatigue must not leave GAIT post-processing continuously visible. Recover, toggle the vignette/master setting, change player, enter spectator or become unconscious mid-pulse: owned effects must release promptly. Brief recovery/reentry must preserve the clear interval. A deliberately stalled main updater must clear its vignette within the 0.75-second lease.
+11. Repeat with ACE Advanced Fatigue, including its exhaustion blackout condition. While GAIT owns the vignette, only the Advanced Fatigue blackout is suspended; breathing, heartbeat timing, medical effects and physiology continue. Disable GAIT and confirm the prior ACE handle state is restored. Check all seven heartbeat variants if available: sample timing/pitch remain unchanged and configured gain is half the original value. Perceived loudness still requires an in-game listening check.

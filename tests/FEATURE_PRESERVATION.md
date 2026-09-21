@@ -1,3 +1,5 @@
+> **Historical preservation contract:** this file describes the reviewed alpha11/RC4 baseline used by the preservation harness. References below to alpha11 behavior and the former 20% heartbeat setting are historical. Current GAIT alpha19 uses the separate 10% heartbeat override and includes later reviewed locomotion changes. Do not treat this document as the current feature guide; use `README_TEST_BUILD.md`, `README_SETTINGS.md`, and `tests/AUDIT_ALPHA19.md`.
+
 # GAIT alpha11 measured handoff and settings: feature preservation contract
 
 Alpha11 adds guarded passive jog-reference measurement, a measured release endpoint, and coefficient compensation during the existing native animation handoff. It removes five inactive/redundant/unsafe-to-disable controls, merges the duplicate movement-mode choice, and corrects descriptions and two UI ranges to match existing runtime clamps. No active gear, brace or steady pace default is retuned. The alpha10 behavior described below remains the fallback when a matching reference is unavailable. The two-clip blend model requires in-game validation.

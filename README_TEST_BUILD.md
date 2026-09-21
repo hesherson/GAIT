@@ -38,7 +38,7 @@ The shared brief brace, original gear tuning, heavy sprint access, lowered-pisto
 2. On flat ground with default speed-ramp settings, sprint acceleration should now build noticeably slower and continuously toward maximum speed, reaching roughly 95% of the target in about 4.1 seconds before load-tier variation. Verify there is no plateau, pause or late snap to top speed. Then release Shift during partial acceleration and at full sprint; release timing should remain unchanged.
 3. Tap Shift again during both the release and the animation blend. Repeat release/retap sequences; check for no restart, rebrace or stale top-speed value.
 4. While running and sprinting at low, mid and near-full speed, press Crouch/MoveUp with W still held. The character should bend into crouched running the same way vanilla Arma does: no abrupt stop, no standstill detour and no visible coefficient snap during the bend. Repeat during W+A/W+D, during the acceleration ramp, during sprint release, and with Prone. After the low-stance state has settled, GAIT may relinquish the carried coefficient normally.
-5. Hold only W on shallow slopes and at the engine's ~32 degree forced-walk threshold, uphill and downhill. The animation must remain Mrun/jog rather than Mwlk/walk. On a calibrated pace reference the ordinary slope jog target must remain only slightly above the matching walk pace (6% floor). Then repeat the alpha14 zero-momentum uphill brace and 100–150 lb steep-downhill 30+ km/h tests.
+5. Hold only W on shallow slopes and at the engine's ~32 degree forced-walk threshold, uphill and downhill. The animation must remain Mrun/jog rather than Mwlk/walk. The fallback jog target should remain only slightly above the ordinary slope target in coefficient space; do not infer an exact physical percentage from unlike walk/run clips. Then repeat the zero-momentum uphill brace and 100–150 lb steep-downhill 30+ km/h tests. After stable same-context sprint travel, the debug HUD should show `Sprint ref: true` when passive physical calibration is available.
 6. Repeat immediately after mission start, before calibration, and after changing surface/weapon. The existing release must remain available when no valid reference exists.
 
 For a read-only capture, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
@@ -51,6 +51,6 @@ Send the RPT after STOP with approximate issue times. Its releaseMotion fields i
 
 ## Verification
 
-Run VERIFY_READY.ps1 to validate the bundled PBO prefixes, checksums and all eighteen runtime scripts against source. Core prefix is gait; heartbeat prefix is z\gait\addons\heartbeat.
+Run `tools\verify_build.ps1 -BuildPath .\.hemttout\build -SourceRoot .` after `hemtt build`. It validates both PBO prefixes/checksums and all eighteen embedded runtime scripts against source. Core prefix is `gait`; heartbeat prefix is `z\gait\addons\heartbeat`.
 
 `tests/VALIDATION_FOUNDATION.txt` and `tests/VALIDATION_RESULTS.json` are historical alpha11 evidence and must not be treated as current alpha19 results. `tests/AUDIT_ALPHA19.md` records the current source audit and reproduction commands. A clean HEMTT build, current static tests and SQF-VM results still do not replace Arma acceptance for physical velocity, interpolation, stopping distance or perceived sound/visuals.

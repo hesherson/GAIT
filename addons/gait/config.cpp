@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha18: lowered-pistol continuity and slower sprint acceleration
+// GAIT 1.8.0-alpha19: audited locomotion foundation and lifecycle hardening
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha18";
-        versionAr[] = {1,8,0,18};
+        versionStr = "1.8.0-alpha19";
+        versionAr[] = {1,8,0,19};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

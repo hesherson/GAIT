@@ -163,8 +163,18 @@ class CfgMovesBasic
     lines += ["    };", "};", "", "class CfgMovesMaleSdr: CfgMovesBasic", "{", "    class States", "    {"]
     for family, neutral_actions, jog_actions, sprint_actions, native_actions in FAMILIES:
         state_specs = [("Dnon", False)]
-        state_specs += [(direction, True) for direction in DIRECTIONS if direction in FORWARD]
+        state_specs += [(direction, True) for direction in DIRECTIONS]
         state_specs += [(direction, False) for direction in DIRECTIONS]
+        # Dnon and forward sprint/jog names can coincide only where intended;
+        # preserve one definition for each actual custom state name.
+        deduped = []
+        seen = set()
+        for spec in state_specs:
+            name = custom(family, spec[0], spec[1])
+            if name not in seen:
+                seen.add(name)
+                deduped.append(spec)
+        state_specs = deduped
         declarations = []
         for direction, sprinting in state_specs:
             base = native(family, direction, sprinting)

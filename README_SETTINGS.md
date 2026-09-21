@@ -8,7 +8,7 @@ Removed the inactive release sustain timer, redundant downhill onset cap, and th
 
 For a custom old downhill onset cap, set the remaining Downhill boost starts control to the smaller of your previous onset and cap. Defaults are unchanged. The release curve slider now exposes its effective 1–3 range; HUD interval starts at the existing 0.05-second minimum.
 
-Heartbeat gain is fixed at 20% by the optional heartbeat PBO, independently of the tinnitus switch. Removing that PBO restores ACE’s original heartbeat gain. There is no sway control. Automatic pace calibration has no extra user settings.
+Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of the tinnitus switch. Removing that PBO restores ACE’s original heartbeat gain. There is no sway control. Automatic pace calibration has no extra user settings.
 
 ## Active controls
 

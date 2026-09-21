@@ -284,18 +284,33 @@ GAIT_fnc_observeStanceInput = {
 
 GAIT_fnc_stanceYieldActive = {
     params [["_unit", objNull, [objNull]]];
-    !isNull _unit && {
-        (_unit getVariable ["GAIT_stanceInputHeld", false]) ||
-        {diag_tickTime <= (_unit getVariable ["GAIT_stanceYieldUntil", -1])}
-    }
+    if (isNull _unit) exitWith {false};
+    private _until = _unit getVariable ["GAIT_stanceYieldUntil", -1];
+    private _held = _unit getVariable ["GAIT_stanceInputHeld", false];
+    private _anim = toLower (animationState _unit);
+    private _lowStanceVisible = (stance _unit) in ["CROUCH", "PRONE"] ||
+        {(_anim find "pknl") >= 0} || {(_anim find "ppne") >= 0};
+    // Keep a minimum render grace so the original input reaches Arma, then
+    // allow a visibly established low stance to end the lease early.
+    private _started = _unit getVariable ["GAIT_stanceYieldStarted", -1];
+    private _minimumGrace = _started >= 0 && {diag_tickTime - _started < 0.12};
+    _held || {_minimumGrace} || {!_lowStanceVisible && {diag_tickTime <= _until}}
 };
 
 GAIT_fnc_beginStanceYield = {
     params [["_unit", objNull, [objNull]]];
     if (isNull _unit) exitWith {false};
     _unit setVariable ["GAIT_stanceYieldUntil", diag_tickTime + 0.45];
+    _unit setVariable ["GAIT_stanceYieldStarted", diag_tickTime];
     _unit setVariable ["GAIT_slopeCanceledBraceEndTime",
         missionNamespace getVariable ["GAIT_braceEndTime", -1]];
+    // Preserve the coefficient that is physically on the character. Vanilla
+    // running-to-crouch keeps translating while the torso/legs bend; restoring
+    // GAIT_nativePreviousCoef here caused the visible speed/pose discontinuity.
+    private _carryCoef = getAnimSpeedCoef _unit;
+    private _owned = _unit isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull]) &&
+        {abs (_carryCoef - (missionNamespace getVariable ["GAIT_nativeLastWritten", -1])) < 0.001};
+    _unit setVariable ["GAIT_stanceCarryCoefficient", [_carryCoef, _owned]];
     missionNamespace setVariable ["GAIT_locomotionRequest", []];
     missionNamespace setVariable ["GAIT_braceActive", false];
     missionNamespace setVariable ["GAIT_braceEndTime", -1];
@@ -304,7 +319,8 @@ GAIT_fnc_beginStanceYield = {
     _unit setVariable ["GAIT_paceHandoffCandidate", []];
     _unit setVariable ["GAIT_releasePendingCoefficient", -1];
     _unit setVariable ["GAIT_releaseResume", []];
-    [] call GAIT_fnc_releaseSpeedCoefficient;
+    // Clear standing animation ownership only. Do NOT release the current
+    // coefficient until the stance-yield lease is over.
     [_unit] call GAIT_fnc_clearSlopeLocomotionState;
     true
 };

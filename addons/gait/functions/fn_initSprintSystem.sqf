@@ -870,7 +870,9 @@ GAIT_fnc_setTunnelVisionFX = {
                     };
                 } else {
                     if (!isNil "GAIT_fnc_clearReleaseMomentum") then {[player] call GAIT_fnc_clearReleaseMomentum;};
-                    [] call GAIT_fnc_releaseSpeedCoefficient;
+                    // Keep the currently applied coefficient through the native
+                    // running-to-crouch/prone bend. No writer runs here; the
+                    // value simply remains untouched until the lease ends.
                 };
                 private _releaseResume = player getVariable ["GAIT_releaseResume", []];
                 player setVariable ["GAIT_releaseResume", []];

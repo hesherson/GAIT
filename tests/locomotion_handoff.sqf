@@ -69,6 +69,12 @@ if ([_testUnit,true] call GAIT_fnc_observeStanceInput) then {_failures pushBack 
 if ([_testUnit,false] call GAIT_fnc_observeStanceInput) then {_failures pushBack "Stance release created a false edge";};
 if !([_testUnit,true] call GAIT_fnc_observeStanceInput) then {_failures pushBack "New stance press did not rearm";};
 _testUnit setVariable ["GAIT_stanceInputHeld", false];
+private _savedCarry = _testUnit getVariable ["GAIT_stanceCarryCoefficient", []];
+_testUnit setVariable ["GAIT_stanceCarryCoefficient", [1.23, true]];
+if !(((_testUnit getVariable ["GAIT_stanceCarryCoefficient", []]) select 0) isEqualTo 1.23) then {
+    _failures pushBack "Stance carry coefficient storage lost current movement pace";
+};
+_testUnit setVariable ["GAIT_stanceCarryCoefficient", _savedCarry];
 
 // Stop retiming is edge-triggered. Holding no keys cannot repeatedly request
 // idle, and changing directly from W to A remains movement rather than stop.

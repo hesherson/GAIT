@@ -153,8 +153,20 @@ private _steep = [1,_window select 0,_window select 1] call GAIT_fnc_uphillBrake
 private _genericRamp = [0.05, 1] call GAIT_fnc_scaleInertiaRamp;
 private _sprintRamp = [0.05, 1] call GAIT_fnc_sprintAccelerationRamp;
 [_sprintRamp < _genericRamp && {_sprintRamp > 0}, "sprint acceleration rate is slower but positive"] call _assert;
-private _generic95 = ln 0.05 / ln (1 - _genericRamp) * 0.05;
-private _sprint95 = ln 0.05 / ln (1 - _sprintRamp) * 0.05;
+private _genericValue = 0;
+private _sprintValue = 0;
+private _genericSteps = 0;
+private _sprintSteps = 0;
+while {_genericValue < 0.95 && {_genericSteps < 500}} do {
+    _genericValue = _genericValue + ((1 - _genericValue) * _genericRamp);
+    _genericSteps = _genericSteps + 1;
+};
+while {_sprintValue < 0.95 && {_sprintSteps < 500}} do {
+    _sprintValue = _sprintValue + ((1 - _sprintValue) * _sprintRamp);
+    _sprintSteps = _sprintSteps + 1;
+};
+private _generic95 = _genericSteps * 0.05;
+private _sprint95 = _sprintSteps * 0.05;
 [_generic95 > 2.8 && {_generic95 < 3.1}, "default generic ramp remains about three seconds to 95 percent"] call _assert;
 [_sprint95 > 4.0 && {_sprint95 < 4.4}, "default sprint acceleration stretches to about 4.1 seconds to 95 percent"] call _assert;
 [_sprint95 > (_generic95 * 1.35), "sprint acceleration is materially slower than generic movement"] call _assert;

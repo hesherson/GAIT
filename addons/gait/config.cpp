@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha13: startup strafe and progressive uphill build
+// GAIT 1.8.0-alpha14: exponential uphill launch and gravity downhill acceleration
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha13";
-        versionAr[] = {1,8,0,13};
+        versionStr = "1.8.0-alpha14";
+        versionAr[] = {1,8,0,14};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

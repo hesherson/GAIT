@@ -1705,7 +1705,11 @@ GAIT_fnc_setTunnelVisionFX = {
                     // A modest load effect applies only while building sprint.
                     // Braces, uphill braking and ordinary movement keep their rates.
                     if (!_isAceCarrying && {_isSprinting} && {!_uphillBrakeActive} && {_sprintBraceEndTime <= time} && {_rampTarget > _currentSpeed}) then {
-                        _ramp = [_ramp, _accelerationScale] call GAIT_fnc_scaleInertiaRamp;
+                        // Upward sprint acceleration intentionally takes longer
+                        // than ordinary coefficient changes. Preserve all release,
+                        // brake and jog timing; only the run-up to sprint target
+                        // uses this 0.70 rate scale (~40% longer to ~95% target).
+                        _ramp = [_ramp, _accelerationScale * 0.70] call GAIT_fnc_scaleInertiaRamp;
                     };
                     _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
                     // Honor walk/injury locks and avoid carrying a sprint boost sideways.

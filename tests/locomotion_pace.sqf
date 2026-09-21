@@ -81,6 +81,9 @@ private _slopeJogFloor = [0.8, 0.01, 0.5, 0.5, 0.75, 1.06,
 private _partial = [["SrasWrfl", "Dr", 1, 2, -1]];
 [[ _partial, "SrasWrfl", "Dr", "jog"] call GAIT_fnc_locomotionPaceReferences isEqualTo [1, 2], "directional jog needs walk/jog measurements only"] call _assert;
 [[ _partial, "SrasWrfl", "Dr", "sprint"] call GAIT_fnc_locomotionPaceReferences isEqualTo [], "missing sprint reference cannot substitute jog"] call _assert;
+private _lowPistolProfile = [["SlowWpst", "Df", 1.4, 2.8, 5.6]];
+[[ _lowPistolProfile, "SlowWpst", "Df", "sprint"] call GAIT_fnc_locomotionPaceReferences isEqualTo [1.4, 5.6],
+    "lowered pistol is a first-class measured locomotion family"] call _assert;
 [[ _profiles, "SrasWrfl", "Dnon", "sprint"] call GAIT_fnc_locomotionPaceReferences isEqualTo [], "idle is not a measured movement direction"] call _assert;
 [[ _profiles, "SrasWrfl", "Df", "unknown"] call GAIT_fnc_locomotionPaceReferences isEqualTo [], "unknown gait cannot select another reference"] call _assert;
 

@@ -15,6 +15,7 @@ FAMILIES = {
     "SrasWrfl": ("GAIT_SlopeRifleRaisedActions", "GAIT_SlopeRifleRaisedJogActions", "GAIT_SlopeRifleRaisedSprintActions", "RifleStandActions"),
     "SlowWrfl": ("GAIT_SlopeRifleLoweredActions", "GAIT_SlopeRifleLoweredJogActions", "GAIT_SlopeRifleLoweredSprintActions", "RifleLowStandActions"),
     "SrasWpst": ("GAIT_SlopePistolActions", "GAIT_SlopePistolJogActions", "GAIT_SlopePistolSprintActions", "PistolStandActions"),
+    "SlowWpst": ("GAIT_SlopePistolLowActions", "GAIT_SlopePistolLowJogActions", "GAIT_SlopePistolLowSprintActions", "PistolLowStandActions"),
     "SnonWnon": ("GAIT_SlopeUnarmedActions", "GAIT_SlopeUnarmedJogActions", "GAIT_SlopeUnarmedSprintActions", "CivilStandActions"),
 }
 DIRECTIONS = {"Df", "Dfl", "Dl", "Dbl", "Db", "Dbr", "Dr", "Dfr"}
@@ -51,7 +52,7 @@ class FoundationGraph(unittest.TestCase):
         cls.actions = {name: (base, body) for name, base, body in blocks if name.startswith("GAIT_Slope")}
 
     def test_real_native_clip_parents_and_controller_markers(self):
-        self.assertEqual(len(self.states), 68)
+        self.assertEqual(len(self.states), 85)
         counts = {"idle": 0, "sprint": 0, "run": 0}
         for name, (parent, body) in self.states.items():
             with self.subTest(state=name):
@@ -82,10 +83,10 @@ class FoundationGraph(unittest.TestCase):
                 # Root motion, clip speed, brace timing and pose properties
                 # remain inherited; this graph must not retune those values.
                 self.assertNotRegex(body, r"\b(?:file|speed|duty|stamina|disableWeapons|headBobStrength)\s*=")
-        self.assertEqual(counts, {"idle": 4, "sprint": 12, "run": 52})
+        self.assertEqual(counts, {"idle": 5, "sprint": 15, "run": 65})
 
     def test_default_stop_turn_and_every_direction_remain_in_family(self):
-        self.assertEqual(len(self.actions), 12)
+        self.assertEqual(len(self.actions), 15)
         for family, (neutral_actions, jog_actions, sprint_actions, native_actions) in FAMILIES.items():
             idle = f"AmovPercMstp{family}Dnon_GAIT"
             for actions, policy in (
@@ -113,7 +114,7 @@ class FoundationGraph(unittest.TestCase):
                 self.assertEqual(len(p), 71)
 
     def test_stop_targets_only_accelerate_interpolation(self):
-        self.assertEqual(len(self.stops), 4)
+        self.assertEqual(len(self.stops), 5)
         for family, (_, _, _, native_actions) in FAMILIES.items():
             native_idle = f"AmovPercMstp{family}Dnon"
             stop = native_idle + "_GAITStop"
@@ -177,22 +178,25 @@ class FoundationGraph(unittest.TestCase):
             for field in ("variantsPlayer", "variantsAI"):
                 self.assertRegex(body, rf"\b{field}\[\]\s*=\s*\{{\s*\}};")
 
-    def test_lowered_pistol_enters_without_a_native_pose_detour(self):
-        lowered = {"AmovPercMstpSlowWpstDnon"}
-        lowered |= {f"AmovPerc{pace}SlowWpst{direction}" for pace in ("Mrun", "Mwlk") for direction in DIRECTIONS}
-        lowered |= {f"AmovPercMevaSlowWpst{direction}" for direction in FORWARD}
-        for name, (_, body) in self.states.items():
-            incoming = set(dict(edges(body, "InterpolateFrom")))
-            outgoing = set(dict(edges(body, "InterpolateTo")))
-            if properties(body)["GAIT_slopeFamily"] == "SrasWpst":
-                self.assertTrue(lowered <= incoming, name)
-                self.assertTrue(lowered <= outgoing, name)
-            else:
-                self.assertFalse(lowered & (incoming | outgoing), name)
-        stop_body = self.stops["AmovPercMstpSrasWpstDnon_GAITStop"][1]
-        self.assertTrue(lowered <= set(dict(edges(stop_body, "InterpolateFrom"))))
-        self.assertTrue(lowered <= set(dict(edges(stop_body, "InterpolateTo"))))
-        self.assertNotRegex(self.text, r"class AmovPerc\w*SlowWpst\w*_GAIT(?:Stop)?:")
+    def test_lowered_pistol_is_first_class_family(self):
+        low_members = {
+            name for name, (_, body) in self.states.items()
+            if properties(body)["GAIT_slopeFamily"] == "SlowWpst"
+        }
+        raised_members = {
+            name for name, (_, body) in self.states.items()
+            if properties(body)["GAIT_slopeFamily"] == "SrasWpst"
+        }
+        self.assertEqual(len(low_members), 17)
+        self.assertEqual(len(raised_members), 17)
+        self.assertTrue(all("SlowWpst" in name for name in low_members))
+        self.assertTrue(all("SrasWpst" in name for name in raised_members))
+        self.assertFalse(low_members & raised_members)
+        self.assertIn("AmovPercMevaSlowWpstDf_GAIT", low_members)
+        self.assertIn("AmovPercMrunSlowWpstDl_GAITSprint", low_members)
+        self.assertIn("AmovPercMrunSlowWpstDf_GAIT", low_members)
+        self.assertIn("AmovPercMstpSlowWpstDnon_GAITStop", self.stops)
+
 
 
 if __name__ == "__main__":

@@ -161,8 +161,17 @@ GAIT_fnc_slopeWeaponFamily = {
         _fallback = "SnonWnon";
     } else {
         if (_weapon isEqualTo (handgunWeapon _unit)) then {
-            _families = ["SrasWpst"];
-            _fallback = "SrasWpst";
+            _families = ["SlowWpst", "SrasWpst"];
+            private _pistolAnim = toLower (animationState _unit);
+            _fallback = if ((_pistolAnim find "slowwpst") >= 0) then {
+                "SlowWpst"
+            } else {
+                if ((_pistolAnim find "sraswpst") >= 0) then {
+                    "SrasWpst"
+                } else {
+                    ["SrasWpst", "SlowWpst"] select (weaponLowered _unit)
+                }
+            };
         } else {
             if (_weapon isEqualTo (primaryWeapon _unit)) then {
                 _families = ["SlowWrfl", "SrasWrfl"];
@@ -239,7 +248,7 @@ GAIT_fnc_slopeFamilyAvailable = {
     private _cached = missionNamespace getVariable [_cacheName, -1];
     if (_cached >= 0) exitWith {_cached isEqualTo 1};
     private _states = configFile >> "CfgMovesMaleSdr" >> "States";
-    private _available = _family in ["SrasWrfl", "SlowWrfl", "SrasWpst", "SnonWnon"];
+    private _available = _family in ["SrasWrfl", "SlowWrfl", "SrasWpst", "SlowWpst", "SnonWnon"];
     private _required = [[_family, "Dnon", false] call GAIT_fnc_slopeStateName];
     {
         _required pushBack ([_family, _x, false] call GAIT_fnc_slopeStateName);

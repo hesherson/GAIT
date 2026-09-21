@@ -57,7 +57,7 @@ GAIT_fnc_locomotionPaceReferences = {
     _family = toLower _family;
     _direction = toLower _direction;
     _gait = toLower _gait;
-    if !(_family in ["sraswrfl", "slowwrfl", "sraswpst", "snonwnon"]) exitWith {[]};
+    if !(_family in ["sraswrfl", "slowwrfl", "sraswpst", "slowwpst", "snonwnon"]) exitWith {[]};
     if !(_direction in ["df", "dfr", "dr", "dbr", "db", "dbl", "dl", "dfl"]) exitWith {[]};
     private _column = ["walk", "jog", "sprint"] find _gait;
     if (_column < 0) exitWith {[]};

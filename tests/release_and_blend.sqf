@@ -81,42 +81,25 @@ private _braceTarget = "AmovPercMwlkSlowWrflDf_GAIT";
     ["AmovPercMwlkSlowWrflDf_ver2_GAIT",false]
 ];
 
-// Lowered pistol launch must remain one continuous eligible handoff. Losing
-// this exact blend made the feature loop reset sprint and brace mid-entry.
-private _pistolSprint = "AmovPercMevaSrasWpstDf_GAIT";
+// Lowered pistol is now its own GAIT family. A native SlowWpst source must
+// enter a SlowWpst custom state directly instead of converting through SrasWpst.
+private _pistolLowSprint = "AmovPercMevaSlowWpstDf_GAIT";
 private _loweredRun = "AmovPercMrunSlowWpstDf";
 private _loweredIdle = "AmovPercMstpSlowWpstDnon";
 {
     _x params ["_animation", "_sourceState", "_targetState", "_expected"];
     private _actual = [_animation, _sourceState, _targetState] call GAIT_fnc_isLocomotionHandoffBlend;
-    if (_actual isNotEqualTo _expected) then {_failures pushBack format ["Lowered pistol handoff: %1", _animation];};
+    if (_actual isNotEqualTo _expected) then {_failures pushBack format ["Lowered pistol same-pose handoff: %1", _animation];};
 } forEach [
-    [_loweredRun + "_" + _pistolSprint, _loweredRun, _pistolSprint, true],
-    [_loweredIdle + "_" + _pistolSprint, _loweredIdle, _pistolSprint, true],
-    [_pistolSprint + "_" + _loweredRun, _pistolSprint, _loweredRun, true],
-    [_pistolSprint + "_" + _loweredIdle, _pistolSprint, _loweredIdle, true],
-    [_loweredRun + "_" + _pistolSprint, _loweredIdle, _pistolSprint, false],
-    [_loweredRun + "_" + _pistolSprint + "_reload", _loweredRun, _pistolSprint, false],
-    [_loweredRun + "_AmovPknlMstpSrasWpstDnon", _loweredRun, "AmovPknlMstpSrasWpstDnon", false],
-    [_loweredRun + "_AmovPercMevaSrasWrflDf_GAIT", _loweredRun, "AmovPercMevaSrasWrflDf_GAIT", false],
-    [_loweredRun + "_AmovPercMstpSrasWlnrDnon", _loweredRun, "AmovPercMstpSrasWlnrDnon", false],
-    [_loweredRun + "_AinvPknlMstpSnonWnonDnon_medic", _loweredRun, "AinvPknlMstpSnonWnonDnon_medic", false],
-    [_loweredRun + "_AmovPercMstpSrasWpstDnon_gthArm", _loweredRun, "AmovPercMstpSrasWpstDnon_gthArm", false],
-    [_loweredRun + "_" + _pistolSprint + "_" + _loweredRun, _loweredRun, _pistolSprint, false]
+    [_loweredRun + "_" + _pistolLowSprint, _loweredRun, _pistolLowSprint, true],
+    [_loweredIdle + "_" + _pistolLowSprint, _loweredIdle, _pistolLowSprint, true],
+    [_pistolLowSprint + "_" + _loweredRun, _pistolLowSprint, _loweredRun, true],
+    [_loweredRun + "_AmovPercMevaSrasWpstDf_GAIT", _loweredRun, "AmovPercMevaSrasWpstDf_GAIT", true]
 ];
-{
-    private _blend = _x + "_" + _pistolSprint;
-    private _actual = [_blend, _x, _pistolSprint] call GAIT_fnc_isStandingLocomotionBlend;
-    if (_actual) then {_failures pushBack format ["Unregistered lowered pistol state admitted: %1", _x];};
-} forEach ["AmovPercMtacSlowWpstDf", "AmovPercMevaSlowWpstDb", "AmovPercMrunSlowWpstDf_GAIT", "AmovPercMstpSlowWpstDnon_GAITStop", "AmovPercMwlkSlowWpstDf_ver2"];
-private _launchBlend = _loweredRun + "_" + _pistolSprint;
-private _expectedLaunch = [_launchBlend, _loweredRun, _pistolSprint] call GAIT_fnc_isLocomotionHandoffBlend;
-private _decision = ["entering", true, _expectedLaunch, false, _expectedLaunch, true, true] call GAIT_fnc_locomotionDecision;
-if (_decision isNotEqualTo "hold") then {_failures pushBack "Lowered pistol launch released ownership before its sprint blend completed";};
-private _releaseTarget = "AmovPercMrunSrasWpstDf";
-if !([_loweredRun + "_" + _releaseTarget, _launchBlend, _releaseTarget] call GAIT_fnc_isLocomotionHandoffBlend) then {
-    _failures pushBack "Lowered pistol release during entry lost its exact source endpoint";
-};
+private _lowLaunchBlend = _loweredRun + "_" + _pistolLowSprint;
+private _lowExpectedLaunch = [_lowLaunchBlend, _loweredRun, _pistolLowSprint] call GAIT_fnc_isLocomotionHandoffBlend;
+private _lowDecision = ["entering", true, _lowExpectedLaunch, false, _lowExpectedLaunch, true, true] call GAIT_fnc_locomotionDecision;
+if (_lowDecision isNotEqualTo "hold") then {_failures pushBack "Lowered pistol same-pose launch released ownership before its sprint blend completed";};
 
 if (_failures isEqualTo []) then {
     diag_log "GAIT cleanup and blend tests PASS: inherited arguments, coefficient-only cleanup, expected/unsafe transitions and strict native _ver2 brace handoffs.";

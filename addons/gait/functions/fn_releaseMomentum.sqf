@@ -78,6 +78,24 @@ GAIT_fnc_releaseMomentumRequestValid = {
         {_now <= (_request select 5)} && {_request select 4}
 };
 
+// Direction is never owned by the release-speed plan. A live A/D change must
+// be able to escape the old forward/diagonal clip immediately while carrying
+// only the exact current speed sample into ordinary locomotion.
+GAIT_fnc_releaseDirectionChanged = {
+    params [
+        ["_state", [], [[]]],
+        ["_weapon", "", [""]],
+        ["_family", "", [""]],
+        ["_direction", "", [""]]
+    ];
+    if ((count _state) isNotEqualTo 2) exitWith {false};
+    private _identity = _state select 1;
+    (count _identity) isEqualTo 4 &&
+        {(_identity select 0) isEqualTo _weapon} &&
+        {(_identity select 1) isEqualTo _family} &&
+        {(_identity select 2) isNotEqualTo _direction}
+};
+
 // The main loop publishes only ordinary pace and a bounded permission lease.
 // Both schedulers observe the SAME raw edge before either changes pace/body.
 GAIT_fnc_releaseMomentumContext = {
@@ -161,17 +179,35 @@ GAIT_fnc_observeReleaseMomentum = {
     private _brakeHold = _unit getVariable ["GAIT_releaseBrakeHold", []];
     private _live = _eligible && {_owns} && {_forward};
     private _same = (count _state) isEqualTo 2 && {(_state select 1) isEqualTo _identity};
+    private _directionChanged = [_state, _weapon, _family, _direction] call GAIT_fnc_releaseDirectionChanged;
+
+    // A/D is control input, not a reason to finish the old directional
+    // animation first. Keep the exact current speed sample, retire only the
+    // old directional release identity, and let the graph redirect this frame.
+    if (_state isNotEqualTo [] && {_live} && {_directionChanged} && {!_brake} && {!_turbo}) then {
+        private _sample = [_state select 0, _now] call GAIT_fnc_releaseMomentumSample;
+        private _carryCoefficient = _sample select 0;
+        _unit setVariable ["GAIT_releaseMomentumState", []];
+        _unit setVariable ["GAIT_releasePaceMatch", []];
+        _unit setVariable ["GAIT_paceHandoffCandidate", []];
+        _unit setVariable ["GAIT_releaseResume", []];
+        _unit setVariable ["GAIT_releasePendingCoefficient", _carryCoefficient max 0];
+        missionNamespace setVariable ["GAIT_releaseDirectionalEscape", true];
+        missionNamespace setVariable ["GAIT_releaseDirectionalEscapeCoefficient", _carryCoefficient];
+        _state = [];
+    };
+
     if (_state isNotEqualTo []) then {
         if (!_live || {!_same} || {_brake} || {!(missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true])}) then {
             _unit setVariable ["GAIT_releaseMomentumState", []];
-        _unit setVariable ["GAIT_releasePaceMatch", []];
+            _unit setVariable ["GAIT_releasePaceMatch", []];
             _unit setVariable ["GAIT_releasePendingCoefficient", -1];
             _unit setVariable ["GAIT_releaseResume", []];
             if (_live && {_brake} && {_same}) then {
                 _unit setVariable ["GAIT_releaseBrakeHold", _identity];
             } else {
-                // Live direction changes return to ordinary pace immediately.
-                // Never carry the old forward scalar boost into side/back input.
+                // Non-directional identity loss is not allowed to carry a
+                // sprint boost into an unrelated movement/action state.
                 if (_eligible && {_owns} && {_moving}) then {
                     _unit setVariable ["GAIT_releasePendingCoefficient", _applied min _ordinary];
                 };
@@ -182,7 +218,7 @@ GAIT_fnc_observeReleaseMomentum = {
                 _unit setVariable ["GAIT_releasePendingCoefficient", _sample select 0];
                 _unit setVariable ["GAIT_releaseResume", [_sample select 0, _now]];
                 _unit setVariable ["GAIT_releaseMomentumState", []];
-        _unit setVariable ["GAIT_releasePaceMatch", []];
+                _unit setVariable ["GAIT_releasePaceMatch", []];
             };
         };
     };

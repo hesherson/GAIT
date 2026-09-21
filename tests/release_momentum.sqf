@@ -94,8 +94,22 @@ if ((_tiny select 1) < 0.12 || {(_tiny select 1) > 0.3}) then {
     _failures pushBack "Small release escaped the finite duration bounds";
 };
 
+private _directionState = [_fast, ["rifle", "SrasWrfl", "Df", "amovpercmevasraswrfldf_gait"]];
+if !([_directionState, "rifle", "SrasWrfl", "Dfl"] call GAIT_fnc_releaseDirectionChanged) then {
+    _failures pushBack "Forward release did not yield immediately to diagonal strafe";
+};
+if !([_directionState, "rifle", "SrasWrfl", "Dl"] call GAIT_fnc_releaseDirectionChanged) then {
+    _failures pushBack "Forward release did not yield immediately to lateral strafe";
+};
+if ([_directionState, "rifle", "SrasWrfl", "Df"] call GAIT_fnc_releaseDirectionChanged) then {
+    _failures pushBack "Unchanged direction falsely escaped the release";
+};
+if ([_directionState, "pistol", "SrasWrfl", "Dfl"] call GAIT_fnc_releaseDirectionChanged) then {
+    _failures pushBack "Weapon change was mistaken for direction-only escape";
+};
+
 if (_failures isEqualTo []) then {
-    diag_log "GAIT release momentum PASS: exact measured launch velocity; slower tier-scaled jog decay; light/heavy order; partial retaps; finite endpoints; monotonic curve; render-rate independence; invalid/future/stale plans.";
+    diag_log "GAIT release momentum PASS: exact measured launch velocity; slower tier-scaled jog decay; immediate direction escape for strafing; light/heavy order; partial retaps; finite endpoints; monotonic curve; render-rate independence; invalid/future/stale plans.";
 } else {
     {diag_log ("FAIL " + _x);} forEach _failures;
 };

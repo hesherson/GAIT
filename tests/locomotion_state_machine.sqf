@@ -86,6 +86,23 @@ if (_entryDecisions isNotEqualTo 1 || {_releaseDecisions isNotEqualTo 1} || {_ph
     _failures pushBack format ["Held-input sequence restarted ownership: entries=%1 releases=%2 phase=%3", _entryDecisions, _releaseDecisions, _phase];
 };
 
+private _forwardTarget = "AmovPercMevaSrasWrflDf_GAIT";
+if !([_forwardTarget, "Dfl"] call GAIT_fnc_locomotionDirectionRedirectNeeded) then {
+    _failures pushBack "Forward target did not admit W+A redirect";
+};
+if !([_forwardTarget, "Dl"] call GAIT_fnc_locomotionDirectionRedirectNeeded) then {
+    _failures pushBack "Forward target did not admit pure-left redirect";
+};
+if ([_forwardTarget, "Df"] call GAIT_fnc_locomotionDirectionRedirectNeeded) then {
+    _failures pushBack "Unchanged forward target requested redundant redirect";
+};
+if ((["SrasWrfl", "Dfl"] call GAIT_fnc_slopeStateName) isNotEqualTo "AmovPercMevaSrasWrflDfl_GAIT") then {
+    _failures pushBack "Diagonal redirect lost sprint family";
+};
+if ((["SrasWrfl", "Dl"] call GAIT_fnc_slopeStateName) isNotEqualTo "AmovPercMrunSrasWrflDl_GAIT") then {
+    _failures pushBack "Lateral redirect lost run family";
+};
+
 // Failed entry followed by a late custom observation stays blocked until the
 // user's release. Cleanup remains pending through unsafe contact, and a
 // medical/native takeover clears it without any new entry decision.
@@ -144,7 +161,7 @@ private _blendCases = [
 } forEach _blendCases;
 
 if (_failures isEqualTo []) then {
-    diag_log format ["GAIT locomotion state machine tests PASS: %1 policy cases; held W/A/D/idle and release sequence; blocked/late-entry/medical sequence; %2 blend-name cases.", count _policyCases, count _blendCases];
+    diag_log format ["GAIT locomotion state machine tests PASS: %1 policy cases; held W/A/D/idle and release sequence with direction redirects; blocked/late-entry/medical sequence; %2 blend-name cases.", count _policyCases, count _blendCases];
 } else {
     {diag_log ("GAIT locomotion state machine tests FAIL: " + _x);} forEach _failures;
     throw "GAIT locomotion state machine regression failed";

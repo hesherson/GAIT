@@ -386,13 +386,22 @@ GAIT_fnc_serviceLocomotionExit = {
 // A changed live direction may replace a still-blending exit, including a
 // stop after releasing W midway through a jog handoff. Each new target
 // consumes that edge; held input never repeatedly authorizes itself.
-GAIT_fnc_locomotionStopRedirect = {
-    params ["_target", "_direction"];
+GAIT_fnc_locomotionTargetDirection = {
+    params [["_target", "", [""]]];
     private _base = ((toLower _target) splitString "_") param [0, ""];
-    if ((count _base) < 21) exitWith {false};
-    private _oldDirection = _base select [20];
-    _oldDirection in ["dnon", "df", "dfl", "dl", "dbl", "db", "dbr", "dr", "dfr"] &&
-        {_oldDirection isNotEqualTo (toLower _direction)}
+    if ((count _base) < 21) exitWith {""};
+    private _direction = _base select [20];
+    ["", _direction] select (_direction in ["dnon", "df", "dfl", "dl", "dbl", "db", "dbr", "dr", "dfr"])
+};
+
+GAIT_fnc_locomotionDirectionRedirectNeeded = {
+    params ["_target", "_direction"];
+    private _oldDirection = [_target] call GAIT_fnc_locomotionTargetDirection;
+    _oldDirection isNotEqualTo "" && {_oldDirection isNotEqualTo (toLower _direction)}
+};
+
+GAIT_fnc_locomotionStopRedirect = {
+    _this call GAIT_fnc_locomotionDirectionRedirectNeeded
 };
 
 GAIT_fnc_nativeStopDecision = {
@@ -496,6 +505,38 @@ GAIT_fnc_beginLocomotionEntry = {
     [_unit, _target] call GAIT_fnc_requestLocomotionMove;
 };
 
+// Pending entry never owns lateral intent. A/D can replace the pending target
+// before the old entry blend completes, including on steep grades.
+GAIT_fnc_redirectLocomotionEntryDirection = {
+    params [["_unit", objNull, [objNull]], ["_input", [], [[]]]];
+    if (isNull _unit || {(_unit getVariable ["GAIT_locomotionPhase", "native"]) isNotEqualTo "entering"} ||
+        {(count _input) < 3} || {!(_input select 2)}) exitWith {false};
+    private _moving = abs (_input select 0) > 0.05 || {abs (_input select 1) > 0.05};
+    if (!_moving || {!isTouchingGround _unit} || {(stance _unit) isNotEqualTo "STAND"} ||
+        {!([_unit, false] call GAIT_fnc_nativeMovementEligible)}) exitWith {false};
+    private _direction = [_input select 0, _input select 1] call GAIT_fnc_slopeDirection;
+    private _oldTarget = _unit getVariable ["GAIT_slopeEntryTarget", ""];
+    if !([_oldTarget, _direction] call GAIT_fnc_locomotionDirectionRedirectNeeded) exitWith {false};
+    private _family = [_unit] call GAIT_fnc_slopeWeaponFamily;
+    if (_family isEqualTo "" ||
+        {currentWeapon _unit isNotEqualTo (_unit getVariable ["GAIT_slopeAttemptWeapon", currentWeapon _unit])}) exitWith {false};
+    private _animation = animationState _unit;
+    private _source = _unit getVariable ["GAIT_slopeEntrySource", ""];
+    private _known = ([_animation] call GAIT_fnc_slopeAnimationFamily) isNotEqualTo "" ||
+        {[_animation, _source, _oldTarget] call GAIT_fnc_isLocomotionHandoffBlend} ||
+        {[_animation, _source, diag_tickTime <= (_unit getVariable ["GAIT_slopeEntryDeadline", -1])]
+            call GAIT_fnc_isLocomotionHandoffSource};
+    if (!_known) exitWith {false};
+    private _target = [_family, _direction] call GAIT_fnc_slopeStateName;
+    if (!isClass (configFile >> "CfgMovesMaleSdr" >> "States" >> _target)) exitWith {false};
+    _unit setVariable ["GAIT_slopeEntrySource", _animation];
+    _unit setVariable ["GAIT_slopeEntryTarget", _target];
+    _unit setVariable ["GAIT_slopeEntryDeadline", diag_tickTime + 1.5];
+    diag_log format ["[GAIT_LOCOMOTION] entry direction redirect %1 -> %2", _animation, _target];
+    [_unit, _target] call GAIT_fnc_requestLocomotionMove;
+    true
+};
+
 // A new Turbo press can replace an issued ordinary release before it finishes.
 // One edge produces one graph request. Held Turbo, an unissued/deferred exit,
 // unrelated animation, lost input, stale envelope or unsafe context cannot.
@@ -544,6 +585,8 @@ GAIT_fnc_tickLocomotion = {
                 call GAIT_fnc_applyNativeMovement;
         };
     };
+    // Direction changes outrank completion of a pending sprint-entry blend.
+    if ([player, _input] call GAIT_fnc_redirectLocomotionEntryDirection) exitWith {};
     if ([player] call GAIT_fnc_beginNativeLocomotionStop) exitWith {};
     private _owner = missionNamespace getVariable ["GAIT_slopeOwner", objNull];
     if ([_owner, _input] call GAIT_fnc_resumeLocomotionExit) exitWith {};

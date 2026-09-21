@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha16: pace-locked sprint acceleration
+// GAIT 1.8.0-alpha17: native running crouch and strafe-safe acceleration
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha16";
-        versionAr[] = {1,8,0,16};
+        versionStr = "1.8.0-alpha17";
+        versionAr[] = {1,8,0,17};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

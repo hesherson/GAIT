@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha16: uninterrupted sprint acceleration
+# GAIT 1.8.0-alpha17: native running crouch and strafe-safe acceleration
 
 Requires Arma 3 2.18+, CBA_A3 and ACE3. Load only the new GAIT copy and start a fresh mission. Full build/deploy instructions are in README_HEMTT.md; the packaged mod is under ready_to_load/GAIT.
 
@@ -8,7 +8,7 @@ The final sprint-to-jog handoff now has a measured destination pace when a match
 
 Hold W and release Shift: the controller captures current speed and eases toward jog pace with the current weight-tier release window. Speed continuity does not own direction. Pressing A or D during the numerical release immediately retires the old directional identity while carrying the exact current coefficient into ordinary locomotion. Sprint-entry redirection now also works during the earliest native-source frames, before Arma reports the custom blend, so lateral input cannot be queued behind the initial forward sprint request.
 
-Uphill and downhill behavior from alpha14 and the stance/no-walk slope behavior from alpha15 remain. Alpha16 removes a mid-acceleration body-state handoff that could occur around the engine's internal pace-selector threshold. Custom movement states now own separate pace maps: once GAIT enters an Mrun jog state, Walk/Slow/Tact/Fast forward selectors all remain Mrun; once GAIT enters a Meva sprint state, those same forward selectors all remain Meva. Numerical acceleration can therefore pass through roughly 14 km/h without Arma silently switching the body from jog to sprint. Shift input and GAIT's explicit graph handoff are now the only mechanisms that change ordinary forward movement between Mrun and Meva.
+Uphill/downhill tuning, no-walk slope jogging and the alpha16 pace-locked acceleration remain. Alpha17 fixes two remaining transition ownership issues. Running crouch/prone now keeps the coefficient already on the character while Arma's inherited stance graph performs the bend, so GAIT no longer restores the pre-GAIT coefficient halfway through the transition. The stance lease ends only after a native Pknl/Ppne locomotion state has actually settled or the bounded timeout expires. Sprint strafing now has distinct sprint-owned lateral Mrun states (`_GAITSprint`) instead of reusing the jog-owned lateral states. A/D while Shift is held therefore cannot silently fall into the jog action map. In addition, a raw direction edge during either the entering or active acceleration phase gets one immediate graph retarget on that Draw3D frame; held A/D cannot spam the request.
 
 ## Settings pass
 
@@ -32,17 +32,17 @@ The shared brief brace, original gear tuning, heavy sprint access, lowered-pisto
 
 ## In-game acceptance
 
-1. With rifle, lowered rifle, pistol and unarmed movement, sprint from rest to full speed while watching the 10–18 km/h range closely. There must be no pause, root-motion stall or extra body-state transition around ~14 km/h. Repeat on flat ground and on shallow/steep slopes, with light and heavy kit. The animation should enter Meva once for sprint ownership and remain there throughout the numerical acceleration.
+1. With rifle, lowered rifle, pistol and unarmed movement, sprint from rest to full speed. During the entire ramp, repeatedly add/remove A and D, including W+A, W+D, pure A/D and fast A-to-D reversals. Strafe must begin on the input edge without a forward-only delay, gun-up wait or queued movement. Sprint-owned lateral states should remain `_GAITSprint`, and returning forward while Shift is still held must go directly back to Meva.
 2. Keep W held and release Shift during partial acceleration and at full sprint. Verify the release starts at the current pace and the final jog handoff has no speed step. Repeat with light, medium and heavy gear, and on a descent after collecting a matching jog reference.
 3. Tap Shift again during both the release and the animation blend. Repeat release/retap sequences; check for no restart, rebrace or stale top-speed value.
-4. During sprint startup, acceleration, release, sprint-to-jog handoff and steep-slope entry/exit, press Crouch/MoveUp while W remains held. Crouch must register on the first press without GAIT forcing an idle stop first; the body should hand directly to the native crouch transition. Repeat with Prone, with A/D held, and while changing slope. Then repeat the A/D transition tests from alpha14.
+4. While running and sprinting at low, mid and near-full speed, press Crouch/MoveUp with W still held. The character should bend into crouched running the same way vanilla Arma does: no abrupt stop, no standstill detour and no visible coefficient snap during the bend. Repeat during W+A/W+D, during the acceleration ramp, during sprint release, and with Prone. After the low-stance state has settled, GAIT may relinquish the carried coefficient normally.
 5. Hold only W on shallow slopes and at the engine's ~32 degree forced-walk threshold, uphill and downhill. The animation must remain Mrun/jog rather than Mwlk/walk. On a calibrated pace reference the ordinary slope jog target must remain only slightly above the matching walk pace (6% floor). Then repeat the alpha14 zero-momentum uphill brace and 100–150 lb steep-downhill 30+ km/h tests.
 6. Repeat immediately after mission start, before calibration, and after changing surface/weapon. The existing release must remain available when no valid reference exists.
 
 For a read-only capture, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
 
 ```sqf
-[90, "alpha16 uninterrupted acceleration"] execVM "foundation_capture.sqf";
+[90, "alpha17 crouch + strafe ownership"] execVM "foundation_capture.sqf";
 ```
 
 Send the RPT after STOP with approximate issue times. Its releaseMotion fields include whether a measured release was selected, reference count and the current handoff state.

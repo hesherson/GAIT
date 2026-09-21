@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha11: slope sprint test build
+// GAIT 1.8.0-alpha12: strafe-safe transition build
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha11";
-        versionAr[] = {1,8,0,11};
+        versionStr = "1.8.0-alpha12";
+        versionAr[] = {1,8,0,12};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;
@@ -93,14 +93,7 @@ class CfgVehicles
 
     class Module_F: Logic
     {
-        class ArgumentsBaseUnits
-        {
-            class Units;
-        };
-        class ModuleDescription
-        {
-            class AnyBrain;
-        };
+        class ModuleDescription;
     };
 
     class GAIT_ModuleResetEffects: Module_F

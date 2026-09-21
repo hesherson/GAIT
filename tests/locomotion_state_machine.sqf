@@ -56,6 +56,21 @@ if ([true, false, true, false] call GAIT_fnc_locomotionIntent) then {
 if !([true, true, true, false] call GAIT_fnc_locomotionIntent) then {
     _failures pushBack "Turbo sprint lost locomotion ownership";
 };
+if !([[1,0,false],0.1,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
+    _failures pushBack "Positive ordinary slope did not request jog override";
+};
+if !([[1,0,false],-35,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
+    _failures pushBack "Steep downhill ordinary movement did not request jog override";
+};
+if ([[1,0,true],35,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
+    _failures pushBack "Turbo movement was mistaken for ordinary slope jog";
+};
+if ([[1,0,false],35,true] call GAIT_fnc_ordinarySlopeJogIntent) then {
+    _failures pushBack "ACE movement lock was bypassed by slope jog";
+};
+if ([[0,1,false],35,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
+    _failures pushBack "Pure lateral input incorrectly requested forward slope jog";
+};
 
 // Live W/A/D and idle changes retain one owned family. Policy `_requested`
 // here means graph ownership; sprint pace intentionally has its own forward gate.

@@ -70,6 +70,14 @@ private _extreme = [1, 1, 1, 1, 1, 1.2,
 [(_extreme select [2, 3]) isEqualTo [-1, -1, false], "implausible calibrated output cannot reach the controller"] call _assert;
 [(_extreme select [0, 2]) isEqualTo ([1, 1, 1, 1, 1, 1.2] call GAIT_fnc_slopePaceModel), "out-of-range conversion retains exact legacy fallback"] call _assert;
 
+// Ordinary slope jog uses a physical floor only 6% above the corresponding
+// walk target when walk/jog references are available.
+private _slopeJogFloor = [0.8, 0.01, 0.5, 0.5, 0.75, 1.06,
+    _profiles, "SrasWrfl", "Df", "jog"] call GAIT_fnc_locomotionPaceTargets;
+[(_slopeJogFloor select 4), "slope jog fixture resolves calibrated walk/jog references"] call _assert;
+[(_slopeJogFloor select 3) / (_slopeJogFloor select 2), 1.06,
+    "ordinary slope jog stays only six percent above forced-walk physical pace"] call _near;
+
 private _partial = [["SrasWrfl", "Dr", 1, 2, -1]];
 [[ _partial, "SrasWrfl", "Dr", "jog"] call GAIT_fnc_locomotionPaceReferences isEqualTo [1, 2], "directional jog needs walk/jog measurements only"] call _assert;
 [[ _partial, "SrasWrfl", "Dr", "sprint"] call GAIT_fnc_locomotionPaceReferences isEqualTo [], "missing sprint reference cannot substitute jog"] call _assert;

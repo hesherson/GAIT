@@ -31,6 +31,17 @@ GAIT_fnc_slopeStateName = {
     "AmovPerc" + _pace + _family + _direction + "_GAIT"
 };
 
+GAIT_fnc_ordinarySlopeJogIntent = {
+    params [
+        ["_input", [], [[]]],
+        ["_slopeDegrees", 0, [0]],
+        ["_aceMovementLock", false, [false]]
+    ];
+    (count _input) >= 3 && {!_aceMovementLock} &&
+        {(_input select 0) > 0.05} && {!(_input select 2)} &&
+        {abs _slopeDegrees > 0.01}
+};
+
 // playMoveNow replaces the pending movement request and follows the explicit
 // InterpolateFrom/To graph. switchMove's blendFactor is a pose weight, not a
 // timed transition; it must not be used as sprint-key interpolation.
@@ -640,6 +651,7 @@ GAIT_fnc_tickLocomotion = {
     // Observe edges while cleanup is deferred too. Recording intent never
     // authorizes an entry or body command to overtake that cleanup.
     private _input = [] call GAIT_fnc_getMovementInput;
+    private _stanceYieldNow = false;
     if (!isNull player) then {
         [player, _input] call GAIT_fnc_observeLocomotionInput;
         private _stanceHeld = call GAIT_fnc_getStanceInput;
@@ -647,17 +659,21 @@ GAIT_fnc_tickLocomotion = {
         if (_stanceEdge && {(stance player) isEqualTo "STAND"}) then {
             [player] call GAIT_fnc_beginStanceYield;
         };
-        // Do not let a release/handoff writer race the same crouch/prone input.
-        if ([player] call GAIT_fnc_stanceYieldActive) exitWith {};
-        if (!isNil "GAIT_fnc_observePaceCalibration") then {[player, _input] call GAIT_fnc_observePaceCalibration;};
-        [player, _input] call GAIT_fnc_observeReleaseMomentum;
-        if ((player getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo [] ||
-            {(player getVariable ["GAIT_releasePendingCoefficient", -1]) >= 0} ||
-            {(player getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []}) then {
-            [player, missionNamespace getVariable ["GAIT_nativeLastPreVegetation", 1], false]
-                call GAIT_fnc_applyNativeMovement;
+        _stanceYieldNow = [player] call GAIT_fnc_stanceYieldActive;
+        if (!_stanceYieldNow) then {
+            if (!isNil "GAIT_fnc_observePaceCalibration") then {[player, _input] call GAIT_fnc_observePaceCalibration;};
+            [player, _input] call GAIT_fnc_observeReleaseMomentum;
+            if ((player getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo [] ||
+                {(player getVariable ["GAIT_releasePendingCoefficient", -1]) >= 0} ||
+                {(player getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []}) then {
+                [player, missionNamespace getVariable ["GAIT_nativeLastPreVegetation", 1], false]
+                    call GAIT_fnc_applyNativeMovement;
+            };
         };
     };
+    // This must exit the whole render controller. Continuing into native-stop
+    // or exit service here is the abrupt stop-before-crouch regression.
+    if (_stanceYieldNow) exitWith {};
     // Direction changes outrank completion of a pending sprint-entry blend.
     if ([player, _input] call GAIT_fnc_redirectLocomotionEntryDirection) exitWith {};
     if ([player] call GAIT_fnc_beginNativeLocomotionStop) exitWith {};
@@ -686,9 +702,14 @@ GAIT_fnc_tickLocomotion = {
     private _moving = abs (_input select 0) > 0.05 || {abs (_input select 1) > 0.05};
     private _enabled = (missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]) &&
         {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]} && {call GAIT_fnc_modeAllowsMovement};
-    private _ordinarySlopeJog = missionNamespace getVariable ["GAIT_slopeJogOverride", false];
+    private _aceSlopeLock = (_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0 ||
+        {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
+    private _ordinarySlopeJog = [_input,
+        missionNamespace getVariable ["GAIT_lastKnownSlopeDegrees", 0], _aceSlopeLock]
+        call GAIT_fnc_ordinarySlopeJogIntent;
     private _nativeSlopeLock = (!isSprintAllowed _unit || {isForcedWalk _unit}) && {!_ordinarySlopeJog};
-    private _locked = (_request select 2) || {_nativeSlopeLock} ||
+    private _requestLock = (_request select 2) && {!_ordinarySlopeJog};
+    private _locked = _requestLock || {_nativeSlopeLock} ||
         {(_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0} || {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
     private _requested = _enabled && {!_locked} && {[
         _request select 1, _input select 2, _moving, _ordinarySlopeJog

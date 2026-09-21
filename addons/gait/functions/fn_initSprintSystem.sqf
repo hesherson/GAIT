@@ -887,7 +887,9 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _externalSprintLock = !(isSprintAllowed player) || {(player getVariable ["ace_common_effect_blockSprint", 0]) > 0};
                 private _externalWalkLock = isForcedWalk player || {(player getVariable ["ace_common_effect_forceWalk", 0]) > 0};
                 private _movementEligible = [player, _isAceCarrying] call GAIT_fnc_nativeMovementEligible;
-                private _isSprinting = _turboHeld && {_isForwardHeld} && {(stance player) isNotEqualTo "PRONE"} && {_movementEligible} && {!_externalSprintLock} && {!_externalWalkLock};
+                private _isSprinting = !_stanceYieldActive && {_turboHeld} && {_isForwardHeld} &&
+                    {(stance player) isNotEqualTo "PRONE"} && {_movementEligible} &&
+                    {!_externalSprintLock} && {!_externalWalkLock};
                 // v1.6.0 (FIX 3 - prone): a real "standing" gate for anim/velocity
                 // forcing. `stance` can still report "STAND" on the exact frame the
                 // player triggers prone (or crouch) while sprinting; forcing a sprint
@@ -1161,8 +1163,8 @@ GAIT_fnc_setTunnelVisionFX = {
                     {(player getVariable ["ace_common_effect_forceWalk", 0]) > 0};
                 private _slopeJogOverride = _slopeHandlingEnabled && {_gaitMovementEnabled} &&
                     {_gaitStanceOk} && {_movementEligible} && {_onGroundNow} &&
-                    {_isForwardHeld} && {!_turboHeld} && {!_aceSlopeMovementLock} &&
-                    {abs _slopeDegrees > 0.01};
+                    {[_movementInput, _slopeDegrees, _aceSlopeMovementLock]
+                        call GAIT_fnc_ordinarySlopeJogIntent};
                 missionNamespace setVariable ["GAIT_slopeJogOverride", _slopeJogOverride];
 
                 private _inputReleasePace = _effectiveNormalSpeed * _hillWalkSlowdownMultiplier;

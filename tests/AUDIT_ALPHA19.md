@@ -20,7 +20,7 @@ This record documents source-level audit work performed while preparing alpha19.
 - Heartbeat source/config remains fixed at 10% of ACE original amplitude.
 - Passive pace calibration is connected to the steep-downhill physical target; a manual pace profile is no longer the only route to calibrated 32–34 km/h targeting.
 - Debug HUD reports the actual pose family, locomotion-active flag, automatic sprint-reference calibration and full-profile calibration separately.
-- Historical alpha11 validation files are explicitly marked historical.
+- Historical alpha11 validation files and the RC4/alpha11 byte-preservation harness are explicitly marked historical; current source invariants live in `tests/alpha19_invariants.py`.
 
 ## Current validation commands
 
@@ -33,7 +33,7 @@ python .\tests\pace_calibration_integration.py
 python .\tests\foundation_graph.py
 python .\tests\heartbeat_audio.py
 python .\tests\pbo_prefix_layout.py
-python .\tests\feature_preservation.py --self-test
+python .\tests\alpha19_invariants.py
 
 hemtt build
 powershell.exe -NoProfile -ExecutionPolicy Bypass `

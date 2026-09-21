@@ -45,10 +45,10 @@ python .\tests\pace_calibration_integration.py
 python .\tests\foundation_graph.py
 python .\tests\heartbeat_audio.py
 python .\tests\pbo_prefix_layout.py
-python .\tests\feature_preservation.py --self-test
+python .\tests\alpha19_invariants.py
 ```
 
-Do not regenerate preservation baselines merely to make a failure disappear. If the preservation test rejects an intentional new change, review that exact delta before authorizing it.
+The historical `tests\feature_preservation.py` harness remains an alpha11/RC4 byte-preservation contract. It is not a current alpha19 gate and its historical hashes must not be regenerated to silence later reviewed changes.
 
 ## SQF-VM regression suite
 

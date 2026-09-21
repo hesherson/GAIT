@@ -1,6 +1,6 @@
-# GAIT 1.8.0-alpha18: lowered-pistol continuity and slower sprint acceleration
+# GAIT 1.8.0-alpha19: audited locomotion foundation
 
-Requires Arma 3 2.18+, CBA_A3 and ACE3. Load only the new GAIT copy and start a fresh mission. Full build/deploy instructions are in README_HEMTT.md; the packaged mod is under ready_to_load/GAIT.
+Requires Arma 3 2.18+, CBA_A3 and ACE3. Load only the new GAIT copy and start a fresh mission. Current build/deploy instructions are in README_HEMTT.md; local build output is `.hemttout\\build`.
 
 ## What changed
 
@@ -9,6 +9,8 @@ The final sprint-to-jog handoff now has a measured destination pace when a match
 Hold W and release Shift: the controller captures current speed and eases toward jog pace with the current weight-tier release window. Speed continuity does not own direction. Pressing A or D during the numerical release immediately retires the old directional identity while carrying the exact current coefficient into ordinary locomotion. Sprint-entry redirection now also works during the earliest native-source frames, before Arma reports the custom blend, so lateral input cannot be queued behind the initial forward sprint request.
 
 All alpha17 crouch and strafe ownership fixes remain. Alpha18 fixes the remaining secondary-weapon-only acceleration pause by making lowered pistol locomotion (`SlowWpst`) a first-class GAIT family instead of converting every handgun into raised-pistol `SrasWpst`. The current native handgun pose is read from animationState first, then weaponLowered only as fallback, and the selected pose family remains latched through sprint acceleration. `SlowWpst` now has its own jog, sprint, lateral sprint and stop states plus its own `PistolLowStandActions`-derived action maps. GAIT also rejects internal `SlowWpst <-> SrasWpst` locomotion handoffs so a mid-ramp gun-pose correction cannot be introduced by the movement controller. Upward sprint acceleration is slower globally: the existing speed-ramp value is passed through a fixed 0.70 sprint-acceleration rate, stretching the default ~95% convergence from about 2.9 seconds to about 4.1 seconds without changing release, braking or ordinary movement timing.
+
+Alpha19 audit hardening closes non-animation gaps found in the full foundation review: reset now clears recent input/stance/brake transients as well as owned movement; Zeus reset uses a CBA target event instead of direct RemoteExec; fatigue tinnitus is listener-local and stoppable immediately; duplicate suspended-context logic is removed; passive same-context sprint measurements can automatically activate the steep-downhill physical target; and the debug HUD reports the actual pose family plus passive/full calibration state separately.
 
 ## Settings pass
 
@@ -42,7 +44,7 @@ The shared brief brace, original gear tuning, heavy sprint access, lowered-pisto
 For a read-only capture, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
 
 ```sqf
-[90, "alpha18 lowered pistol + slower ramp"] execVM "foundation_capture.sqf";
+[90, "alpha19 audit hardening"] execVM "foundation_capture.sqf";
 ```
 
 Send the RPT after STOP with approximate issue times. Its releaseMotion fields include whether a measured release was selected, reference count and the current handoff state.
@@ -51,4 +53,4 @@ Send the RPT after STOP with approximate issue times. Its releaseMotion fields i
 
 Run VERIFY_READY.ps1 to validate the bundled PBO prefixes, checksums and all eighteen runtime scripts against source. Core prefix is gait; heartbeat prefix is z\gait\addons\heartbeat.
 
-Automated evidence is in tests/VALIDATION_FOUNDATION.txt and tests/VALIDATION_RESULTS.json. SQF model/lifecycle tests, static settings/graph checks and a clean build do not replace Arma acceptance for physical velocity, interpolation, stopping distance or perceived sound/visuals.
+`tests/VALIDATION_FOUNDATION.txt` and `tests/VALIDATION_RESULTS.json` are historical alpha11 evidence and must not be treated as current alpha19 results. `tests/AUDIT_ALPHA19.md` records the current source audit and reproduction commands. A clean HEMTT build, current static tests and SQF-VM results still do not replace Arma acceptance for physical velocity, interpolation, stopping distance or perceived sound/visuals.

@@ -1,3 +1,12 @@
+CURRENT STATUS: HISTORICAL EVIDENCE ONLY
+
+The validation record below was produced for GAIT 1.8.0-alpha11 on 2026-09-19.
+Its PASS statements and source hashes do NOT validate the current alpha19 source.
+Do not cite this file or VALIDATION_RESULTS.json as current evidence.
+
+For the current audit, see tests/AUDIT_ALPHA19.md and reproduce the listed
+HEMTT/static/SQF-VM/Arma checks against the current branch head.
+
 GAIT 1.8.0-alpha11 validation — 2026-09-19
 
 HEMTT 1.21.0 build: PASS. Version 1.8.0.11; 18 compiled SQF scripts; 2 PBOs.

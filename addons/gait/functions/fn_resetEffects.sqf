@@ -51,6 +51,12 @@ missionNamespace setVariable ["GAIT_downhillGravityTargetKmh", 0];
 missionNamespace setVariable ["GAIT_walkStartBraceActive", false];
 missionNamespace setVariable ["GAIT_walkStartBraceFactor", 1];
 missionNamespace setVariable ["GAIT_walkStartBraceTier", -1];
+missionNamespace setVariable ["GAIT_paceCalibrated", false];
+missionNamespace setVariable ["GAIT_sprintReferenceCalibrated", false];
+missionNamespace setVariable ["GAIT_slopeJogCalibrated", false];
+missionNamespace setVariable ["GAIT_walkTargetMS", -1];
+missionNamespace setVariable ["GAIT_sprintTargetMS", -1];
+missionNamespace setVariable ["GAIT_slopeJogTargetMS", -1];
 
 if (!isNull player) then {
     player setVariable ["GAIT_isTripping", false, false];

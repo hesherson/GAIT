@@ -1716,21 +1716,32 @@ GAIT_fnc_setTunnelVisionFX = {
                     _currentSpeed = [player, _coef, _isAceCarrying] call GAIT_fnc_applyNativeMovement;
 
                 } else {
-                    // No commanded forward movement means no scalar momentum.
-                    // The engine handles the stop blend and current side/back input.
-                    _currentSpeed = _inputReleasePace;
-                    // Speed ownership must not slow the native stop blend.
-                    // Render input chooses the body exit independently.
-                    if (_gaitMovementEnabled && {!_hasMovementInput} && {_gaitStanceOk} && {_movementEligible} &&
-                        {player isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull])} &&
-                        {abs ((getAnimSpeedCoef player) - (missionNamespace getVariable ["GAIT_nativeLastWritten", -1])) < 0.001}) then {
-                        // A scheduled tick can relinquish the coefficient
-                        // before Draw3D sees this same stop edge. Hand over
-                        // only this owned release, with a short-lived lease.
-                        player setVariable ["GAIT_nativeStopPaceLease", [diag_tickTime + 0.15, currentWeapon player,
-                            missionNamespace getVariable ["GAIT_nativePreviousCoef", 1]]];
+                    if (_stanceYieldActive) then {
+                        // Running-to-crouch/prone is still a live movement
+                        // transition. Preserve the exact scalar that was already
+                        // on the unit and let Arma's inherited stance graph bend
+                        // the body without a mid-transition speed reset.
+                        private _stanceCarry = player getVariable ["GAIT_stanceCarryCoefficient", []];
+                        if ((count _stanceCarry) isEqualTo 2 && {_stanceCarry select 1}) then {
+                            _currentSpeed = missionNamespace getVariable ["GAIT_nativeLastPreVegetation", _currentSpeed];
+                        };
+                    } else {
+                        // No commanded forward movement means no scalar momentum.
+                        // The engine handles the stop blend and current side/back input.
+                        _currentSpeed = _inputReleasePace;
+                        // Speed ownership must not slow the native stop blend.
+                        // Render input chooses the body exit independently.
+                        if (_gaitMovementEnabled && {!_hasMovementInput} && {_gaitStanceOk} && {_movementEligible} &&
+                            {player isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull])} &&
+                            {abs ((getAnimSpeedCoef player) - (missionNamespace getVariable ["GAIT_nativeLastWritten", -1])) < 0.001}) then {
+                            // A scheduled tick can relinquish the coefficient
+                            // before Draw3D sees this same stop edge. Hand over
+                            // only this owned release, with a short-lived lease.
+                            player setVariable ["GAIT_nativeStopPaceLease", [diag_tickTime + 0.15, currentWeapon player,
+                                missionNamespace getVariable ["GAIT_nativePreviousCoef", 1]]];
+                        };
+                        [] call GAIT_fnc_releaseSpeedCoefficient;
                     };
-                    [] call GAIT_fnc_releaseSpeedCoefficient;
                 };
                 // Read-only acceptance telemetry; these values never feed back
                 // into the preserved brace, reserve or momentum calculation.

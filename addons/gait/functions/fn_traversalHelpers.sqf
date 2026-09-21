@@ -25,6 +25,21 @@ GAIT_fnc_getMovementInput = {
     [inputAction "MoveForward", inputAction "MoveBack", inputAction "TurnLeft", inputAction "TurnRight", inputAction "Turbo"] call GAIT_fnc_resolveMovementInput
 };
 
+// Stance intent is observed before animationState/stance has necessarily
+// changed. Reading these actions never consumes them; it only tells GAIT to
+// stop owning the standing transition so Arma can execute the native stance
+// graph without a competing playMove/coefficient write.
+GAIT_fnc_resolveStanceInput = {
+    params ["_crouchAction", "_moveUpAction", "_proneAction", "_moveDownAction"];
+    ((_crouchAction max 0) > 0.05) || {((_moveUpAction max 0) > 0.05)} ||
+        {((_proneAction max 0) > 0.05)} || {((_moveDownAction max 0) > 0.05)}
+};
+
+GAIT_fnc_getStanceInput = {
+    [inputAction "Crouch", inputAction "MoveUp", inputAction "Prone", inputAction "MoveDown"]
+        call GAIT_fnc_resolveStanceInput
+};
+
 GAIT_fnc_stepSpeedCoefficient = {
     params ["_current", "_target", "_ramp", "_dt"];
     private _alpha = 1 - ((1 - (_ramp max 0.001 min 1)) ^ ((_dt max 0 min 0.20) / 0.05));

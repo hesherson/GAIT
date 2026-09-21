@@ -21,9 +21,13 @@ GAIT_fnc_slopeDirection = {
 };
 
 GAIT_fnc_slopeStateName = {
-    params ["_family", "_direction"];
-    private _pace = ["Mrun", "Meva"] select (_direction in ["Df", "Dfl", "Dfr"]);
-    if (_direction isEqualTo "Dnon") then {_pace = "Mstp";};
+    params ["_family", "_direction", ["_sprinting", true, [false]]];
+    private _pace = "Mrun";
+    if (_direction isEqualTo "Dnon") then {
+        _pace = "Mstp";
+    } else {
+        if (_sprinting && {_direction in ["Df", "Dfl", "Dfr"]}) then {_pace = "Meva";};
+    };
     "AmovPerc" + _pace + _family + _direction + "_GAIT"
 };
 
@@ -210,15 +214,21 @@ GAIT_fnc_slopeFamilyAvailable = {
     if (_cached >= 0) exitWith {_cached isEqualTo 1};
     private _states = configFile >> "CfgMovesMaleSdr" >> "States";
     private _available = _family in ["SrasWrfl", "SlowWrfl", "SrasWpst", "SnonWnon"];
+    private _required = [[_family, "Dnon", false] call GAIT_fnc_slopeStateName];
     {
-        private _name = [_family, _x] call GAIT_fnc_slopeStateName;
-        private _state = _states >> _name;
+        _required pushBack ([_family, _x, false] call GAIT_fnc_slopeStateName);
+        if (_x in ["Df", "Dfl", "Dfr"]) then {
+            _required pushBack ([_family, _x, true] call GAIT_fnc_slopeStateName);
+        };
+    } forEach ["Df", "Dfl", "Dl", "Dbl", "Db", "Dbr", "Dr", "Dfr"];
+    {
+        private _state = _states >> _x;
         private _native = getText (_state >> "GAIT_nativeState");
         private _actions = getText (_state >> "actions");
         if (!isClass _state || {(getNumber (_state >> "GAIT_slopeState")) isNotEqualTo 1} ||
             {!isClass (_states >> _native)} || {(getText (_states >> _native >> "file")) isEqualTo ""} ||
             {!isClass (configFile >> "CfgMovesBasic" >> "Actions" >> _actions)}) exitWith {_available = false;};
-    } forEach ["Dnon", "Df", "Dfl", "Dl", "Dbl", "Db", "Dbr", "Dr", "Dfr"];
+    } forEach _required;
     missionNamespace setVariable [_cacheName, parseNumber _available];
     if (!_available) then {diag_log format ["[GAIT] Incomplete locomotion family %1; entry disabled.", _family];};
     _available
@@ -246,6 +256,45 @@ GAIT_fnc_locomotionDecision = {
 GAIT_fnc_locomotionExitOwnsObservation = {
     params ["_inside", "_entryBlend", "_cancelEntry", "_atEntrySource", "_beforeDeadline"];
     _inside || {_entryBlend} || {_cancelEntry && {_atEntrySource} && {_beforeDeadline}}
+};
+
+// Stance changes outrank every GAIT locomotion phase. The yield clears only
+// GAIT ownership and coefficient/release plans; it deliberately sends no
+// standing exit animation. The inherited Arma action graph receives the
+// original crouch/prone input and can preserve whatever movement it supports.
+GAIT_fnc_observeStanceInput = {
+    params [["_unit", objNull, [objNull]], ["_held", false, [false]]];
+    if (isNull _unit) exitWith {false};
+    private _previous = _unit getVariable ["GAIT_stanceInputHeld", false];
+    _unit setVariable ["GAIT_stanceInputHeld", _held];
+    _held && {!_previous}
+};
+
+GAIT_fnc_stanceYieldActive = {
+    params [["_unit", objNull, [objNull]]];
+    !isNull _unit && {
+        (_unit getVariable ["GAIT_stanceInputHeld", false]) ||
+        {diag_tickTime <= (_unit getVariable ["GAIT_stanceYieldUntil", -1])}
+    }
+};
+
+GAIT_fnc_beginStanceYield = {
+    params [["_unit", objNull, [objNull]]];
+    if (isNull _unit) exitWith {false};
+    _unit setVariable ["GAIT_stanceYieldUntil", diag_tickTime + 0.45];
+    _unit setVariable ["GAIT_slopeCanceledBraceEndTime",
+        missionNamespace getVariable ["GAIT_braceEndTime", -1]];
+    missionNamespace setVariable ["GAIT_locomotionRequest", []];
+    missionNamespace setVariable ["GAIT_braceActive", false];
+    missionNamespace setVariable ["GAIT_braceEndTime", -1];
+    if (!isNil "GAIT_fnc_clearReleaseMomentum") then {[_unit] call GAIT_fnc_clearReleaseMomentum;};
+    _unit setVariable ["GAIT_paceHandoff", []];
+    _unit setVariable ["GAIT_paceHandoffCandidate", []];
+    _unit setVariable ["GAIT_releasePendingCoefficient", -1];
+    _unit setVariable ["GAIT_releaseResume", []];
+    [] call GAIT_fnc_releaseSpeedCoefficient;
+    [_unit] call GAIT_fnc_clearSlopeLocomotionState;
+    true
 };
 
 GAIT_fnc_clearSlopeLocomotionState = {
@@ -491,8 +540,8 @@ GAIT_fnc_updateSlopeLocomotion = {
 // Turbo starts/resumes immediately. A live finite W-held release may retain
 // its current clip until the single ordinary graph handoff is due.
 GAIT_fnc_locomotionIntent = {
-    params ["_featureRequest", "_turbo", "_moving"];
-    _featureRequest && {_moving} && {_turbo}
+    params ["_featureRequest", "_turbo", "_moving", ["_ordinarySlopeJog", false, [false]]];
+    _featureRequest && {_moving} && {_turbo || {_ordinarySlopeJog}}
 };
 
 GAIT_fnc_locomotionResumeDecision = {
@@ -504,7 +553,7 @@ GAIT_fnc_locomotionResumeDecision = {
 GAIT_fnc_beginLocomotionEntry = {
     params ["_unit", "_family", "_input", "_animation"];
     private _direction = [_input select 0, _input select 1] call GAIT_fnc_slopeDirection;
-    private _target = [_family, _direction] call GAIT_fnc_slopeStateName;
+    private _target = [_family, _direction, _input select 2] call GAIT_fnc_slopeStateName;
     missionNamespace setVariable ["GAIT_slopeOwner", _unit];
     missionNamespace setVariable ["GAIT_locomotionPhase", "entering"];
     _unit setVariable ["GAIT_locomotionPhase", "entering"];
@@ -546,7 +595,7 @@ GAIT_fnc_redirectLocomotionEntryDirection = {
     private _known = [_animation, _source, _beforeDeadline, _insideFamily, _handoffBlend, _handoffSource]
         call GAIT_fnc_locomotionEntryRedirectKnown;
     if (!_known) exitWith {false};
-    private _target = [_family, _direction] call GAIT_fnc_slopeStateName;
+    private _target = [_family, _direction, _input select 2] call GAIT_fnc_slopeStateName;
     if (!isClass (configFile >> "CfgMovesMaleSdr" >> "States" >> _target)) exitWith {false};
     _unit setVariable ["GAIT_slopeEntrySource", _animation];
     _unit setVariable ["GAIT_slopeEntryTarget", _target];
@@ -592,9 +641,14 @@ GAIT_fnc_tickLocomotion = {
     // authorizes an entry or body command to overtake that cleanup.
     private _input = [] call GAIT_fnc_getMovementInput;
     if (!isNull player) then {
-        // These variables are client-local input history, never public body
-        // control. The normal ownership gates still guard every body action.
         [player, _input] call GAIT_fnc_observeLocomotionInput;
+        private _stanceHeld = call GAIT_fnc_getStanceInput;
+        private _stanceEdge = [player, _stanceHeld] call GAIT_fnc_observeStanceInput;
+        if (_stanceEdge && {(stance player) isEqualTo "STAND"}) then {
+            [player] call GAIT_fnc_beginStanceYield;
+        };
+        // Do not let a release/handoff writer race the same crouch/prone input.
+        if ([player] call GAIT_fnc_stanceYieldActive) exitWith {};
         if (!isNil "GAIT_fnc_observePaceCalibration") then {[player, _input] call GAIT_fnc_observePaceCalibration;};
         [player, _input] call GAIT_fnc_observeReleaseMomentum;
         if ((player getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo [] ||
@@ -632,10 +686,12 @@ GAIT_fnc_tickLocomotion = {
     private _moving = abs (_input select 0) > 0.05 || {abs (_input select 1) > 0.05};
     private _enabled = (missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]) &&
         {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]} && {call GAIT_fnc_modeAllowsMovement};
-    private _locked = (_request select 2) || {!isSprintAllowed _unit} || {isForcedWalk _unit} ||
+    private _ordinarySlopeJog = missionNamespace getVariable ["GAIT_slopeJogOverride", false];
+    private _nativeSlopeLock = (!isSprintAllowed _unit || {isForcedWalk _unit}) && {!_ordinarySlopeJog};
+    private _locked = (_request select 2) || {_nativeSlopeLock} ||
         {(_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0} || {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
     private _requested = _enabled && {!_locked} && {[
-        _request select 1, _input select 2, _moving
+        _request select 1, _input select 2, _moving, _ordinarySlopeJog
     ] call GAIT_fnc_locomotionIntent};
     // No repeated animation command: this only keeps existing graph ownership
     // until the finite speed plan or existing uphill brake completes.

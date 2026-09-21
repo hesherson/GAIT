@@ -56,6 +56,20 @@ private _oldExit = _sprint + "_" + _walk;
 // scheduled feature updates. Its unit variables must survive ordinary
 // animation cleanup, or a stale brace/coast can restart after a quick W tap.
 private _testUnit = player;
+
+// Raw stance actions are detected independently of animationState so the
+// controller can yield before a custom standing blend swallows crouch/prone.
+if !([1,0,0,0] call GAIT_fnc_resolveStanceInput) then {_failures pushBack "Direct crouch input was not detected";};
+if !([0,1,0,0] call GAIT_fnc_resolveStanceInput) then {_failures pushBack "MoveUp crouch/stand input was not detected";};
+if !([0,0,1,0] call GAIT_fnc_resolveStanceInput) then {_failures pushBack "Direct prone input was not detected";};
+if ([0,0,0,0] call GAIT_fnc_resolveStanceInput) then {_failures pushBack "Idle input falsely requested a stance yield";};
+_testUnit setVariable ["GAIT_stanceInputHeld", false];
+if !([_testUnit,true] call GAIT_fnc_observeStanceInput) then {_failures pushBack "First stance press did not create an edge";};
+if ([_testUnit,true] call GAIT_fnc_observeStanceInput) then {_failures pushBack "Held stance key repeated its edge";};
+if ([_testUnit,false] call GAIT_fnc_observeStanceInput) then {_failures pushBack "Stance release created a false edge";};
+if !([_testUnit,true] call GAIT_fnc_observeStanceInput) then {_failures pushBack "New stance press did not rearm";};
+_testUnit setVariable ["GAIT_stanceInputHeld", false];
+
 // Stop retiming is edge-triggered. Holding no keys cannot repeatedly request
 // idle, and changing directly from W to A remains movement rather than stop.
 _testUnit setVariable ["GAIT_movementInputHeld",true];
@@ -122,7 +136,7 @@ if ([_testUnit,[1,0,false]] call GAIT_fnc_observeLocomotionInput) then {_failure
 {missionNamespace setVariable [_x select 0, _x select 1];} forEach _savedGlobals;
 
 if (_failures isEqualTo []) then {
-    diag_log "GAIT locomotion handoff tests PASS: immediate sprint launch, exact entry/exit blend leases, raw W/Turbo brace cancellation and persistent release serial.";
+    diag_log "GAIT locomotion handoff tests PASS: immediate sprint launch, stance-input priority, exact entry/exit leases, raw W/Turbo brace cancellation and persistent release serial.";
 } else {
     {diag_log ("GAIT locomotion handoff tests FAIL: "+_x);} forEach _failures;
     throw "GAIT locomotion handoff regression failed";

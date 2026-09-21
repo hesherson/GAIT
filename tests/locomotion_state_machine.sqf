@@ -46,6 +46,17 @@ private _policyCases = [
     };
 } forEach _policyCases;
 
+// Ordinary slope jog is also a valid ownership request without Turbo.
+if !([true, false, true, true] call GAIT_fnc_locomotionIntent) then {
+    _failures pushBack "Ordinary slope jog failed to request locomotion ownership";
+};
+if ([true, false, true, false] call GAIT_fnc_locomotionIntent) then {
+    _failures pushBack "Flat ordinary movement incorrectly requested slope ownership";
+};
+if !([true, true, true, false] call GAIT_fnc_locomotionIntent) then {
+    _failures pushBack "Turbo sprint lost locomotion ownership";
+};
+
 // Live W/A/D and idle changes retain one owned family. Policy `_requested`
 // here means graph ownership; sprint pace intentionally has its own forward gate.
 private _phase = "native";

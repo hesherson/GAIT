@@ -18,8 +18,20 @@ private _failures = [];
         ["Db", "Mrun"], ["Dbr", "Mrun"]
     ];
 } forEach ["SrasWrfl", "SlowWrfl", "SrasWpst", "SnonWnon"];
+
+// Ordinary slope movement must use Mrun even when the engine asks for Walk/Slow.
+{
+    private _family = _x;
+    {
+        private _state = [_family, _x, false] call GAIT_fnc_slopeStateName;
+        if ((_state select [8,4]) isNotEqualTo "Mrun") then {
+            _failures pushBack format ["Ordinary slope %1/%2 selected walking/sprint state %3", _family, _x, _state];
+        };
+    } forEach ["Df","Dfl","Dfr"];
+} forEach ["SrasWrfl", "SlowWrfl", "SrasWpst", "SnonWnon"];
+
 if (_failures isEqualTo []) then {
-    diag_log "GAIT sprint state selection tests PASS: 12 real sprint entries and 20 side/rear run entries preserve their weapon family.";
+    diag_log "GAIT slope state selection tests PASS: sprint forward states plus ordinary forward/diagonal Mrun jog states preserve their weapon family.";
 } else {
     {diag_log ("GAIT sprint state selection tests FAIL: " + _x);} forEach _failures;
     throw "GAIT sprint state selection regression failed";

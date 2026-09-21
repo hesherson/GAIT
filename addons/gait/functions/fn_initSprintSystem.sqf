@@ -859,12 +859,18 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _carriedObject = player getVariable ["ace_dragging_carriedObject", objNull];
                 private _isOnFoot = isNull objectParent player;
                 private _movementInput = call GAIT_fnc_getMovementInput;
-                // Capture the raw release before this scheduler can write an
-                // ordinary coefficient. Draw3D shares this consumed edge state.
-                [player, _movementInput] call GAIT_fnc_observeReleaseMomentum;
-                if ((player getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []) then {
-                    [player, missionNamespace getVariable ["GAIT_nativeLastPreVegetation", _currentSpeed], false]
-                        call GAIT_fnc_applyNativeMovement;
+                private _stanceYieldActive = [player] call GAIT_fnc_stanceYieldActive;
+                // A render-observed stance request owns this transition. Never
+                // reassert release/handoff speed during its short native lease.
+                if (!_stanceYieldActive) then {
+                    [player, _movementInput] call GAIT_fnc_observeReleaseMomentum;
+                    if ((player getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []) then {
+                        [player, missionNamespace getVariable ["GAIT_nativeLastPreVegetation", _currentSpeed], false]
+                            call GAIT_fnc_applyNativeMovement;
+                    };
+                } else {
+                    if (!isNil "GAIT_fnc_clearReleaseMomentum") then {[player] call GAIT_fnc_clearReleaseMomentum;};
+                    [] call GAIT_fnc_releaseSpeedCoefficient;
                 };
                 private _releaseResume = player getVariable ["GAIT_releaseResume", []];
                 player setVariable ["GAIT_releaseResume", []];
@@ -890,7 +896,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 // carries the prone (Ppne) / kneel-crouch (Pknl) target during the
                 // blend, so reject those here. All GAIT anim-forcing intents below use
                 // _gaitStanceOk instead of a bare stance=="STAND" test.
-                private _gaitStanceOk = ((stance player) isEqualTo "STAND") && {
+                private _gaitStanceOk = !_stanceYieldActive && {((stance player) isEqualTo "STAND")} && {
                     private _gaitAnimLow = toLower (animationState player);
                     ((_gaitAnimLow find "ppne") < 0) && {(_gaitAnimLow find "pknl") < 0}
                 };
@@ -1144,6 +1150,20 @@ GAIT_fnc_setTunnelVisionFX = {
                 missionNamespace setVariable ["GAIT_slopeSpeedMultiplier", _slopeSpeedMultiplier];
                 missionNamespace setVariable ["GAIT_hillWalkSlowdownMultiplier", _hillWalkSlowdownMultiplier];
                 missionNamespace setVariable ["GAIT_hillWalkSlowdownSeverity", _hillWalkSlowdownSeverity];
+
+                // Any real terrain grade keeps ordinary forward movement in a
+                // custom Mrun jog family instead of allowing Arma's slope walk
+                // selector to choose Mwlk. ACE medical force-walk/block-sprint
+                // locks still win. The fixed 6% physical floor is deliberately
+                // only slightly above the corresponding walk target.
+                private _aceSlopeMovementLock =
+                    (player getVariable ["ace_common_effect_blockSprint", 0]) > 0 ||
+                    {(player getVariable ["ace_common_effect_forceWalk", 0]) > 0};
+                private _slopeJogOverride = _slopeHandlingEnabled && {_gaitMovementEnabled} &&
+                    {_gaitStanceOk} && {_movementEligible} && {_onGroundNow} &&
+                    {_isForwardHeld} && {!_turboHeld} && {!_aceSlopeMovementLock} &&
+                    {abs _slopeDegrees > 0.01};
+                missionNamespace setVariable ["GAIT_slopeJogOverride", _slopeJogOverride];
 
                 private _inputReleasePace = _effectiveNormalSpeed * _hillWalkSlowdownMultiplier;
                 if (_isAceCarrying && {!isNull _carriedObject}) then {
@@ -1568,6 +1588,27 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _paceFloorRatio = (missionNamespace getVariable ["GAIT_ss_minSprintWalkRatio", 1.20]) + (_reserveRatio * (missionNamespace getVariable ["GAIT_ss_freshSprintWalkMargin", 0.20]));
                 private _pacePair = [_normalSpeed, _flatSprintPace, _hillWalkSlowdownMultiplier, _slopeSpeedMultiplier, _weightSpeedMult, _paceFloorRatio] call GAIT_fnc_slopePaceModel;
                 private _targetSpeed = _pacePair select (parseNumber _isSprinting);
+                private _ordinaryReleaseTarget = _pacePair select 0;
+
+                if (_slopeJogOverride) then {
+                    private _familyJog = [player] call GAIT_fnc_slopeWeaponFamily;
+                    private _directionJog = [_movementInput select 0, _movementInput select 1] call GAIT_fnc_slopeDirection;
+                    private _jogFlatCoefficient = _normalSpeed * 1.06;
+                    private _jogResolved = [_normalSpeed, _jogFlatCoefficient,
+                        _hillWalkSlowdownMultiplier, _hillWalkSlowdownMultiplier,
+                        _weightSpeedMult, 1.06,
+                        missionNamespace getVariable ["GAIT_locomotionPaceProfiles", []],
+                        _familyJog, _directionJog, "jog"] call GAIT_fnc_locomotionPaceTargets;
+                    _pacePair = _jogResolved select [0, 2];
+                    _targetSpeed = _pacePair select 1;
+                    _ordinaryReleaseTarget = _targetSpeed;
+                    missionNamespace setVariable ["GAIT_slopeJogTargetMS", _jogResolved select 3];
+                    missionNamespace setVariable ["GAIT_slopeJogCalibrated", _jogResolved select 4];
+                } else {
+                    missionNamespace setVariable ["GAIT_slopeJogTargetMS", -1];
+                    missionNamespace setVariable ["GAIT_slopeJogCalibrated", false];
+                };
+
                 missionNamespace setVariable ["GAIT_walkPaceTarget", _pacePair select 0];
                 missionNamespace setVariable ["GAIT_sprintPaceTarget", _pacePair select 1];
                 missionNamespace setVariable ["GAIT_loadPaceMultiplier", _weightSpeedMult];
@@ -1620,7 +1661,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _releaseWindow = [0, _shiftReleaseRunTaperDuration, _coastScale] call GAIT_fnc_gearCoastWindow;
                 private _releasePermission = _momentumContextOk && {_movementEligible} && {_gaitStanceOk} &&
                     {_slopeHandlingEnabled} && {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]};
-                missionNamespace setVariable ["GAIT_releaseMomentumRequest", [player, _pacePair select 0,
+                missionNamespace setVariable ["GAIT_releaseMomentumRequest", [player, _ordinaryReleaseTarget,
                     _releaseWindow select 1, _shiftReleaseRunTaperCurve, _releasePermission,
                     diag_tickTime + ((4 * _tickRate) max 0.15 min 0.50)]];
                 // Brake priority is published before the common writer, so a
@@ -1646,7 +1687,7 @@ GAIT_fnc_setTunnelVisionFX = {
 
                 // Frame-rate independent speed ramp. Direction is never filtered.
                 private _hasMovementInput = _isForwardHeld || {_isBackHeld} || {_isLateralHeld};
-                if (_gaitMovementEnabled && {_movementEligible} && {_hasMovementInput}) then {
+                if (_gaitMovementEnabled && {_movementEligible} && {_gaitStanceOk} && {_hasMovementInput}) then {
                     private _ramp = if (_uphillBrakeActive) then {_uphillBrakeRamp} else {
                         if (_isSprinting && {_sprintBraceEndTime > time}) then {_sprintStartBraceLerp} else {
                             [_speedLerp, 1] select _walkStartBraceActive
@@ -1696,6 +1737,11 @@ GAIT_fnc_setTunnelVisionFX = {
                 // same graph without changing reserve/brace or sideways caps.
                 // Publish permission, not a scheduled snapshot of Turbo.
                 private _fastMoveIntent = _gaitMovementEnabled && {_gaitStanceOk} && {!_isAceCarrying};
+                private _locomotionExternalLock = if (_slopeJogOverride) then {
+                    _aceSlopeMovementLock
+                } else {
+                    _externalSprintLock || {_externalWalkLock}
+                };
                 private _brakePrearm = _uphillBrakeEnabled && {_uphillBrakeContext} && {_isSprinting} &&
                     {_sprintBraceEndTime <= time} && {_horizontalSpeedMS > 0.25} && {_slopeDegrees > _slopeStopBraceStartDegrees};
                 // Publish the render-controller request and its brake stage
@@ -1712,7 +1758,7 @@ GAIT_fnc_setTunnelVisionFX = {
                     missionNamespace setVariable ["GAIT_uphillBrakeTarget", _uphillBrakeTarget];
                     missionNamespace setVariable ["GAIT_braceActive", _uphillBrakeActive || {_isSprinting && {_sprintBraceEndTime > time}}];
                     missionNamespace setVariable ["GAIT_braceEndTime", if (_uphillBrakeActive) then {_uphillBrakeState select 3} else {_sprintBraceEndTime}];
-                    [player, _fastMoveIntent, _movementInput, _externalSprintLock || {_externalWalkLock}] call GAIT_fnc_updateSlopeLocomotion;
+                    [player, _fastMoveIntent, _movementInput, _locomotionExternalLock] call GAIT_fnc_updateSlopeLocomotion;
                 };
                 if (_debugHudEnabled && {(time - _lastDebugHudTime) >= ((_debugHudInterval max 0.05) min 1)}) then {
                     _lastDebugHudTime = time;

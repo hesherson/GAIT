@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha17: native running crouch and strafe-safe acceleration
+// GAIT 1.8.0-alpha18: lowered-pistol continuity and slower sprint acceleration
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha17";
-        versionAr[] = {1,8,0,17};
+        versionStr = "1.8.0-alpha18";
+        versionAr[] = {1,8,0,18};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

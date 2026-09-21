@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha17: native running crouch and strafe-safe acceleration
+# GAIT 1.8.0-alpha18: lowered-pistol continuity and slower sprint acceleration
 
 Requires Arma 3 2.18+, CBA_A3 and ACE3. Load only the new GAIT copy and start a fresh mission. Full build/deploy instructions are in README_HEMTT.md; the packaged mod is under ready_to_load/GAIT.
 
@@ -8,7 +8,7 @@ The final sprint-to-jog handoff now has a measured destination pace when a match
 
 Hold W and release Shift: the controller captures current speed and eases toward jog pace with the current weight-tier release window. Speed continuity does not own direction. Pressing A or D during the numerical release immediately retires the old directional identity while carrying the exact current coefficient into ordinary locomotion. Sprint-entry redirection now also works during the earliest native-source frames, before Arma reports the custom blend, so lateral input cannot be queued behind the initial forward sprint request.
 
-Uphill/downhill tuning, no-walk slope jogging and the alpha16 pace-locked acceleration remain. Alpha17 fixes two remaining transition ownership issues. Running crouch/prone now keeps the coefficient already on the character while Arma's inherited stance graph performs the bend, so GAIT no longer restores the pre-GAIT coefficient halfway through the transition. The stance lease ends only after a native Pknl/Ppne locomotion state has actually settled or the bounded timeout expires. Sprint strafing now has distinct sprint-owned lateral Mrun states (`_GAITSprint`) instead of reusing the jog-owned lateral states. A/D while Shift is held therefore cannot silently fall into the jog action map. In addition, a raw direction edge during either the entering or active acceleration phase gets one immediate graph retarget on that Draw3D frame; held A/D cannot spam the request.
+All alpha17 crouch and strafe ownership fixes remain. Alpha18 fixes the remaining secondary-weapon-only acceleration pause by making lowered pistol locomotion (`SlowWpst`) a first-class GAIT family instead of converting every handgun into raised-pistol `SrasWpst`. The current native handgun pose is read from animationState first, then weaponLowered only as fallback, and the selected pose family remains latched through sprint acceleration. `SlowWpst` now has its own jog, sprint, lateral sprint and stop states plus its own `PistolLowStandActions`-derived action maps. GAIT also rejects internal `SlowWpst <-> SrasWpst` locomotion handoffs so a mid-ramp gun-pose correction cannot be introduced by the movement controller. Upward sprint acceleration is slower globally: the existing speed-ramp value is passed through a fixed 0.70 sprint-acceleration rate, stretching the default ~95% convergence from about 2.9 seconds to about 4.1 seconds without changing release, braking or ordinary movement timing.
 
 ## Settings pass
 
@@ -32,8 +32,8 @@ The shared brief brace, original gear tuning, heavy sprint access, lowered-pisto
 
 ## In-game acceptance
 
-1. With rifle, lowered rifle, pistol and unarmed movement, sprint from rest to full speed. During the entire ramp, repeatedly add/remove A and D, including W+A, W+D, pure A/D and fast A-to-D reversals. Strafe must begin on the input edge without a forward-only delay, gun-up wait or queued movement. Sprint-owned lateral states should remain `_GAITSprint`, and returning forward while Shift is still held must go directly back to Meva.
-2. Keep W held and release Shift during partial acceleration and at full sprint. Verify the release starts at the current pace and the final jog handoff has no speed step. Repeat with light, medium and heavy gear, and on a descent after collecting a matching jog reference.
+1. Test the secondary weapon separately. Begin from both a naturally lowered handgun state (`SlowWpst`) and a raised handgun state (`SrasWpst`), then sprint from rest through full speed. A lowered pistol must remain in the `SlowWpst` GAIT family for the entire acceleration instead of briefly converting to raised pistol; there must be no pause before full speed. Repeat with A/D throughout the ramp. Then compare rifle and unarmed starts to confirm their behavior is unchanged.
+2. On flat ground with default speed-ramp settings, sprint acceleration should now build noticeably slower and continuously toward maximum speed, reaching roughly 95% of the target in about 4.1 seconds before load-tier variation. Verify there is no plateau, pause or late snap to top speed. Then release Shift during partial acceleration and at full sprint; release timing should remain unchanged.
 3. Tap Shift again during both the release and the animation blend. Repeat release/retap sequences; check for no restart, rebrace or stale top-speed value.
 4. While running and sprinting at low, mid and near-full speed, press Crouch/MoveUp with W still held. The character should bend into crouched running the same way vanilla Arma does: no abrupt stop, no standstill detour and no visible coefficient snap during the bend. Repeat during W+A/W+D, during the acceleration ramp, during sprint release, and with Prone. After the low-stance state has settled, GAIT may relinquish the carried coefficient normally.
 5. Hold only W on shallow slopes and at the engine's ~32 degree forced-walk threshold, uphill and downhill. The animation must remain Mrun/jog rather than Mwlk/walk. On a calibrated pace reference the ordinary slope jog target must remain only slightly above the matching walk pace (6% floor). Then repeat the alpha14 zero-momentum uphill brace and 100–150 lb steep-downhill 30+ km/h tests.
@@ -42,7 +42,7 @@ The shared brief brace, original gear tuning, heavy sprint access, lowered-pisto
 For a read-only capture, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
 
 ```sqf
-[90, "alpha17 crouch + strafe ownership"] execVM "foundation_capture.sqf";
+[90, "alpha18 lowered pistol + slower ramp"] execVM "foundation_capture.sqf";
 ```
 
 Send the RPT after STOP with approximate issue times. Its releaseMotion fields include whether a measured release was selected, reference count and the current handoff state.

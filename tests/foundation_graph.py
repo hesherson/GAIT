@@ -12,10 +12,10 @@ import unittest
 
 CONFIG = Path(__file__).resolve().parents[1] / "addons/gait/slope_actions.hpp"
 FAMILIES = {
-    "SrasWrfl": ("GAIT_SlopeRifleRaisedActions", "RifleStandActions"),
-    "SlowWrfl": ("GAIT_SlopeRifleLoweredActions", "RifleLowStandActions"),
-    "SrasWpst": ("GAIT_SlopePistolActions", "PistolStandActions"),
-    "SnonWnon": ("GAIT_SlopeUnarmedActions", "CivilStandActions"),
+    "SrasWrfl": ("GAIT_SlopeRifleRaisedActions", "GAIT_SlopeRifleRaisedJogActions", "GAIT_SlopeRifleRaisedSprintActions", "RifleStandActions"),
+    "SlowWrfl": ("GAIT_SlopeRifleLoweredActions", "GAIT_SlopeRifleLoweredJogActions", "GAIT_SlopeRifleLoweredSprintActions", "RifleLowStandActions"),
+    "SrasWpst": ("GAIT_SlopePistolActions", "GAIT_SlopePistolJogActions", "GAIT_SlopePistolSprintActions", "PistolStandActions"),
+    "SnonWnon": ("GAIT_SlopeUnarmedActions", "GAIT_SlopeUnarmedJogActions", "GAIT_SlopeUnarmedSprintActions", "CivilStandActions"),
 }
 DIRECTIONS = {"Df", "Dfl", "Dl", "Dbl", "Db", "Dbr", "Dr", "Dfr"}
 SELECTOR_DIRECTIONS = dict(zip(
@@ -62,7 +62,8 @@ class FoundationGraph(unittest.TestCase):
                 self.assertEqual(parent, name.removesuffix("_GAIT"))
                 self.assertEqual(p["GAIT_nativeState"], parent)
                 self.assertEqual(p["GAIT_slopeFamily"], family)
-                expected_actions = FAMILIES[family][0]
+                neutral_actions, jog_actions, sprint_actions, _ = FAMILIES[family]
+                expected_actions = neutral_actions if pace == "Mstp" else sprint_actions if pace == "Meva" else jog_actions
                 self.assertEqual(p["actions"], expected_actions)
                 self.assertRegex(body, r"\bGAIT_slopeState\s*=\s*1;")
                 self.assertRegex(body, r"\blooped\s*=\s*1;")
@@ -82,25 +83,35 @@ class FoundationGraph(unittest.TestCase):
         self.assertEqual(counts, {"idle": 4, "sprint": 12, "run": 32})
 
     def test_default_stop_turn_and_every_direction_remain_in_family(self):
-        self.assertEqual(len(self.actions), 4)
-        for family, (actions, native_actions) in FAMILIES.items():
-            parent, body = self.actions[actions]
-            p = properties(body)
-            self.assertEqual(parent, native_actions)
+        self.assertEqual(len(self.actions), 12)
+        for family, (neutral_actions, jog_actions, sprint_actions, native_actions) in FAMILIES.items():
             idle = f"AmovPercMstp{family}Dnon_GAIT"
-            for selector in ("Default", "Stop", "StopRelaxed", "TurnL", "TurnR", "TurnLRelaxed", "TurnRRelaxed"):
-                self.assertEqual(p[selector], idle)
-            for pace in ("Walk", "PlayerWalk", "Slow", "PlayerSlow", "Fast", "PlayerFast", "Tact", "PlayerTact"):
-                for selector, direction in SELECTOR_DIRECTIONS.items():
-                    fast = pace in ("Fast", "PlayerFast")
-                    expected_pace = "Meva" if fast and direction in FORWARD else "Mrun"
-                    self.assertEqual(p[pace + selector], f"AmovPerc{expected_pace}{family}{direction}_GAIT")
-            # Medical, stance, weapon and vehicle selectors remain inherited.
-            self.assertEqual(len(p), 71)
+            for actions, policy in (
+                (neutral_actions, "neutral"),
+                (jog_actions, "jog"),
+                (sprint_actions, "sprint"),
+            ):
+                parent, body = self.actions[actions]
+                p = properties(body)
+                self.assertEqual(parent, native_actions)
+                for selector in ("Default", "Stop", "StopRelaxed", "TurnL", "TurnR", "TurnLRelaxed", "TurnRRelaxed"):
+                    self.assertEqual(p[selector], idle)
+                for pace in ("Walk", "PlayerWalk", "Slow", "PlayerSlow", "Fast", "PlayerFast", "Tact", "PlayerTact"):
+                    for selector, direction in SELECTOR_DIRECTIONS.items():
+                        if policy == "sprint":
+                            sprinting = True
+                        elif policy == "jog":
+                            sprinting = False
+                        else:
+                            sprinting = pace in ("Fast", "PlayerFast")
+                        expected_pace = "Meva" if sprinting and direction in FORWARD else "Mrun"
+                        self.assertEqual(p[pace + selector], f"AmovPerc{expected_pace}{family}{direction}_GAIT")
+                # Medical, stance, weapon and vehicle selectors remain inherited.
+                self.assertEqual(len(p), 71)
 
     def test_stop_targets_only_accelerate_interpolation(self):
         self.assertEqual(len(self.stops), 4)
-        for family, (_, native_actions) in FAMILIES.items():
+        for family, (_, _, _, native_actions) in FAMILIES.items():
             native_idle = f"AmovPercMstp{family}Dnon"
             stop = native_idle + "_GAITStop"
             parent, body = self.stops[stop]

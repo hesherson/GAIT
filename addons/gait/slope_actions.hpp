@@ -4,11 +4,13 @@
  *
  * Each weapon family contains one native-pose idle, three real Meva sprint
  * clips, and eight Mrun jog/directional clips. Ordinary slope movement uses
- * Mrun even when the engine requests Walk/Slow; the original numerical brace
- * acts inside this family from the first run frame. There is no separate
- * walking stage or promotion request. playMoveNow enters/releases through
- * the explicit interpolation graph once;
- * native directional input chooses transitions inside the selected family.
+ * Mrun even when the engine requests Walk/Slow. Moving states use pace-locked
+ * action maps: a jog state maps every forward pace selector back to Mrun and
+ * a sprint state maps every forward pace selector back to Meva. Therefore an
+ * engine pace-selector threshold cannot switch the body halfway through GAIT's
+ * numerical acceleration. Shift input and the controller's single graph request
+ * own the jog/sprint handoff instead. The original numerical brace acts inside
+ * the selected movement clip from the first frame.
  * Default, Stop and StopRelaxed remain inside that family. Turn selectors use
  * its idle as a conservative fallback: no guessed native turn class is used.
  * The engine still controls orientation; in-place foot turning needs testing.
@@ -120,6 +122,158 @@ class CfgMovesBasic
             PlayerTactRF = "AmovPercMrunSrasWrflDfr_GAIT";
         };
 
+        class GAIT_SlopeRifleRaisedJogActions: RifleStandActions
+        {
+            // Keep default/stop/turn selection in this opt-in family.
+            Default = "AmovPercMstpSrasWrflDnon_GAIT";
+            Stop = "AmovPercMstpSrasWrflDnon_GAIT";
+            StopRelaxed = "AmovPercMstpSrasWrflDnon_GAIT";
+            TurnL = "AmovPercMstpSrasWrflDnon_GAIT";
+            TurnR = "AmovPercMstpSrasWrflDnon_GAIT";
+            TurnLRelaxed = "AmovPercMstpSrasWrflDnon_GAIT";
+            TurnRRelaxed = "AmovPercMstpSrasWrflDnon_GAIT";
+            WalkF = "AmovPercMrunSrasWrflDf_GAIT";
+            WalkLF = "AmovPercMrunSrasWrflDfl_GAIT";
+            WalkL = "AmovPercMrunSrasWrflDl_GAIT";
+            WalkLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            WalkB = "AmovPercMrunSrasWrflDb_GAIT";
+            WalkRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            WalkR = "AmovPercMrunSrasWrflDr_GAIT";
+            WalkRF = "AmovPercMrunSrasWrflDfr_GAIT";
+            PlayerWalkF = "AmovPercMrunSrasWrflDf_GAIT";
+            PlayerWalkLF = "AmovPercMrunSrasWrflDfl_GAIT";
+            PlayerWalkL = "AmovPercMrunSrasWrflDl_GAIT";
+            PlayerWalkLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            PlayerWalkB = "AmovPercMrunSrasWrflDb_GAIT";
+            PlayerWalkRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            PlayerWalkR = "AmovPercMrunSrasWrflDr_GAIT";
+            PlayerWalkRF = "AmovPercMrunSrasWrflDfr_GAIT";
+            SlowF = "AmovPercMrunSrasWrflDf_GAIT";
+            SlowLF = "AmovPercMrunSrasWrflDfl_GAIT";
+            SlowL = "AmovPercMrunSrasWrflDl_GAIT";
+            SlowLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            SlowB = "AmovPercMrunSrasWrflDb_GAIT";
+            SlowRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            SlowR = "AmovPercMrunSrasWrflDr_GAIT";
+            SlowRF = "AmovPercMrunSrasWrflDfr_GAIT";
+            PlayerSlowF = "AmovPercMrunSrasWrflDf_GAIT";
+            PlayerSlowLF = "AmovPercMrunSrasWrflDfl_GAIT";
+            PlayerSlowL = "AmovPercMrunSrasWrflDl_GAIT";
+            PlayerSlowLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            PlayerSlowB = "AmovPercMrunSrasWrflDb_GAIT";
+            PlayerSlowRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            PlayerSlowR = "AmovPercMrunSrasWrflDr_GAIT";
+            PlayerSlowRF = "AmovPercMrunSrasWrflDfr_GAIT";
+            FastF = "AmovPercMrunSrasWrflDf_GAIT";
+            FastLF = "AmovPercMrunSrasWrflDfl_GAIT";
+            FastL = "AmovPercMrunSrasWrflDl_GAIT";
+            FastLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            FastB = "AmovPercMrunSrasWrflDb_GAIT";
+            FastRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            FastR = "AmovPercMrunSrasWrflDr_GAIT";
+            FastRF = "AmovPercMrunSrasWrflDfr_GAIT";
+            PlayerFastF = "AmovPercMrunSrasWrflDf_GAIT";
+            PlayerFastLF = "AmovPercMrunSrasWrflDfl_GAIT";
+            PlayerFastL = "AmovPercMrunSrasWrflDl_GAIT";
+            PlayerFastLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            PlayerFastB = "AmovPercMrunSrasWrflDb_GAIT";
+            PlayerFastRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            PlayerFastR = "AmovPercMrunSrasWrflDr_GAIT";
+            PlayerFastRF = "AmovPercMrunSrasWrflDfr_GAIT";
+            TactF = "AmovPercMrunSrasWrflDf_GAIT";
+            TactLF = "AmovPercMrunSrasWrflDfl_GAIT";
+            TactL = "AmovPercMrunSrasWrflDl_GAIT";
+            TactLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            TactB = "AmovPercMrunSrasWrflDb_GAIT";
+            TactRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            TactR = "AmovPercMrunSrasWrflDr_GAIT";
+            TactRF = "AmovPercMrunSrasWrflDfr_GAIT";
+            PlayerTactF = "AmovPercMrunSrasWrflDf_GAIT";
+            PlayerTactLF = "AmovPercMrunSrasWrflDfl_GAIT";
+            PlayerTactL = "AmovPercMrunSrasWrflDl_GAIT";
+            PlayerTactLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            PlayerTactB = "AmovPercMrunSrasWrflDb_GAIT";
+            PlayerTactRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            PlayerTactR = "AmovPercMrunSrasWrflDr_GAIT";
+            PlayerTactRF = "AmovPercMrunSrasWrflDfr_GAIT";
+        };
+
+        class GAIT_SlopeRifleRaisedSprintActions: RifleStandActions
+        {
+            // Keep default/stop/turn selection in this opt-in family.
+            Default = "AmovPercMstpSrasWrflDnon_GAIT";
+            Stop = "AmovPercMstpSrasWrflDnon_GAIT";
+            StopRelaxed = "AmovPercMstpSrasWrflDnon_GAIT";
+            TurnL = "AmovPercMstpSrasWrflDnon_GAIT";
+            TurnR = "AmovPercMstpSrasWrflDnon_GAIT";
+            TurnLRelaxed = "AmovPercMstpSrasWrflDnon_GAIT";
+            TurnRRelaxed = "AmovPercMstpSrasWrflDnon_GAIT";
+            WalkF = "AmovPercMevaSrasWrflDf_GAIT";
+            WalkLF = "AmovPercMevaSrasWrflDfl_GAIT";
+            WalkL = "AmovPercMrunSrasWrflDl_GAIT";
+            WalkLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            WalkB = "AmovPercMrunSrasWrflDb_GAIT";
+            WalkRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            WalkR = "AmovPercMrunSrasWrflDr_GAIT";
+            WalkRF = "AmovPercMevaSrasWrflDfr_GAIT";
+            PlayerWalkF = "AmovPercMevaSrasWrflDf_GAIT";
+            PlayerWalkLF = "AmovPercMevaSrasWrflDfl_GAIT";
+            PlayerWalkL = "AmovPercMrunSrasWrflDl_GAIT";
+            PlayerWalkLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            PlayerWalkB = "AmovPercMrunSrasWrflDb_GAIT";
+            PlayerWalkRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            PlayerWalkR = "AmovPercMrunSrasWrflDr_GAIT";
+            PlayerWalkRF = "AmovPercMevaSrasWrflDfr_GAIT";
+            SlowF = "AmovPercMevaSrasWrflDf_GAIT";
+            SlowLF = "AmovPercMevaSrasWrflDfl_GAIT";
+            SlowL = "AmovPercMrunSrasWrflDl_GAIT";
+            SlowLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            SlowB = "AmovPercMrunSrasWrflDb_GAIT";
+            SlowRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            SlowR = "AmovPercMrunSrasWrflDr_GAIT";
+            SlowRF = "AmovPercMevaSrasWrflDfr_GAIT";
+            PlayerSlowF = "AmovPercMevaSrasWrflDf_GAIT";
+            PlayerSlowLF = "AmovPercMevaSrasWrflDfl_GAIT";
+            PlayerSlowL = "AmovPercMrunSrasWrflDl_GAIT";
+            PlayerSlowLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            PlayerSlowB = "AmovPercMrunSrasWrflDb_GAIT";
+            PlayerSlowRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            PlayerSlowR = "AmovPercMrunSrasWrflDr_GAIT";
+            PlayerSlowRF = "AmovPercMevaSrasWrflDfr_GAIT";
+            FastF = "AmovPercMevaSrasWrflDf_GAIT";
+            FastLF = "AmovPercMevaSrasWrflDfl_GAIT";
+            FastL = "AmovPercMrunSrasWrflDl_GAIT";
+            FastLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            FastB = "AmovPercMrunSrasWrflDb_GAIT";
+            FastRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            FastR = "AmovPercMrunSrasWrflDr_GAIT";
+            FastRF = "AmovPercMevaSrasWrflDfr_GAIT";
+            PlayerFastF = "AmovPercMevaSrasWrflDf_GAIT";
+            PlayerFastLF = "AmovPercMevaSrasWrflDfl_GAIT";
+            PlayerFastL = "AmovPercMrunSrasWrflDl_GAIT";
+            PlayerFastLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            PlayerFastB = "AmovPercMrunSrasWrflDb_GAIT";
+            PlayerFastRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            PlayerFastR = "AmovPercMrunSrasWrflDr_GAIT";
+            PlayerFastRF = "AmovPercMevaSrasWrflDfr_GAIT";
+            TactF = "AmovPercMevaSrasWrflDf_GAIT";
+            TactLF = "AmovPercMevaSrasWrflDfl_GAIT";
+            TactL = "AmovPercMrunSrasWrflDl_GAIT";
+            TactLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            TactB = "AmovPercMrunSrasWrflDb_GAIT";
+            TactRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            TactR = "AmovPercMrunSrasWrflDr_GAIT";
+            TactRF = "AmovPercMevaSrasWrflDfr_GAIT";
+            PlayerTactF = "AmovPercMevaSrasWrflDf_GAIT";
+            PlayerTactLF = "AmovPercMevaSrasWrflDfl_GAIT";
+            PlayerTactL = "AmovPercMrunSrasWrflDl_GAIT";
+            PlayerTactLB = "AmovPercMrunSrasWrflDbl_GAIT";
+            PlayerTactB = "AmovPercMrunSrasWrflDb_GAIT";
+            PlayerTactRB = "AmovPercMrunSrasWrflDbr_GAIT";
+            PlayerTactR = "AmovPercMrunSrasWrflDr_GAIT";
+            PlayerTactRF = "AmovPercMevaSrasWrflDfr_GAIT";
+        };
+
         class RifleLowStandActions;
         class GAIT_SlopeRifleLoweredActions: RifleLowStandActions
         {
@@ -195,6 +349,158 @@ class CfgMovesBasic
             PlayerTactRB = "AmovPercMrunSlowWrflDbr_GAIT";
             PlayerTactR = "AmovPercMrunSlowWrflDr_GAIT";
             PlayerTactRF = "AmovPercMrunSlowWrflDfr_GAIT";
+        };
+
+        class GAIT_SlopeRifleLoweredJogActions: RifleLowStandActions
+        {
+            // Keep default/stop/turn selection in this opt-in family.
+            Default = "AmovPercMstpSlowWrflDnon_GAIT";
+            Stop = "AmovPercMstpSlowWrflDnon_GAIT";
+            StopRelaxed = "AmovPercMstpSlowWrflDnon_GAIT";
+            TurnL = "AmovPercMstpSlowWrflDnon_GAIT";
+            TurnR = "AmovPercMstpSlowWrflDnon_GAIT";
+            TurnLRelaxed = "AmovPercMstpSlowWrflDnon_GAIT";
+            TurnRRelaxed = "AmovPercMstpSlowWrflDnon_GAIT";
+            WalkF = "AmovPercMrunSlowWrflDf_GAIT";
+            WalkLF = "AmovPercMrunSlowWrflDfl_GAIT";
+            WalkL = "AmovPercMrunSlowWrflDl_GAIT";
+            WalkLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            WalkB = "AmovPercMrunSlowWrflDb_GAIT";
+            WalkRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            WalkR = "AmovPercMrunSlowWrflDr_GAIT";
+            WalkRF = "AmovPercMrunSlowWrflDfr_GAIT";
+            PlayerWalkF = "AmovPercMrunSlowWrflDf_GAIT";
+            PlayerWalkLF = "AmovPercMrunSlowWrflDfl_GAIT";
+            PlayerWalkL = "AmovPercMrunSlowWrflDl_GAIT";
+            PlayerWalkLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            PlayerWalkB = "AmovPercMrunSlowWrflDb_GAIT";
+            PlayerWalkRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            PlayerWalkR = "AmovPercMrunSlowWrflDr_GAIT";
+            PlayerWalkRF = "AmovPercMrunSlowWrflDfr_GAIT";
+            SlowF = "AmovPercMrunSlowWrflDf_GAIT";
+            SlowLF = "AmovPercMrunSlowWrflDfl_GAIT";
+            SlowL = "AmovPercMrunSlowWrflDl_GAIT";
+            SlowLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            SlowB = "AmovPercMrunSlowWrflDb_GAIT";
+            SlowRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            SlowR = "AmovPercMrunSlowWrflDr_GAIT";
+            SlowRF = "AmovPercMrunSlowWrflDfr_GAIT";
+            PlayerSlowF = "AmovPercMrunSlowWrflDf_GAIT";
+            PlayerSlowLF = "AmovPercMrunSlowWrflDfl_GAIT";
+            PlayerSlowL = "AmovPercMrunSlowWrflDl_GAIT";
+            PlayerSlowLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            PlayerSlowB = "AmovPercMrunSlowWrflDb_GAIT";
+            PlayerSlowRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            PlayerSlowR = "AmovPercMrunSlowWrflDr_GAIT";
+            PlayerSlowRF = "AmovPercMrunSlowWrflDfr_GAIT";
+            FastF = "AmovPercMrunSlowWrflDf_GAIT";
+            FastLF = "AmovPercMrunSlowWrflDfl_GAIT";
+            FastL = "AmovPercMrunSlowWrflDl_GAIT";
+            FastLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            FastB = "AmovPercMrunSlowWrflDb_GAIT";
+            FastRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            FastR = "AmovPercMrunSlowWrflDr_GAIT";
+            FastRF = "AmovPercMrunSlowWrflDfr_GAIT";
+            PlayerFastF = "AmovPercMrunSlowWrflDf_GAIT";
+            PlayerFastLF = "AmovPercMrunSlowWrflDfl_GAIT";
+            PlayerFastL = "AmovPercMrunSlowWrflDl_GAIT";
+            PlayerFastLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            PlayerFastB = "AmovPercMrunSlowWrflDb_GAIT";
+            PlayerFastRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            PlayerFastR = "AmovPercMrunSlowWrflDr_GAIT";
+            PlayerFastRF = "AmovPercMrunSlowWrflDfr_GAIT";
+            TactF = "AmovPercMrunSlowWrflDf_GAIT";
+            TactLF = "AmovPercMrunSlowWrflDfl_GAIT";
+            TactL = "AmovPercMrunSlowWrflDl_GAIT";
+            TactLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            TactB = "AmovPercMrunSlowWrflDb_GAIT";
+            TactRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            TactR = "AmovPercMrunSlowWrflDr_GAIT";
+            TactRF = "AmovPercMrunSlowWrflDfr_GAIT";
+            PlayerTactF = "AmovPercMrunSlowWrflDf_GAIT";
+            PlayerTactLF = "AmovPercMrunSlowWrflDfl_GAIT";
+            PlayerTactL = "AmovPercMrunSlowWrflDl_GAIT";
+            PlayerTactLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            PlayerTactB = "AmovPercMrunSlowWrflDb_GAIT";
+            PlayerTactRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            PlayerTactR = "AmovPercMrunSlowWrflDr_GAIT";
+            PlayerTactRF = "AmovPercMrunSlowWrflDfr_GAIT";
+        };
+
+        class GAIT_SlopeRifleLoweredSprintActions: RifleLowStandActions
+        {
+            // Keep default/stop/turn selection in this opt-in family.
+            Default = "AmovPercMstpSlowWrflDnon_GAIT";
+            Stop = "AmovPercMstpSlowWrflDnon_GAIT";
+            StopRelaxed = "AmovPercMstpSlowWrflDnon_GAIT";
+            TurnL = "AmovPercMstpSlowWrflDnon_GAIT";
+            TurnR = "AmovPercMstpSlowWrflDnon_GAIT";
+            TurnLRelaxed = "AmovPercMstpSlowWrflDnon_GAIT";
+            TurnRRelaxed = "AmovPercMstpSlowWrflDnon_GAIT";
+            WalkF = "AmovPercMevaSlowWrflDf_GAIT";
+            WalkLF = "AmovPercMevaSlowWrflDfl_GAIT";
+            WalkL = "AmovPercMrunSlowWrflDl_GAIT";
+            WalkLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            WalkB = "AmovPercMrunSlowWrflDb_GAIT";
+            WalkRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            WalkR = "AmovPercMrunSlowWrflDr_GAIT";
+            WalkRF = "AmovPercMevaSlowWrflDfr_GAIT";
+            PlayerWalkF = "AmovPercMevaSlowWrflDf_GAIT";
+            PlayerWalkLF = "AmovPercMevaSlowWrflDfl_GAIT";
+            PlayerWalkL = "AmovPercMrunSlowWrflDl_GAIT";
+            PlayerWalkLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            PlayerWalkB = "AmovPercMrunSlowWrflDb_GAIT";
+            PlayerWalkRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            PlayerWalkR = "AmovPercMrunSlowWrflDr_GAIT";
+            PlayerWalkRF = "AmovPercMevaSlowWrflDfr_GAIT";
+            SlowF = "AmovPercMevaSlowWrflDf_GAIT";
+            SlowLF = "AmovPercMevaSlowWrflDfl_GAIT";
+            SlowL = "AmovPercMrunSlowWrflDl_GAIT";
+            SlowLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            SlowB = "AmovPercMrunSlowWrflDb_GAIT";
+            SlowRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            SlowR = "AmovPercMrunSlowWrflDr_GAIT";
+            SlowRF = "AmovPercMevaSlowWrflDfr_GAIT";
+            PlayerSlowF = "AmovPercMevaSlowWrflDf_GAIT";
+            PlayerSlowLF = "AmovPercMevaSlowWrflDfl_GAIT";
+            PlayerSlowL = "AmovPercMrunSlowWrflDl_GAIT";
+            PlayerSlowLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            PlayerSlowB = "AmovPercMrunSlowWrflDb_GAIT";
+            PlayerSlowRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            PlayerSlowR = "AmovPercMrunSlowWrflDr_GAIT";
+            PlayerSlowRF = "AmovPercMevaSlowWrflDfr_GAIT";
+            FastF = "AmovPercMevaSlowWrflDf_GAIT";
+            FastLF = "AmovPercMevaSlowWrflDfl_GAIT";
+            FastL = "AmovPercMrunSlowWrflDl_GAIT";
+            FastLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            FastB = "AmovPercMrunSlowWrflDb_GAIT";
+            FastRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            FastR = "AmovPercMrunSlowWrflDr_GAIT";
+            FastRF = "AmovPercMevaSlowWrflDfr_GAIT";
+            PlayerFastF = "AmovPercMevaSlowWrflDf_GAIT";
+            PlayerFastLF = "AmovPercMevaSlowWrflDfl_GAIT";
+            PlayerFastL = "AmovPercMrunSlowWrflDl_GAIT";
+            PlayerFastLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            PlayerFastB = "AmovPercMrunSlowWrflDb_GAIT";
+            PlayerFastRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            PlayerFastR = "AmovPercMrunSlowWrflDr_GAIT";
+            PlayerFastRF = "AmovPercMevaSlowWrflDfr_GAIT";
+            TactF = "AmovPercMevaSlowWrflDf_GAIT";
+            TactLF = "AmovPercMevaSlowWrflDfl_GAIT";
+            TactL = "AmovPercMrunSlowWrflDl_GAIT";
+            TactLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            TactB = "AmovPercMrunSlowWrflDb_GAIT";
+            TactRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            TactR = "AmovPercMrunSlowWrflDr_GAIT";
+            TactRF = "AmovPercMevaSlowWrflDfr_GAIT";
+            PlayerTactF = "AmovPercMevaSlowWrflDf_GAIT";
+            PlayerTactLF = "AmovPercMevaSlowWrflDfl_GAIT";
+            PlayerTactL = "AmovPercMrunSlowWrflDl_GAIT";
+            PlayerTactLB = "AmovPercMrunSlowWrflDbl_GAIT";
+            PlayerTactB = "AmovPercMrunSlowWrflDb_GAIT";
+            PlayerTactRB = "AmovPercMrunSlowWrflDbr_GAIT";
+            PlayerTactR = "AmovPercMrunSlowWrflDr_GAIT";
+            PlayerTactRF = "AmovPercMevaSlowWrflDfr_GAIT";
         };
 
         class PistolStandActions;
@@ -274,6 +580,158 @@ class CfgMovesBasic
             PlayerTactRF = "AmovPercMrunSrasWpstDfr_GAIT";
         };
 
+        class GAIT_SlopePistolJogActions: PistolStandActions
+        {
+            // Keep default/stop/turn selection in this opt-in family.
+            Default = "AmovPercMstpSrasWpstDnon_GAIT";
+            Stop = "AmovPercMstpSrasWpstDnon_GAIT";
+            StopRelaxed = "AmovPercMstpSrasWpstDnon_GAIT";
+            TurnL = "AmovPercMstpSrasWpstDnon_GAIT";
+            TurnR = "AmovPercMstpSrasWpstDnon_GAIT";
+            TurnLRelaxed = "AmovPercMstpSrasWpstDnon_GAIT";
+            TurnRRelaxed = "AmovPercMstpSrasWpstDnon_GAIT";
+            WalkF = "AmovPercMrunSrasWpstDf_GAIT";
+            WalkLF = "AmovPercMrunSrasWpstDfl_GAIT";
+            WalkL = "AmovPercMrunSrasWpstDl_GAIT";
+            WalkLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            WalkB = "AmovPercMrunSrasWpstDb_GAIT";
+            WalkRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            WalkR = "AmovPercMrunSrasWpstDr_GAIT";
+            WalkRF = "AmovPercMrunSrasWpstDfr_GAIT";
+            PlayerWalkF = "AmovPercMrunSrasWpstDf_GAIT";
+            PlayerWalkLF = "AmovPercMrunSrasWpstDfl_GAIT";
+            PlayerWalkL = "AmovPercMrunSrasWpstDl_GAIT";
+            PlayerWalkLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            PlayerWalkB = "AmovPercMrunSrasWpstDb_GAIT";
+            PlayerWalkRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            PlayerWalkR = "AmovPercMrunSrasWpstDr_GAIT";
+            PlayerWalkRF = "AmovPercMrunSrasWpstDfr_GAIT";
+            SlowF = "AmovPercMrunSrasWpstDf_GAIT";
+            SlowLF = "AmovPercMrunSrasWpstDfl_GAIT";
+            SlowL = "AmovPercMrunSrasWpstDl_GAIT";
+            SlowLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            SlowB = "AmovPercMrunSrasWpstDb_GAIT";
+            SlowRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            SlowR = "AmovPercMrunSrasWpstDr_GAIT";
+            SlowRF = "AmovPercMrunSrasWpstDfr_GAIT";
+            PlayerSlowF = "AmovPercMrunSrasWpstDf_GAIT";
+            PlayerSlowLF = "AmovPercMrunSrasWpstDfl_GAIT";
+            PlayerSlowL = "AmovPercMrunSrasWpstDl_GAIT";
+            PlayerSlowLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            PlayerSlowB = "AmovPercMrunSrasWpstDb_GAIT";
+            PlayerSlowRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            PlayerSlowR = "AmovPercMrunSrasWpstDr_GAIT";
+            PlayerSlowRF = "AmovPercMrunSrasWpstDfr_GAIT";
+            FastF = "AmovPercMrunSrasWpstDf_GAIT";
+            FastLF = "AmovPercMrunSrasWpstDfl_GAIT";
+            FastL = "AmovPercMrunSrasWpstDl_GAIT";
+            FastLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            FastB = "AmovPercMrunSrasWpstDb_GAIT";
+            FastRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            FastR = "AmovPercMrunSrasWpstDr_GAIT";
+            FastRF = "AmovPercMrunSrasWpstDfr_GAIT";
+            PlayerFastF = "AmovPercMrunSrasWpstDf_GAIT";
+            PlayerFastLF = "AmovPercMrunSrasWpstDfl_GAIT";
+            PlayerFastL = "AmovPercMrunSrasWpstDl_GAIT";
+            PlayerFastLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            PlayerFastB = "AmovPercMrunSrasWpstDb_GAIT";
+            PlayerFastRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            PlayerFastR = "AmovPercMrunSrasWpstDr_GAIT";
+            PlayerFastRF = "AmovPercMrunSrasWpstDfr_GAIT";
+            TactF = "AmovPercMrunSrasWpstDf_GAIT";
+            TactLF = "AmovPercMrunSrasWpstDfl_GAIT";
+            TactL = "AmovPercMrunSrasWpstDl_GAIT";
+            TactLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            TactB = "AmovPercMrunSrasWpstDb_GAIT";
+            TactRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            TactR = "AmovPercMrunSrasWpstDr_GAIT";
+            TactRF = "AmovPercMrunSrasWpstDfr_GAIT";
+            PlayerTactF = "AmovPercMrunSrasWpstDf_GAIT";
+            PlayerTactLF = "AmovPercMrunSrasWpstDfl_GAIT";
+            PlayerTactL = "AmovPercMrunSrasWpstDl_GAIT";
+            PlayerTactLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            PlayerTactB = "AmovPercMrunSrasWpstDb_GAIT";
+            PlayerTactRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            PlayerTactR = "AmovPercMrunSrasWpstDr_GAIT";
+            PlayerTactRF = "AmovPercMrunSrasWpstDfr_GAIT";
+        };
+
+        class GAIT_SlopePistolSprintActions: PistolStandActions
+        {
+            // Keep default/stop/turn selection in this opt-in family.
+            Default = "AmovPercMstpSrasWpstDnon_GAIT";
+            Stop = "AmovPercMstpSrasWpstDnon_GAIT";
+            StopRelaxed = "AmovPercMstpSrasWpstDnon_GAIT";
+            TurnL = "AmovPercMstpSrasWpstDnon_GAIT";
+            TurnR = "AmovPercMstpSrasWpstDnon_GAIT";
+            TurnLRelaxed = "AmovPercMstpSrasWpstDnon_GAIT";
+            TurnRRelaxed = "AmovPercMstpSrasWpstDnon_GAIT";
+            WalkF = "AmovPercMevaSrasWpstDf_GAIT";
+            WalkLF = "AmovPercMevaSrasWpstDfl_GAIT";
+            WalkL = "AmovPercMrunSrasWpstDl_GAIT";
+            WalkLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            WalkB = "AmovPercMrunSrasWpstDb_GAIT";
+            WalkRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            WalkR = "AmovPercMrunSrasWpstDr_GAIT";
+            WalkRF = "AmovPercMevaSrasWpstDfr_GAIT";
+            PlayerWalkF = "AmovPercMevaSrasWpstDf_GAIT";
+            PlayerWalkLF = "AmovPercMevaSrasWpstDfl_GAIT";
+            PlayerWalkL = "AmovPercMrunSrasWpstDl_GAIT";
+            PlayerWalkLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            PlayerWalkB = "AmovPercMrunSrasWpstDb_GAIT";
+            PlayerWalkRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            PlayerWalkR = "AmovPercMrunSrasWpstDr_GAIT";
+            PlayerWalkRF = "AmovPercMevaSrasWpstDfr_GAIT";
+            SlowF = "AmovPercMevaSrasWpstDf_GAIT";
+            SlowLF = "AmovPercMevaSrasWpstDfl_GAIT";
+            SlowL = "AmovPercMrunSrasWpstDl_GAIT";
+            SlowLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            SlowB = "AmovPercMrunSrasWpstDb_GAIT";
+            SlowRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            SlowR = "AmovPercMrunSrasWpstDr_GAIT";
+            SlowRF = "AmovPercMevaSrasWpstDfr_GAIT";
+            PlayerSlowF = "AmovPercMevaSrasWpstDf_GAIT";
+            PlayerSlowLF = "AmovPercMevaSrasWpstDfl_GAIT";
+            PlayerSlowL = "AmovPercMrunSrasWpstDl_GAIT";
+            PlayerSlowLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            PlayerSlowB = "AmovPercMrunSrasWpstDb_GAIT";
+            PlayerSlowRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            PlayerSlowR = "AmovPercMrunSrasWpstDr_GAIT";
+            PlayerSlowRF = "AmovPercMevaSrasWpstDfr_GAIT";
+            FastF = "AmovPercMevaSrasWpstDf_GAIT";
+            FastLF = "AmovPercMevaSrasWpstDfl_GAIT";
+            FastL = "AmovPercMrunSrasWpstDl_GAIT";
+            FastLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            FastB = "AmovPercMrunSrasWpstDb_GAIT";
+            FastRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            FastR = "AmovPercMrunSrasWpstDr_GAIT";
+            FastRF = "AmovPercMevaSrasWpstDfr_GAIT";
+            PlayerFastF = "AmovPercMevaSrasWpstDf_GAIT";
+            PlayerFastLF = "AmovPercMevaSrasWpstDfl_GAIT";
+            PlayerFastL = "AmovPercMrunSrasWpstDl_GAIT";
+            PlayerFastLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            PlayerFastB = "AmovPercMrunSrasWpstDb_GAIT";
+            PlayerFastRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            PlayerFastR = "AmovPercMrunSrasWpstDr_GAIT";
+            PlayerFastRF = "AmovPercMevaSrasWpstDfr_GAIT";
+            TactF = "AmovPercMevaSrasWpstDf_GAIT";
+            TactLF = "AmovPercMevaSrasWpstDfl_GAIT";
+            TactL = "AmovPercMrunSrasWpstDl_GAIT";
+            TactLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            TactB = "AmovPercMrunSrasWpstDb_GAIT";
+            TactRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            TactR = "AmovPercMrunSrasWpstDr_GAIT";
+            TactRF = "AmovPercMevaSrasWpstDfr_GAIT";
+            PlayerTactF = "AmovPercMevaSrasWpstDf_GAIT";
+            PlayerTactLF = "AmovPercMevaSrasWpstDfl_GAIT";
+            PlayerTactL = "AmovPercMrunSrasWpstDl_GAIT";
+            PlayerTactLB = "AmovPercMrunSrasWpstDbl_GAIT";
+            PlayerTactB = "AmovPercMrunSrasWpstDb_GAIT";
+            PlayerTactRB = "AmovPercMrunSrasWpstDbr_GAIT";
+            PlayerTactR = "AmovPercMrunSrasWpstDr_GAIT";
+            PlayerTactRF = "AmovPercMevaSrasWpstDfr_GAIT";
+        };
+
         class CivilStandActions;
         class GAIT_SlopeUnarmedActions: CivilStandActions
         {
@@ -349,6 +807,158 @@ class CfgMovesBasic
             PlayerTactRB = "AmovPercMrunSnonWnonDbr_GAIT";
             PlayerTactR = "AmovPercMrunSnonWnonDr_GAIT";
             PlayerTactRF = "AmovPercMrunSnonWnonDfr_GAIT";
+        };
+
+        class GAIT_SlopeUnarmedJogActions: CivilStandActions
+        {
+            // Keep default/stop/turn selection in this opt-in family.
+            Default = "AmovPercMstpSnonWnonDnon_GAIT";
+            Stop = "AmovPercMstpSnonWnonDnon_GAIT";
+            StopRelaxed = "AmovPercMstpSnonWnonDnon_GAIT";
+            TurnL = "AmovPercMstpSnonWnonDnon_GAIT";
+            TurnR = "AmovPercMstpSnonWnonDnon_GAIT";
+            TurnLRelaxed = "AmovPercMstpSnonWnonDnon_GAIT";
+            TurnRRelaxed = "AmovPercMstpSnonWnonDnon_GAIT";
+            WalkF = "AmovPercMrunSnonWnonDf_GAIT";
+            WalkLF = "AmovPercMrunSnonWnonDfl_GAIT";
+            WalkL = "AmovPercMrunSnonWnonDl_GAIT";
+            WalkLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            WalkB = "AmovPercMrunSnonWnonDb_GAIT";
+            WalkRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            WalkR = "AmovPercMrunSnonWnonDr_GAIT";
+            WalkRF = "AmovPercMrunSnonWnonDfr_GAIT";
+            PlayerWalkF = "AmovPercMrunSnonWnonDf_GAIT";
+            PlayerWalkLF = "AmovPercMrunSnonWnonDfl_GAIT";
+            PlayerWalkL = "AmovPercMrunSnonWnonDl_GAIT";
+            PlayerWalkLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            PlayerWalkB = "AmovPercMrunSnonWnonDb_GAIT";
+            PlayerWalkRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            PlayerWalkR = "AmovPercMrunSnonWnonDr_GAIT";
+            PlayerWalkRF = "AmovPercMrunSnonWnonDfr_GAIT";
+            SlowF = "AmovPercMrunSnonWnonDf_GAIT";
+            SlowLF = "AmovPercMrunSnonWnonDfl_GAIT";
+            SlowL = "AmovPercMrunSnonWnonDl_GAIT";
+            SlowLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            SlowB = "AmovPercMrunSnonWnonDb_GAIT";
+            SlowRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            SlowR = "AmovPercMrunSnonWnonDr_GAIT";
+            SlowRF = "AmovPercMrunSnonWnonDfr_GAIT";
+            PlayerSlowF = "AmovPercMrunSnonWnonDf_GAIT";
+            PlayerSlowLF = "AmovPercMrunSnonWnonDfl_GAIT";
+            PlayerSlowL = "AmovPercMrunSnonWnonDl_GAIT";
+            PlayerSlowLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            PlayerSlowB = "AmovPercMrunSnonWnonDb_GAIT";
+            PlayerSlowRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            PlayerSlowR = "AmovPercMrunSnonWnonDr_GAIT";
+            PlayerSlowRF = "AmovPercMrunSnonWnonDfr_GAIT";
+            FastF = "AmovPercMrunSnonWnonDf_GAIT";
+            FastLF = "AmovPercMrunSnonWnonDfl_GAIT";
+            FastL = "AmovPercMrunSnonWnonDl_GAIT";
+            FastLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            FastB = "AmovPercMrunSnonWnonDb_GAIT";
+            FastRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            FastR = "AmovPercMrunSnonWnonDr_GAIT";
+            FastRF = "AmovPercMrunSnonWnonDfr_GAIT";
+            PlayerFastF = "AmovPercMrunSnonWnonDf_GAIT";
+            PlayerFastLF = "AmovPercMrunSnonWnonDfl_GAIT";
+            PlayerFastL = "AmovPercMrunSnonWnonDl_GAIT";
+            PlayerFastLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            PlayerFastB = "AmovPercMrunSnonWnonDb_GAIT";
+            PlayerFastRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            PlayerFastR = "AmovPercMrunSnonWnonDr_GAIT";
+            PlayerFastRF = "AmovPercMrunSnonWnonDfr_GAIT";
+            TactF = "AmovPercMrunSnonWnonDf_GAIT";
+            TactLF = "AmovPercMrunSnonWnonDfl_GAIT";
+            TactL = "AmovPercMrunSnonWnonDl_GAIT";
+            TactLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            TactB = "AmovPercMrunSnonWnonDb_GAIT";
+            TactRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            TactR = "AmovPercMrunSnonWnonDr_GAIT";
+            TactRF = "AmovPercMrunSnonWnonDfr_GAIT";
+            PlayerTactF = "AmovPercMrunSnonWnonDf_GAIT";
+            PlayerTactLF = "AmovPercMrunSnonWnonDfl_GAIT";
+            PlayerTactL = "AmovPercMrunSnonWnonDl_GAIT";
+            PlayerTactLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            PlayerTactB = "AmovPercMrunSnonWnonDb_GAIT";
+            PlayerTactRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            PlayerTactR = "AmovPercMrunSnonWnonDr_GAIT";
+            PlayerTactRF = "AmovPercMrunSnonWnonDfr_GAIT";
+        };
+
+        class GAIT_SlopeUnarmedSprintActions: CivilStandActions
+        {
+            // Keep default/stop/turn selection in this opt-in family.
+            Default = "AmovPercMstpSnonWnonDnon_GAIT";
+            Stop = "AmovPercMstpSnonWnonDnon_GAIT";
+            StopRelaxed = "AmovPercMstpSnonWnonDnon_GAIT";
+            TurnL = "AmovPercMstpSnonWnonDnon_GAIT";
+            TurnR = "AmovPercMstpSnonWnonDnon_GAIT";
+            TurnLRelaxed = "AmovPercMstpSnonWnonDnon_GAIT";
+            TurnRRelaxed = "AmovPercMstpSnonWnonDnon_GAIT";
+            WalkF = "AmovPercMevaSnonWnonDf_GAIT";
+            WalkLF = "AmovPercMevaSnonWnonDfl_GAIT";
+            WalkL = "AmovPercMrunSnonWnonDl_GAIT";
+            WalkLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            WalkB = "AmovPercMrunSnonWnonDb_GAIT";
+            WalkRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            WalkR = "AmovPercMrunSnonWnonDr_GAIT";
+            WalkRF = "AmovPercMevaSnonWnonDfr_GAIT";
+            PlayerWalkF = "AmovPercMevaSnonWnonDf_GAIT";
+            PlayerWalkLF = "AmovPercMevaSnonWnonDfl_GAIT";
+            PlayerWalkL = "AmovPercMrunSnonWnonDl_GAIT";
+            PlayerWalkLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            PlayerWalkB = "AmovPercMrunSnonWnonDb_GAIT";
+            PlayerWalkRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            PlayerWalkR = "AmovPercMrunSnonWnonDr_GAIT";
+            PlayerWalkRF = "AmovPercMevaSnonWnonDfr_GAIT";
+            SlowF = "AmovPercMevaSnonWnonDf_GAIT";
+            SlowLF = "AmovPercMevaSnonWnonDfl_GAIT";
+            SlowL = "AmovPercMrunSnonWnonDl_GAIT";
+            SlowLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            SlowB = "AmovPercMrunSnonWnonDb_GAIT";
+            SlowRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            SlowR = "AmovPercMrunSnonWnonDr_GAIT";
+            SlowRF = "AmovPercMevaSnonWnonDfr_GAIT";
+            PlayerSlowF = "AmovPercMevaSnonWnonDf_GAIT";
+            PlayerSlowLF = "AmovPercMevaSnonWnonDfl_GAIT";
+            PlayerSlowL = "AmovPercMrunSnonWnonDl_GAIT";
+            PlayerSlowLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            PlayerSlowB = "AmovPercMrunSnonWnonDb_GAIT";
+            PlayerSlowRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            PlayerSlowR = "AmovPercMrunSnonWnonDr_GAIT";
+            PlayerSlowRF = "AmovPercMevaSnonWnonDfr_GAIT";
+            FastF = "AmovPercMevaSnonWnonDf_GAIT";
+            FastLF = "AmovPercMevaSnonWnonDfl_GAIT";
+            FastL = "AmovPercMrunSnonWnonDl_GAIT";
+            FastLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            FastB = "AmovPercMrunSnonWnonDb_GAIT";
+            FastRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            FastR = "AmovPercMrunSnonWnonDr_GAIT";
+            FastRF = "AmovPercMevaSnonWnonDfr_GAIT";
+            PlayerFastF = "AmovPercMevaSnonWnonDf_GAIT";
+            PlayerFastLF = "AmovPercMevaSnonWnonDfl_GAIT";
+            PlayerFastL = "AmovPercMrunSnonWnonDl_GAIT";
+            PlayerFastLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            PlayerFastB = "AmovPercMrunSnonWnonDb_GAIT";
+            PlayerFastRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            PlayerFastR = "AmovPercMrunSnonWnonDr_GAIT";
+            PlayerFastRF = "AmovPercMevaSnonWnonDfr_GAIT";
+            TactF = "AmovPercMevaSnonWnonDf_GAIT";
+            TactLF = "AmovPercMevaSnonWnonDfl_GAIT";
+            TactL = "AmovPercMrunSnonWnonDl_GAIT";
+            TactLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            TactB = "AmovPercMrunSnonWnonDb_GAIT";
+            TactRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            TactR = "AmovPercMrunSnonWnonDr_GAIT";
+            TactRF = "AmovPercMevaSnonWnonDfr_GAIT";
+            PlayerTactF = "AmovPercMevaSnonWnonDf_GAIT";
+            PlayerTactLF = "AmovPercMevaSnonWnonDfl_GAIT";
+            PlayerTactL = "AmovPercMrunSnonWnonDl_GAIT";
+            PlayerTactLB = "AmovPercMrunSnonWnonDbl_GAIT";
+            PlayerTactB = "AmovPercMrunSnonWnonDb_GAIT";
+            PlayerTactRB = "AmovPercMrunSnonWnonDbr_GAIT";
+            PlayerTactR = "AmovPercMrunSnonWnonDr_GAIT";
+            PlayerTactRF = "AmovPercMevaSnonWnonDfr_GAIT";
         };
 
     };
@@ -447,7 +1057,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSrasWrflDf_GAIT: AmovPercMevaSrasWrflDf
         {
-            actions = "GAIT_SlopeRifleRaisedActions";
+            actions = "GAIT_SlopeRifleRaisedSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSrasWrflDf";
             GAIT_slopeFamily = "SrasWrfl";
@@ -521,7 +1131,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSrasWrflDfl_GAIT: AmovPercMevaSrasWrflDfl
         {
-            actions = "GAIT_SlopeRifleRaisedActions";
+            actions = "GAIT_SlopeRifleRaisedSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSrasWrflDfl";
             GAIT_slopeFamily = "SrasWrfl";
@@ -595,7 +1205,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSrasWrflDfr_GAIT: AmovPercMevaSrasWrflDfr
         {
-            actions = "GAIT_SlopeRifleRaisedActions";
+            actions = "GAIT_SlopeRifleRaisedSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSrasWrflDfr";
             GAIT_slopeFamily = "SrasWrfl";
@@ -669,7 +1279,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWrflDf_GAIT: AmovPercMrunSrasWrflDf
         {
-            actions = "GAIT_SlopeRifleRaisedActions";
+            actions = "GAIT_SlopeRifleRaisedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWrflDf";
             GAIT_slopeFamily = "SrasWrfl";
@@ -743,7 +1353,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWrflDfl_GAIT: AmovPercMrunSrasWrflDfl
         {
-            actions = "GAIT_SlopeRifleRaisedActions";
+            actions = "GAIT_SlopeRifleRaisedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWrflDfl";
             GAIT_slopeFamily = "SrasWrfl";
@@ -817,7 +1427,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWrflDl_GAIT: AmovPercMrunSrasWrflDl
         {
-            actions = "GAIT_SlopeRifleRaisedActions";
+            actions = "GAIT_SlopeRifleRaisedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWrflDl";
             GAIT_slopeFamily = "SrasWrfl";
@@ -891,7 +1501,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWrflDbl_GAIT: AmovPercMrunSrasWrflDbl
         {
-            actions = "GAIT_SlopeRifleRaisedActions";
+            actions = "GAIT_SlopeRifleRaisedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWrflDbl";
             GAIT_slopeFamily = "SrasWrfl";
@@ -965,7 +1575,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWrflDb_GAIT: AmovPercMrunSrasWrflDb
         {
-            actions = "GAIT_SlopeRifleRaisedActions";
+            actions = "GAIT_SlopeRifleRaisedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWrflDb";
             GAIT_slopeFamily = "SrasWrfl";
@@ -1039,7 +1649,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWrflDbr_GAIT: AmovPercMrunSrasWrflDbr
         {
-            actions = "GAIT_SlopeRifleRaisedActions";
+            actions = "GAIT_SlopeRifleRaisedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWrflDbr";
             GAIT_slopeFamily = "SrasWrfl";
@@ -1113,7 +1723,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWrflDr_GAIT: AmovPercMrunSrasWrflDr
         {
-            actions = "GAIT_SlopeRifleRaisedActions";
+            actions = "GAIT_SlopeRifleRaisedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWrflDr";
             GAIT_slopeFamily = "SrasWrfl";
@@ -1187,7 +1797,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWrflDfr_GAIT: AmovPercMrunSrasWrflDfr
         {
-            actions = "GAIT_SlopeRifleRaisedActions";
+            actions = "GAIT_SlopeRifleRaisedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWrflDfr";
             GAIT_slopeFamily = "SrasWrfl";
@@ -1459,7 +2069,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSlowWrflDf_GAIT: AmovPercMevaSlowWrflDf
         {
-            actions = "GAIT_SlopeRifleLoweredActions";
+            actions = "GAIT_SlopeRifleLoweredSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSlowWrflDf";
             GAIT_slopeFamily = "SlowWrfl";
@@ -1565,7 +2175,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSlowWrflDfl_GAIT: AmovPercMevaSlowWrflDfl
         {
-            actions = "GAIT_SlopeRifleLoweredActions";
+            actions = "GAIT_SlopeRifleLoweredSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSlowWrflDfl";
             GAIT_slopeFamily = "SlowWrfl";
@@ -1671,7 +2281,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSlowWrflDfr_GAIT: AmovPercMevaSlowWrflDfr
         {
-            actions = "GAIT_SlopeRifleLoweredActions";
+            actions = "GAIT_SlopeRifleLoweredSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSlowWrflDfr";
             GAIT_slopeFamily = "SlowWrfl";
@@ -1777,7 +2387,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSlowWrflDf_GAIT: AmovPercMrunSlowWrflDf
         {
-            actions = "GAIT_SlopeRifleLoweredActions";
+            actions = "GAIT_SlopeRifleLoweredJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSlowWrflDf";
             GAIT_slopeFamily = "SlowWrfl";
@@ -1883,7 +2493,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSlowWrflDfl_GAIT: AmovPercMrunSlowWrflDfl
         {
-            actions = "GAIT_SlopeRifleLoweredActions";
+            actions = "GAIT_SlopeRifleLoweredJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSlowWrflDfl";
             GAIT_slopeFamily = "SlowWrfl";
@@ -1989,7 +2599,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSlowWrflDl_GAIT: AmovPercMrunSlowWrflDl
         {
-            actions = "GAIT_SlopeRifleLoweredActions";
+            actions = "GAIT_SlopeRifleLoweredJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSlowWrflDl";
             GAIT_slopeFamily = "SlowWrfl";
@@ -2095,7 +2705,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSlowWrflDbl_GAIT: AmovPercMrunSlowWrflDbl
         {
-            actions = "GAIT_SlopeRifleLoweredActions";
+            actions = "GAIT_SlopeRifleLoweredJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSlowWrflDbl";
             GAIT_slopeFamily = "SlowWrfl";
@@ -2201,7 +2811,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSlowWrflDb_GAIT: AmovPercMrunSlowWrflDb
         {
-            actions = "GAIT_SlopeRifleLoweredActions";
+            actions = "GAIT_SlopeRifleLoweredJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSlowWrflDb";
             GAIT_slopeFamily = "SlowWrfl";
@@ -2307,7 +2917,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSlowWrflDbr_GAIT: AmovPercMrunSlowWrflDbr
         {
-            actions = "GAIT_SlopeRifleLoweredActions";
+            actions = "GAIT_SlopeRifleLoweredJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSlowWrflDbr";
             GAIT_slopeFamily = "SlowWrfl";
@@ -2413,7 +3023,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSlowWrflDr_GAIT: AmovPercMrunSlowWrflDr
         {
-            actions = "GAIT_SlopeRifleLoweredActions";
+            actions = "GAIT_SlopeRifleLoweredJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSlowWrflDr";
             GAIT_slopeFamily = "SlowWrfl";
@@ -2519,7 +3129,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSlowWrflDfr_GAIT: AmovPercMrunSlowWrflDfr
         {
-            actions = "GAIT_SlopeRifleLoweredActions";
+            actions = "GAIT_SlopeRifleLoweredJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSlowWrflDfr";
             GAIT_slopeFamily = "SlowWrfl";
@@ -2863,7 +3473,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSrasWpstDf_GAIT: AmovPercMevaSrasWpstDf
         {
-            actions = "GAIT_SlopePistolActions";
+            actions = "GAIT_SlopePistolSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSrasWpstDf";
             GAIT_slopeFamily = "SrasWpst";
@@ -2977,7 +3587,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSrasWpstDfl_GAIT: AmovPercMevaSrasWpstDfl
         {
-            actions = "GAIT_SlopePistolActions";
+            actions = "GAIT_SlopePistolSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSrasWpstDfl";
             GAIT_slopeFamily = "SrasWpst";
@@ -3091,7 +3701,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSrasWpstDfr_GAIT: AmovPercMevaSrasWpstDfr
         {
-            actions = "GAIT_SlopePistolActions";
+            actions = "GAIT_SlopePistolSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSrasWpstDfr";
             GAIT_slopeFamily = "SrasWpst";
@@ -3205,7 +3815,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWpstDf_GAIT: AmovPercMrunSrasWpstDf
         {
-            actions = "GAIT_SlopePistolActions";
+            actions = "GAIT_SlopePistolJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWpstDf";
             GAIT_slopeFamily = "SrasWpst";
@@ -3319,7 +3929,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWpstDfl_GAIT: AmovPercMrunSrasWpstDfl
         {
-            actions = "GAIT_SlopePistolActions";
+            actions = "GAIT_SlopePistolJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWpstDfl";
             GAIT_slopeFamily = "SrasWpst";
@@ -3433,7 +4043,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWpstDl_GAIT: AmovPercMrunSrasWpstDl
         {
-            actions = "GAIT_SlopePistolActions";
+            actions = "GAIT_SlopePistolJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWpstDl";
             GAIT_slopeFamily = "SrasWpst";
@@ -3547,7 +4157,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWpstDbl_GAIT: AmovPercMrunSrasWpstDbl
         {
-            actions = "GAIT_SlopePistolActions";
+            actions = "GAIT_SlopePistolJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWpstDbl";
             GAIT_slopeFamily = "SrasWpst";
@@ -3661,7 +4271,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWpstDb_GAIT: AmovPercMrunSrasWpstDb
         {
-            actions = "GAIT_SlopePistolActions";
+            actions = "GAIT_SlopePistolJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWpstDb";
             GAIT_slopeFamily = "SrasWpst";
@@ -3775,7 +4385,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWpstDbr_GAIT: AmovPercMrunSrasWpstDbr
         {
-            actions = "GAIT_SlopePistolActions";
+            actions = "GAIT_SlopePistolJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWpstDbr";
             GAIT_slopeFamily = "SrasWpst";
@@ -3889,7 +4499,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWpstDr_GAIT: AmovPercMrunSrasWpstDr
         {
-            actions = "GAIT_SlopePistolActions";
+            actions = "GAIT_SlopePistolJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWpstDr";
             GAIT_slopeFamily = "SrasWpst";
@@ -4003,7 +4613,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSrasWpstDfr_GAIT: AmovPercMrunSrasWpstDfr
         {
-            actions = "GAIT_SlopePistolActions";
+            actions = "GAIT_SlopePistolJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSrasWpstDfr";
             GAIT_slopeFamily = "SrasWpst";
@@ -4323,7 +4933,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSnonWnonDf_GAIT: AmovPercMevaSnonWnonDf
         {
-            actions = "GAIT_SlopeUnarmedActions";
+            actions = "GAIT_SlopeUnarmedSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSnonWnonDf";
             GAIT_slopeFamily = "SnonWnon";
@@ -4397,7 +5007,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSnonWnonDfl_GAIT: AmovPercMevaSnonWnonDfl
         {
-            actions = "GAIT_SlopeUnarmedActions";
+            actions = "GAIT_SlopeUnarmedSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSnonWnonDfl";
             GAIT_slopeFamily = "SnonWnon";
@@ -4471,7 +5081,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMevaSnonWnonDfr_GAIT: AmovPercMevaSnonWnonDfr
         {
-            actions = "GAIT_SlopeUnarmedActions";
+            actions = "GAIT_SlopeUnarmedSprintActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMevaSnonWnonDfr";
             GAIT_slopeFamily = "SnonWnon";
@@ -4545,7 +5155,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSnonWnonDf_GAIT: AmovPercMrunSnonWnonDf
         {
-            actions = "GAIT_SlopeUnarmedActions";
+            actions = "GAIT_SlopeUnarmedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSnonWnonDf";
             GAIT_slopeFamily = "SnonWnon";
@@ -4619,7 +5229,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSnonWnonDfl_GAIT: AmovPercMrunSnonWnonDfl
         {
-            actions = "GAIT_SlopeUnarmedActions";
+            actions = "GAIT_SlopeUnarmedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSnonWnonDfl";
             GAIT_slopeFamily = "SnonWnon";
@@ -4693,7 +5303,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSnonWnonDl_GAIT: AmovPercMrunSnonWnonDl
         {
-            actions = "GAIT_SlopeUnarmedActions";
+            actions = "GAIT_SlopeUnarmedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSnonWnonDl";
             GAIT_slopeFamily = "SnonWnon";
@@ -4767,7 +5377,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSnonWnonDbl_GAIT: AmovPercMrunSnonWnonDbl
         {
-            actions = "GAIT_SlopeUnarmedActions";
+            actions = "GAIT_SlopeUnarmedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSnonWnonDbl";
             GAIT_slopeFamily = "SnonWnon";
@@ -4841,7 +5451,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSnonWnonDb_GAIT: AmovPercMrunSnonWnonDb
         {
-            actions = "GAIT_SlopeUnarmedActions";
+            actions = "GAIT_SlopeUnarmedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSnonWnonDb";
             GAIT_slopeFamily = "SnonWnon";
@@ -4915,7 +5525,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSnonWnonDbr_GAIT: AmovPercMrunSnonWnonDbr
         {
-            actions = "GAIT_SlopeUnarmedActions";
+            actions = "GAIT_SlopeUnarmedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSnonWnonDbr";
             GAIT_slopeFamily = "SnonWnon";
@@ -4989,7 +5599,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSnonWnonDr_GAIT: AmovPercMrunSnonWnonDr
         {
-            actions = "GAIT_SlopeUnarmedActions";
+            actions = "GAIT_SlopeUnarmedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSnonWnonDr";
             GAIT_slopeFamily = "SnonWnon";
@@ -5063,7 +5673,7 @@ class CfgMovesMaleSdr: CfgMovesBasic
 
         class AmovPercMrunSnonWnonDfr_GAIT: AmovPercMrunSnonWnonDfr
         {
-            actions = "GAIT_SlopeUnarmedActions";
+            actions = "GAIT_SlopeUnarmedJogActions";
             GAIT_slopeState = 1;
             GAIT_nativeState = "AmovPercMrunSnonWnonDfr";
             GAIT_slopeFamily = "SnonWnon";

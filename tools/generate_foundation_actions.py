@@ -13,10 +13,10 @@ DEFAULT_OUTPUT = (
     / "addons/gait/slope_actions.hpp"
 )
 FAMILIES = (
-    ("SrasWrfl", "GAIT_SlopeRifleRaisedActions", "RifleStandActions"),
-    ("SlowWrfl", "GAIT_SlopeRifleLoweredActions", "RifleLowStandActions"),
-    ("SrasWpst", "GAIT_SlopePistolActions", "PistolStandActions"),
-    ("SnonWnon", "GAIT_SlopeUnarmedActions", "CivilStandActions"),
+    ("SrasWrfl", "GAIT_SlopeRifleRaisedActions", "GAIT_SlopeRifleRaisedJogActions", "GAIT_SlopeRifleRaisedSprintActions", "RifleStandActions"),
+    ("SlowWrfl", "GAIT_SlopeRifleLoweredActions", "GAIT_SlopeRifleLoweredJogActions", "GAIT_SlopeRifleLoweredSprintActions", "RifleLowStandActions"),
+    ("SrasWpst", "GAIT_SlopePistolActions", "GAIT_SlopePistolJogActions", "GAIT_SlopePistolSprintActions", "PistolStandActions"),
+    ("SnonWnon", "GAIT_SlopeUnarmedActions", "GAIT_SlopeUnarmedJogActions", "GAIT_SlopeUnarmedSprintActions", "CivilStandActions"),
 )
 DIRECTIONS = ("Df", "Dfl", "Dl", "Dbl", "Db", "Dbr", "Dr", "Dfr")
 SELECTORS = ("F", "LF", "L", "LB", "B", "RB", "R", "RF")
@@ -94,11 +94,13 @@ def render():
  *
  * Each weapon family contains one native-pose idle, three real Meva sprint
  * clips, and eight Mrun jog/directional clips. Ordinary slope movement uses
- * Mrun even when the engine requests Walk/Slow; the original numerical brace
- * acts inside this family from the first run frame. There is no separate
- * walking stage or promotion request. playMoveNow enters/releases through
- * the explicit interpolation graph once;
- * native directional input chooses transitions inside the selected family.
+ * Mrun even when the engine requests Walk/Slow. Moving states use pace-locked
+ * action maps: a jog state maps every forward pace selector back to Mrun and
+ * a sprint state maps every forward pace selector back to Meva. Therefore an
+ * engine pace-selector threshold cannot switch the body halfway through GAIT's
+ * numerical acceleration. Shift input and the controller's single graph request
+ * own the jog/sprint handoff instead. The original numerical brace acts inside
+ * the selected movement clip from the first frame.
  * Default, Stop and StopRelaxed remain inside that family. Turn selectors use
  * its idle as a conservative fallback: no guessed native turn class is used.
  * The engine still controls orientation; in-place foot turning needs testing.
@@ -133,19 +135,29 @@ class CfgMovesBasic
 {
     class Actions
     {''']
-    for family, actions, parent in FAMILIES:
+    for family, neutral_actions, jog_actions, sprint_actions, parent in FAMILIES:
         lines.append(f"        class {parent};")
-        lines += [f"        class {actions}: {parent}", "        {"]
-        lines.append("            // Keep default/stop/turn selection in this opt-in family.")
-        for selector in IDLE_SELECTORS:
-            lines.append(f'            {selector} = "{custom(family, "Dnon")}";')
-        for pace in PACES:
-            sprinting = pace in ("Fast", "PlayerFast")
-            for selector, direction in zip(SELECTORS, DIRECTIONS):
-                lines.append(f'            {pace}{selector} = "{custom(family, direction, sprinting)}";')
-        lines += ["        };", ""]
+        for actions, policy in (
+            (neutral_actions, "neutral"),
+            (jog_actions, "jog"),
+            (sprint_actions, "sprint"),
+        ):
+            lines += [f"        class {actions}: {parent}", "        {"]
+            lines.append("            // Keep default/stop/turn selection in this opt-in family.")
+            for selector in IDLE_SELECTORS:
+                lines.append(f'            {selector} = "{custom(family, "Dnon", False)}";')
+            for pace in PACES:
+                for selector, direction in zip(SELECTORS, DIRECTIONS):
+                    if policy == "sprint":
+                        sprinting = True
+                    elif policy == "jog":
+                        sprinting = False
+                    else:
+                        sprinting = pace in ("Fast", "PlayerFast")
+                    lines.append(f'            {pace}{selector} = "{custom(family, direction, sprinting)}";')
+            lines += ["        };", ""]
     lines += ["    };", "};", "", "class CfgMovesMaleSdr: CfgMovesBasic", "{", "    class States", "    {"]
-    for family, actions, native_actions in FAMILIES:
+    for family, neutral_actions, jog_actions, sprint_actions, native_actions in FAMILIES:
         state_specs = [("Dnon", False)]
         state_specs += [(direction, True) for direction in DIRECTIONS if direction in FORWARD]
         state_specs += [(direction, False) for direction in DIRECTIONS]
@@ -162,9 +174,10 @@ class CfgMovesBasic
             name = custom(family, direction, sprinting)
             base = native(family, direction, sprinting)
             role = "idle" if direction == "Dnon" else "move"
+            state_actions = neutral_actions if direction == "Dnon" else (sprint_actions if sprinting else jog_actions)
             lines += [
                 f"        class {name}: {base}", "        {",
-                f'            actions = "{actions}";',
+                f'            actions = "{state_actions}";',
                 "            GAIT_slopeState = 1;",
                 f'            GAIT_nativeState = "{base}";',
                 f'            GAIT_slopeFamily = "{family}";',
@@ -209,7 +222,7 @@ def main():
         print("Foundation graph generator matches the checked-in config.")
         return
     args.output.write_text(expected)
-    print(f"Wrote {args.output}: 48 locomotion states, 4 stop targets, 4 action families, 284 mapped selectors.")
+    print(f"Wrote {args.output}: 48 locomotion states, 4 stop targets, 12 action maps, 852 mapped selectors.")
 
 
 if __name__ == "__main__":

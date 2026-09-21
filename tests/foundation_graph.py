@@ -50,7 +50,7 @@ class FoundationGraph(unittest.TestCase):
         cls.actions = {name: (base, body) for name, base, body in blocks if name.startswith("GAIT_Slope")}
 
     def test_real_native_clip_parents_and_controller_markers(self):
-        self.assertEqual(len(self.states), 36)
+        self.assertEqual(len(self.states), 48)
         counts = {"idle": 0, "sprint": 0, "run": 0}
         for name, (parent, body) in self.states.items():
             with self.subTest(state=name):
@@ -69,13 +69,17 @@ class FoundationGraph(unittest.TestCase):
                 self.assertEqual(p["equivalentTo"], "")
                 role = "idle" if direction == "Dnon" else "move"
                 self.assertEqual(p["GAIT_locomotionRole"], role)
-                wanted_pace = "Mstp" if direction == "Dnon" else "Meva" if direction in FORWARD else "Mrun"
-                self.assertEqual(pace, wanted_pace)
+                if direction == "Dnon":
+                    self.assertEqual(pace, "Mstp")
+                elif pace == "Meva":
+                    self.assertIn(direction, FORWARD)
+                else:
+                    self.assertEqual(pace, "Mrun")
                 counts[{"Mstp": "idle", "Meva": "sprint", "Mrun": "run"}[pace]] += 1
                 # Root motion, clip speed, brace timing and pose properties
                 # remain inherited; this graph must not retune those values.
                 self.assertNotRegex(body, r"\b(?:file|speed|duty|stamina|disableWeapons|headBobStrength)\s*=")
-        self.assertEqual(counts, {"idle": 4, "sprint": 12, "run": 20})
+        self.assertEqual(counts, {"idle": 4, "sprint": 12, "run": 32})
 
     def test_default_stop_turn_and_every_direction_remain_in_family(self):
         self.assertEqual(len(self.actions), 4)
@@ -88,7 +92,8 @@ class FoundationGraph(unittest.TestCase):
                 self.assertEqual(p[selector], idle)
             for pace in ("Walk", "PlayerWalk", "Slow", "PlayerSlow", "Fast", "PlayerFast", "Tact", "PlayerTact"):
                 for selector, direction in SELECTOR_DIRECTIONS.items():
-                    expected_pace = "Meva" if direction in FORWARD else "Mrun"
+                    fast = pace in ("Fast", "PlayerFast")
+                    expected_pace = "Meva" if fast and direction in FORWARD else "Mrun"
                     self.assertEqual(p[pace + selector], f"AmovPerc{expected_pace}{family}{direction}_GAIT")
             # Medical, stance, weapon and vehicle selectors remain inherited.
             self.assertEqual(len(p), 71)
@@ -114,7 +119,7 @@ class FoundationGraph(unittest.TestCase):
     def test_idle_recovery_and_direction_reversals_have_direct_edges(self):
         for family in FAMILIES:
             members = {name for name, (_, body) in self.states.items() if properties(body)["GAIT_slopeFamily"] == family}
-            self.assertEqual(len(members), 9)
+            self.assertEqual(len(members), 12)
             for source in members:
                 pairs = edges(self.states[source][1], "InterpolateTo")
                 names = [name for name, _ in pairs]

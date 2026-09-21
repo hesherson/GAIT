@@ -76,6 +76,37 @@ private _peakHeavy = [-18, 100, 1] call GAIT_fnc_downhillPaceMultiplier;
 private _steepHeavy = [-75, 100, 1] call GAIT_fnc_downhillPaceMultiplier;
 [abs ((_peakHeavy - 1) * 0.25 - (_steepHeavy - 1)) < 0.000001, "existing steep-descent control scales the heavy gain"] call _assert;
 
+// Uphill slowdown is now temporal: shallow hills bleed speed gradually while
+// steep hills converge faster to the same steady grade curve.
+private _uphillShallow = 0;
+private _uphillSteep = 0;
+for "_i" from 1 to 20 do {
+    _uphillShallow = [_uphillShallow, 10, true, 0.05, 5, 35]
+        call GAIT_fnc_stepUphillPaceExposure;
+    _uphillSteep = [_uphillSteep, 35, true, 0.05, 5, 35]
+        call GAIT_fnc_stepUphillPaceExposure;
+};
+[_uphillShallow > 0 && {_uphillShallow < 1}, "shallow uphill slowdown builds gradually"] call _assert;
+[_uphillSteep > _uphillShallow && {_uphillSteep < 1}, "steeper uphill builds slowdown faster"] call _assert;
+private _fullShallow = [10,5,35,0.40] call GAIT_fnc_uphillPaceMultiplier;
+private _partialShallow = [_fullShallow,_uphillShallow] call GAIT_fnc_applyUphillPaceExposure;
+[_partialShallow < 1 && {_partialShallow > _fullShallow}, "temporal uphill multiplier starts between flat and full penalty"] call _assert;
+private _recover = _uphillSteep;
+for "_i" from 1 to 20 do {
+    _recover = [_recover, 0, false, 0.05, 5, 35] call GAIT_fnc_stepUphillPaceExposure;
+};
+[_recover < _uphillSteep && {_recover > 0}, "flattening recovers uphill slowdown smoothly"] call _assert;
+private _uphillFrames = [];
+{
+    private _dt = _x;
+    private _exposure = 0;
+    for "_i" from 1 to round (1 / _dt) do {
+        _exposure = [_exposure, 22, true, _dt, 5, 35] call GAIT_fnc_stepUphillPaceExposure;
+    };
+    _uphillFrames pushBack _exposure;
+} forEach [0.01,0.02,0.05,0.1,0.2];
+{[abs (_x - (_uphillFrames select 0)) < 0.00001, "uphill exposure is update-rate independent"] call _assert;} forEach _uphillFrames;
+
 private _riseResults = [];
 private _fallResults = [];
 {
@@ -103,4 +134,4 @@ private _capped = [0, 1, 0.20] call GAIT_fnc_stepDownhillMomentum;
 [([0.4, 1, 0] call GAIT_fnc_stepDownhillMomentum) isEqualTo 0.4, "zero delta cannot change momentum"] call _assert;
 [([0.4, 1, -1] call GAIT_fnc_stepDownhillMomentum) isEqualTo 0.4, "negative delta cannot change momentum"] call _assert;
 [([0.4, 1, 0.05, 0] call GAIT_fnc_stepDownhillMomentum) isEqualTo 1, "zero rise duration explicitly disables rise easing"] call _assert;
-diag_log format ["GAIT TEST PASS: downhill pace, load order, slope bounds and time-based momentum (%1 checks)", _checks];
+diag_log format ["GAIT TEST PASS: uphill temporal slowdown plus downhill pace, load order, slope bounds and time-based momentum (%1 checks)", _checks];

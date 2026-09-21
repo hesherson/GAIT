@@ -103,6 +103,20 @@ if ((["SrasWrfl", "Dl"] call GAIT_fnc_slopeStateName) isNotEqualTo "AmovPercMrun
     _failures pushBack "Lateral redirect lost run family";
 };
 
+private _nativeEntrySource = "AmovPercMrunSrasWrflDf";
+if !([_nativeEntrySource, _nativeEntrySource, true, false, false, false]
+    call GAIT_fnc_locomotionEntryRedirectKnown) then {
+    _failures pushBack "Exact native entry source could not redirect before blend appeared";
+};
+if ([_nativeEntrySource, _nativeEntrySource, false, false, false, false]
+    call GAIT_fnc_locomotionEntryRedirectKnown) then {
+    _failures pushBack "Expired native entry source retained redirect authority";
+};
+if (["AmovPercMrunSrasWrflDr", _nativeEntrySource, true, false, false, false]
+    call GAIT_fnc_locomotionEntryRedirectKnown) then {
+    _failures pushBack "Unrelated native observation gained entry redirect authority";
+};
+
 // Failed entry followed by a late custom observation stays blocked until the
 // user's release. Cleanup remains pending through unsafe contact, and a
 // medical/native takeover clears it without any new entry decision.
@@ -161,7 +175,7 @@ private _blendCases = [
 } forEach _blendCases;
 
 if (_failures isEqualTo []) then {
-    diag_log format ["GAIT locomotion state machine tests PASS: %1 policy cases; held W/A/D/idle and release sequence with direction redirects; blocked/late-entry/medical sequence; %2 blend-name cases.", count _policyCases, count _blendCases];
+    diag_log format ["GAIT locomotion state machine tests PASS: %1 policy cases; held W/A/D/idle, immediate native-source startup redirect and release direction redirects; blocked/late-entry/medical sequence; %2 blend-name cases.", count _policyCases, count _blendCases];
 } else {
     {diag_log ("GAIT locomotion state machine tests FAIL: " + _x);} forEach _failures;
     throw "GAIT locomotion state machine regression failed";

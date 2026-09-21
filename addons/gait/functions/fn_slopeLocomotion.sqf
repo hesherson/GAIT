@@ -404,6 +404,23 @@ GAIT_fnc_locomotionStopRedirect = {
     _this call GAIT_fnc_locomotionDirectionRedirectNeeded
 };
 
+// A pending entry may still report its exact native source for a few rendered
+// frames before Arma exposes the custom blend. Lateral input must already be
+// able to retarget in that window; unrelated observations remain rejected.
+GAIT_fnc_locomotionEntryRedirectKnown = {
+    params [
+        ["_animation", "", [""]],
+        ["_source", "", [""]],
+        ["_beforeDeadline", false, [false]],
+        ["_insideFamily", false, [false]],
+        ["_handoffBlend", false, [false]],
+        ["_handoffSource", false, [false]]
+    ];
+    _insideFamily || {_handoffBlend} || {_handoffSource} ||
+        {_beforeDeadline && {_source isNotEqualTo ""} &&
+            {(toLower _animation) isEqualTo (toLower _source)}}
+};
+
 GAIT_fnc_nativeStopDecision = {
     params ["_releaseEdge", "_ownedPace", "_nativePhase", "_ordinaryMove", "_eligible"];
     _releaseEdge && {_ownedPace} && {_nativePhase} && {_ordinaryMove} && {_eligible}
@@ -522,10 +539,12 @@ GAIT_fnc_redirectLocomotionEntryDirection = {
         {currentWeapon _unit isNotEqualTo (_unit getVariable ["GAIT_slopeAttemptWeapon", currentWeapon _unit])}) exitWith {false};
     private _animation = animationState _unit;
     private _source = _unit getVariable ["GAIT_slopeEntrySource", ""];
-    private _known = ([_animation] call GAIT_fnc_slopeAnimationFamily) isNotEqualTo "" ||
-        {[_animation, _source, _oldTarget] call GAIT_fnc_isLocomotionHandoffBlend} ||
-        {[_animation, _source, diag_tickTime <= (_unit getVariable ["GAIT_slopeEntryDeadline", -1])]
-            call GAIT_fnc_isLocomotionHandoffSource};
+    private _beforeDeadline = diag_tickTime <= (_unit getVariable ["GAIT_slopeEntryDeadline", -1]);
+    private _insideFamily = ([_animation] call GAIT_fnc_slopeAnimationFamily) isNotEqualTo "";
+    private _handoffBlend = [_animation, _source, _oldTarget] call GAIT_fnc_isLocomotionHandoffBlend;
+    private _handoffSource = [_animation, _source, _beforeDeadline] call GAIT_fnc_isLocomotionHandoffSource;
+    private _known = [_animation, _source, _beforeDeadline, _insideFamily, _handoffBlend, _handoffSource]
+        call GAIT_fnc_locomotionEntryRedirectKnown;
     if (!_known) exitWith {false};
     private _target = [_family, _direction] call GAIT_fnc_slopeStateName;
     if (!isClass (configFile >> "CfgMovesMaleSdr" >> "States" >> _target)) exitWith {false};

@@ -609,6 +609,7 @@ GAIT_fnc_setTunnelVisionFX = {
     private _walkStartBraceState = [];
     private _slopeSmoothInitialized = false;
     private _smoothedSlopeDegrees = 0;
+    private _uphillPaceExposure = 0;
     private _uphillFatigueDrainEnabled = missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainEnabled", true];
     private _uphillFatigueDrainMaxDegrees = missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainMaxDegrees", 35.0];
     private _uphillFatigueDrainMaxMultiplier = missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainMaxMultiplier", 1.75];
@@ -666,6 +667,9 @@ GAIT_fnc_setTunnelVisionFX = {
             missionNamespace setVariable ["GAIT_braceEndTime", -1];
             _slopeSmoothInitialized = false;
             _smoothedSlopeDegrees = 0;
+            _uphillPaceExposure = 0;
+            missionNamespace setVariable ["GAIT_uphillPaceExposure", 0];
+            missionNamespace setVariable ["GAIT_uphillPaceMultiplier", 1];
             _sprintReserve = _sprintReserveMax;
             _currentSpeed = _normalSpeed;
             _wasSprinting = false;
@@ -1025,13 +1029,24 @@ GAIT_fnc_setTunnelVisionFX = {
                     missionNamespace setVariable ["GAIT_slopeTransitionSmoothingEnabled", _slopeTransitionSmoothingEnabled];
                     missionNamespace setVariable ["GAIT_lastKnownSlopeDegrees", _lastKnownSlopeDegrees];
 
+                    private _uphillMaxDegSafe = _uphillMaxDegrees max (_uphillStartDegrees + 0.1);
+                    private _uphillBuildContext = _uphillSlowdownEnabled && {_isSprinting} &&
+                        {_slopeDegrees > _uphillStartDegrees} && {_isForwardHeld} &&
+                        {_movementEligible} && {_gaitStanceOk} && {_onGroundNow};
+                    _uphillPaceExposure = [_uphillPaceExposure, _slopeDegrees, _uphillBuildContext,
+                        _dt, _uphillStartDegrees, _uphillMaxDegSafe] call GAIT_fnc_stepUphillPaceExposure;
+                    missionNamespace setVariable ["GAIT_uphillPaceExposure", _uphillPaceExposure];
+
                     if (_isSprinting) then {
-                        private _uphillMaxDegSafe = _uphillMaxDegrees max (_uphillStartDegrees + 0.1);
                         private _downhillBoostMaxDegSafe = _downhillBoostMaxDegrees max (_downhillBoostStartDegrees + 0.1);
 
                         if (_uphillSlowdownEnabled && {_slopeDegrees > _uphillStartDegrees}) then {
-                            _slopeSpeedMultiplier = [_slopeDegrees, _uphillStartDegrees, _uphillMaxDegSafe, _uphillMaxPenalty] call GAIT_fnc_uphillPaceMultiplier;
+                            private _fullUphillMultiplier = [_slopeDegrees, _uphillStartDegrees,
+                                _uphillMaxDegSafe, _uphillMaxPenalty] call GAIT_fnc_uphillPaceMultiplier;
+                            _slopeSpeedMultiplier = [_fullUphillMultiplier, _uphillPaceExposure]
+                                call GAIT_fnc_applyUphillPaceExposure;
                         };
+                        missionNamespace setVariable ["GAIT_uphillPaceMultiplier", _slopeSpeedMultiplier];
 
                         if (_downhillBoostEnabled && {_slopeDegrees < -_downhillBoostStartDegrees}) then {
                             private _sustainedBonus = missionNamespace getVariable ["GAIT_ss_downhillSustainedExtraBoost", 0.12];
@@ -1040,6 +1055,8 @@ GAIT_fnc_setTunnelVisionFX = {
                                 call GAIT_fnc_downhillPaceMultiplier);
                         };
 
+                    } else {
+                        missionNamespace setVariable ["GAIT_uphillPaceMultiplier", 1];
                     };
 
                     private _downhillDegForTrip = abs _slopeDegrees;
@@ -1675,6 +1692,9 @@ GAIT_fnc_setTunnelVisionFX = {
                 };
             } else {
                 // Fast Carry pickup/lift owns its animation.
+                _uphillPaceExposure = 0;
+                missionNamespace setVariable ["GAIT_uphillPaceExposure", 0];
+                missionNamespace setVariable ["GAIT_uphillPaceMultiplier", 1];
                 _downhillTripSprintStartTime = -1;
                 _downhillTripHighSpeedStartTime = -1;
                 _uphillBrakeState = [];

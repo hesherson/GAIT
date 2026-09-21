@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha15: stance-safe transitions and no-walk slope jogging
+// GAIT 1.8.0-alpha16: pace-locked sprint acceleration
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha15";
-        versionAr[] = {1,8,0,15};
+        versionStr = "1.8.0-alpha16";
+        versionAr[] = {1,8,0,16};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

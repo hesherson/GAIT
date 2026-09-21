@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha15: stance-safe transitions and no-walk slope jogging
+# GAIT 1.8.0-alpha16: uninterrupted sprint acceleration
 
 Requires Arma 3 2.18+, CBA_A3 and ACE3. Load only the new GAIT copy and start a fresh mission. Full build/deploy instructions are in README_HEMTT.md; the packaged mod is under ready_to_load/GAIT.
 
@@ -8,7 +8,7 @@ The final sprint-to-jog handoff now has a measured destination pace when a match
 
 Hold W and release Shift: the controller captures current speed and eases toward jog pace with the current weight-tier release window. Speed continuity does not own direction. Pressing A or D during the numerical release immediately retires the old directional identity while carrying the exact current coefficient into ordinary locomotion. Sprint-entry redirection now also works during the earliest native-source frames, before Arma reports the custom blend, so lateral input cannot be queued behind the initial forward sprint request.
 
-Uphill sprint slowdown still builds progressively with time, and zero-momentum uphill starts retain the exponential positive-grade brace burden from alpha14. Downhill momentum still builds only from actual descending sprint travel, with calibrated steep descents targeting roughly 34 km/h light and about 32 km/h at 150 lb+. Alpha15 changes transition ownership: Crouch/MoveUp/Prone input creates a short stance-yield lease before stance or animationState visibly changes, clears GAIT's standing transition/coefficient ownership without issuing a stop animation, and leaves the inherited Arma stance graph to execute the input. Ordinary forward movement on any real slope now enters dedicated custom Mrun forward/diagonal states. Walk/Slow/Tact selectors stay in Mrun; only Fast/Turbo forward selectors use Meva. At engine forced-walk angles, W-only movement therefore remains visually jogging and its calibrated physical floor is 6% above the corresponding walk pace.
+Uphill and downhill behavior from alpha14 and the stance/no-walk slope behavior from alpha15 remain. Alpha16 removes a mid-acceleration body-state handoff that could occur around the engine's internal pace-selector threshold. Custom movement states now own separate pace maps: once GAIT enters an Mrun jog state, Walk/Slow/Tact/Fast forward selectors all remain Mrun; once GAIT enters a Meva sprint state, those same forward selectors all remain Meva. Numerical acceleration can therefore pass through roughly 14 km/h without Arma silently switching the body from jog to sprint. Shift input and GAIT's explicit graph handoff are now the only mechanisms that change ordinary forward movement between Mrun and Meva.
 
 ## Settings pass
 
@@ -32,7 +32,7 @@ The shared brief brace, original gear tuning, heavy sprint access, lowered-pisto
 
 ## In-game acceptance
 
-1. With rifle, pistol and unarmed movement, start sprinting from rest and immediately press W+A, W+D, pure A and pure D before the sprint blend visibly settles. The weapon/body must redirect immediately instead of pointing forward and queuing the strafe. Repeat raised and lowered pistol starts and repeat on steep uphill terrain.
+1. With rifle, lowered rifle, pistol and unarmed movement, sprint from rest to full speed while watching the 10–18 km/h range closely. There must be no pause, root-motion stall or extra body-state transition around ~14 km/h. Repeat on flat ground and on shallow/steep slopes, with light and heavy kit. The animation should enter Meva once for sprint ownership and remain there throughout the numerical acceleration.
 2. Keep W held and release Shift during partial acceleration and at full sprint. Verify the release starts at the current pace and the final jog handoff has no speed step. Repeat with light, medium and heavy gear, and on a descent after collecting a matching jog reference.
 3. Tap Shift again during both the release and the animation blend. Repeat release/retap sequences; check for no restart, rebrace or stale top-speed value.
 4. During sprint startup, acceleration, release, sprint-to-jog handoff and steep-slope entry/exit, press Crouch/MoveUp while W remains held. Crouch must register on the first press without GAIT forcing an idle stop first; the body should hand directly to the native crouch transition. Repeat with Prone, with A/D held, and while changing slope. Then repeat the A/D transition tests from alpha14.
@@ -42,7 +42,7 @@ The shared brief brace, original gear tuning, heavy sprint access, lowered-pisto
 For a read-only capture, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
 
 ```sqf
-[90, "alpha15 stance yield + no-walk slopes"] execVM "foundation_capture.sqf";
+[90, "alpha16 uninterrupted acceleration"] execVM "foundation_capture.sqf";
 ```
 
 Send the RPT after STOP with approximate issue times. Its releaseMotion fields include whether a measured release was selected, reference count and the current handoff state.

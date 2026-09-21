@@ -1626,8 +1626,10 @@ GAIT_fnc_setTunnelVisionFX = {
                 // profiles ship; absent calibration is exactly the legacy pair.
                 // Steady targets are resolved BEFORE the unchanged brace/ramp.
                 missionNamespace setVariable ["GAIT_paceCalibrated", false];
+                missionNamespace setVariable ["GAIT_sprintReferenceCalibrated", false];
                 missionNamespace setVariable ["GAIT_walkTargetMS", -1];
                 missionNamespace setVariable ["GAIT_sprintTargetMS", -1];
+                missionNamespace setVariable ["GAIT_downhillGravityTargetKmh", 0];
                 if (_isSprinting && {_sprintBraceEndTime <= time} && {_gaitStanceOk} && {!_isAceCarrying} && {_slopeHandlingEnabled} && {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]}) then {
                     private _family = [player] call GAIT_fnc_slopeWeaponFamily;
                     private _direction = [_movementInput select 0, _movementInput select 1] call GAIT_fnc_slopeDirection;

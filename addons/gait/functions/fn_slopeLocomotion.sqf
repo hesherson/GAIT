@@ -424,7 +424,14 @@ GAIT_fnc_serviceLocomotionExit = {
     if (_entryWeapon isNotEqualTo (currentWeapon _unit)) exitWith {false};
     private _family = [_unit] call GAIT_fnc_slopeWeaponFamily;
     if (_family isEqualTo "") exitWith {false};
-    private _walk = (_unit getVariable ["GAIT_slopeExitWalkOnly", false]) || {isForcedWalk _unit} || {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
+    private _aceSlopeLock = (_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0 ||
+        {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
+    private _ordinarySlopeJog = [_input,
+        missionNamespace getVariable ["GAIT_lastKnownSlopeDegrees", 0],
+        _aceSlopeLock, isForcedWalk _unit] call GAIT_fnc_ordinarySlopeJogIntent;
+    private _walk = ((_unit getVariable ["GAIT_slopeExitWalkOnly", false]) && {!_ordinarySlopeJog}) ||
+        {isForcedWalk _unit && {!_ordinarySlopeJog}} ||
+        {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
     private _pace = ["Mrun", "Mwlk"] select _walk;
     if (!_walk && {isSprintAllowed _unit} && {(_unit getVariable ["ace_common_effect_blockSprint", 0]) <= 0} &&
         {_input select 2} && {_direction in ["Df", "Dfl", "Dfr"]}) then {_pace = "Meva";};
@@ -622,18 +629,26 @@ GAIT_fnc_redirectLocomotionEntryDirection = {
 // unrelated animation, lost input, stale envelope or unsafe context cannot.
 GAIT_fnc_resumeLocomotionExit = {
     params ["_unit", "_input"];
-    if (isNull _unit || {(_unit getVariable ["GAIT_locomotionPhase", "native"]) isNotEqualTo "exiting"} ||
-        {!(_unit getVariable ["GAIT_turboPressedThisFrame", false])}) exitWith {false};
+    if (isNull _unit || {(_unit getVariable ["GAIT_locomotionPhase", "native"]) isNotEqualTo "exiting"}) exitWith {false};
+    private _aceSlopeLock = (_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0 ||
+        {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
+    private _ordinarySlopeJog = [_input,
+        missionNamespace getVariable ["GAIT_lastKnownSlopeDegrees", 0],
+        _aceSlopeLock, isForcedWalk _unit] call GAIT_fnc_ordinarySlopeJogIntent;
+    private _resumeInput = (_unit getVariable ["GAIT_turboPressedThisFrame", false]) || {_ordinarySlopeJog};
+    if (!_resumeInput) exitWith {false};
     private _request = missionNamespace getVariable ["GAIT_locomotionRequest", []];
     private _lease = (4 * (missionNamespace getVariable ["GAIT_ss_tickRate", 0.05])) max 1;
     if ((count _request) isNotEqualTo 4 || {(_request select 0) isNotEqualTo _unit} ||
         {diag_tickTime - (_request select 3) > _lease}) exitWith {false};
     private _moving = abs (_input select 0) > 0.05 || {abs (_input select 1) > 0.05};
-    private _requested = [(_request select 1) && {!(_request select 2)}, _input select 2, _moving] call GAIT_fnc_locomotionIntent;
+    private _featureRequest = (_request select 1) && {!((_request select 2) && {!_ordinarySlopeJog})};
+    private _requested = [_featureRequest, _input select 2, _moving, _ordinarySlopeJog]
+        call GAIT_fnc_locomotionIntent;
     private _enabled = (missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]) &&
         {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]} && {call GAIT_fnc_modeAllowsMovement};
-    private _locked = !isSprintAllowed _unit || {isForcedWalk _unit} ||
-        {(_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0} || {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
+    private _nativeLock = (!isSprintAllowed _unit || {isForcedWalk _unit}) && {!_ordinarySlopeJog};
+    private _locked = _nativeLock || {_aceSlopeLock};
     private _eligible = _enabled && {!_locked} && {(stance _unit) isEqualTo "STAND"} &&
         {(_unit getVariable ["GAIT_slopeAttemptWeapon", ""]) isEqualTo (currentWeapon _unit)} &&
         {[_unit, false] call GAIT_fnc_nativeMovementEligible};

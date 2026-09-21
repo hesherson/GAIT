@@ -111,7 +111,7 @@ Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of t
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Enable slope handling (`GAIT_ss_slopeHandlingEnabled`) | true | on / off | Enables GAIT terrain-aware sprint behavior. Uphill sprinting slows progressively instead of being blocked; downhill sprinting can give a small speed boost and optional trip risk on steep descents. |
+| Enable slope handling (`GAIT_ss_slopeHandlingEnabled`) | true | on / off | Enables GAIT terrain-aware movement. Ordinary forward movement on any real slope uses a custom Mrun jog instead of the engine slope-walk state; uphill sprinting slows progressively and downhill sprinting accelerates with sustained descent momentum. ACE medical movement locks still take priority. |
 | Slope sample distance (`GAIT_ss_slopeSampleDistance`) | 2 | 0.5–6 | Meters ahead and behind the player used to measure the terrain slope in the current movement direction. Higher values smooth noisy terrain; lower values react faster. Default: 2.0. |
 | Smooth slope transitions (`GAIT_ss_slopeTransitionSmoothingEnabled`) | true | on / off | Smooths slope angle and slope-speed target changes so moving between different incline angles ramps speed up/down instead of snapping. Default: enabled. |
 | Slope angle rise rate (`GAIT_ss_slopeAngleRiseRateDegPerSecond`) | 22 | 2–120 | Maximum degrees per second the effective slope may increase when entering steeper terrain. Lower is smoother/heavier. Default: 22 deg/sec. |
@@ -123,7 +123,7 @@ Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of t
 | Vegetation drag (`GAIT_ss_vegetationDragEnabled`) | true | on / off | Dense bushes bleed movement speed while passing through them. Default: enabled. |
 | Vegetation drag max (`GAIT_ss_vegetationDragMax`) | 0.18 | 0–0.75 | Maximum movement speed reduction in dense brush. 0.18 means up to 18% slower. Default: 0.18. |
 | Vegetation drag radius (`GAIT_ss_vegetationDragRadius`) | 2.5 | 0.5–6 | Bush proximity radius in meters considered for drag. Default: 2.5 m. |
-| Slow walking on hills (`GAIT_ss_hillWalkSlowdownEnabled`) | true | on / off | Slows normal W movement on inclines/declines before sprinting so starting uphill already feels heavy. Default: enabled. |
+| Slow ordinary slope pace (`GAIT_ss_hillWalkSlowdownEnabled`) | true | on / off | Reduces normal W pace on inclines/declines before sprinting. This changes speed only; slope forward movement remains visually Mrun/jog rather than Mwlk/walk. Default: enabled. |
 | Hill walk slowdown starts (`GAIT_ss_hillWalkSlowdownStartDegrees`) | 15 | 0–45 | Slope angle where normal walking/jogging begins slowing before sprint. Default: 15 degrees. |
 | Hill walk reference angle (`GAIT_ss_hillWalkSlowdownMaxDegrees`) | 40 | 5–80 | Slope angle where walking reaches the reference penalty. Pace continues decreasing on steeper terrain. Default: 40 degrees. |
 | Uphill walk reference penalty (`GAIT_ss_hillWalkUphillMaxPenalty`) | 0.32 | 0–0.75 | Normal movement loss at the walk reference angle, adjusted for kit weight. Default: 0.32. |

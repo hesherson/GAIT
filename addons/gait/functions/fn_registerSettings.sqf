@@ -162,7 +162,7 @@ private _addList = {
 // -----------------------------------------------------
 // 09 Terrain, Slopes, and Tripping
 // -----------------------------------------------------
-["GAIT_ss_slopeHandlingEnabled", "Enable slope handling", "Enables GAIT terrain-aware sprint behavior. Uphill sprinting slows progressively instead of being blocked; downhill sprinting can give a small speed boost and optional trip risk on steep descents.", _categorySlope, true] call _addCheckbox;
+["GAIT_ss_slopeHandlingEnabled", "Enable slope handling", "Enables GAIT terrain-aware movement. Ordinary forward movement on any real slope uses a jog/run animation instead of the engine slope-walk state; uphill sprinting slows progressively, and downhill sprinting accelerates with sustained descent momentum. ACE medical movement locks still take priority.", _categorySlope, true] call _addCheckbox;
 ["GAIT_ss_slopeSampleDistance", "Slope sample distance", "Meters ahead and behind the player used to measure the terrain slope in the current movement direction. Higher values smooth noisy terrain; lower values react faster. Default: 2.0.", _categorySlope, 0.50, 6.00, 2.00, 1] call _addSlider;
 ["GAIT_ss_slopeTransitionSmoothingEnabled", "Smooth slope transitions", "Smooths slope angle and slope-speed target changes so moving between different incline angles ramps speed up/down instead of snapping. Default: enabled.", _categorySlope, true] call _addCheckbox;
 ["GAIT_ss_slopeAngleRiseRateDegPerSecond", "Slope angle rise rate", "Maximum degrees per second the effective slope may increase when entering steeper terrain. Lower is smoother/heavier. Default: 22 deg/sec.", _categorySlope, 2.00, 120.00, 22.00, 0] call _addSlider;
@@ -175,7 +175,7 @@ private _addList = {
 ["GAIT_ss_vegetationDragEnabled", "Vegetation drag", "Dense bushes bleed movement speed while passing through them. Default: enabled.", _categorySlope, true] call _addCheckbox;
 ["GAIT_ss_vegetationDragMax", "Vegetation drag max", "Maximum movement speed reduction in dense brush. 0.18 means up to 18% slower. Default: 0.18.", _categorySlope, 0.00, 0.75, 0.18, 2] call _addSlider;
 ["GAIT_ss_vegetationDragRadius", "Vegetation drag radius", "Bush proximity radius in meters considered for drag. Default: 2.5 m.", _categorySlope, 0.50, 6.00, 2.50, 1] call _addSlider;
-["GAIT_ss_hillWalkSlowdownEnabled", "Slow walking on hills", "Slows normal W movement on inclines/declines before sprinting so starting uphill already feels heavy. Default: enabled.", _categorySlope, true] call _addCheckbox;
+["GAIT_ss_hillWalkSlowdownEnabled", "Slow ordinary slope pace", "Reduces the pace of normal W movement on inclines/declines before sprinting so hills feel heavy. This does not select a walking animation: slope forward movement remains a custom Mrun jog. Default: enabled.", _categorySlope, true] call _addCheckbox;
 ["GAIT_ss_hillWalkSlowdownStartDegrees", "Hill walk slowdown starts", "Slope angle where normal walking/jogging begins slowing before sprint. Default: 15 degrees.", _categorySlope, 0.00, 45.00, 15.00, 1] call _addSlider;
 ["GAIT_ss_hillWalkSlowdownMaxDegrees", "Hill walk reference angle", "Slope angle where walking reaches the reference penalty. Pace continues decreasing on steeper terrain. Default: 40 degrees.", _categorySlope, 5.00, 80.00, 40.00, 1] call _addSlider;
 ["GAIT_ss_hillWalkUphillMaxPenalty", "Uphill walk reference penalty", "Normal movement loss at the walk reference angle, adjusted for kit weight. Default: 0.32.", _categorySlope, 0.00, 0.75, 0.32, 2] call _addSlider;

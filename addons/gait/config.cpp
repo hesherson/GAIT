@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha14: exponential uphill launch and gravity downhill acceleration
+// GAIT 1.8.0-alpha15: stance-safe transitions and no-walk slope jogging
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha14";
-        versionAr[] = {1,8,0,14};
+        versionStr = "1.8.0-alpha15";
+        versionAr[] = {1,8,0,15};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

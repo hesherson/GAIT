@@ -98,7 +98,7 @@ GAIT_fnc_releaseNativeStaminaOwnership = {
     private _current = [_unit] call GAIT_fnc_nativeStaminaSnapshot;
     // Restore only a flag GAIT actually changed and still finds disabled.
     // Leave a pre-existing disable or an externally enabled flag untouched.
-    if (_wasEnabled && {(count _current) > 0} && {!(_current select 0)}) then {
+    if (_wasEnabled && {_current isNotEqualTo []} && {!(_current select 0)}) then {
         [_unit, true] call GAIT_fnc_writeNativeStaminaEnabled;
     };
 };
@@ -109,7 +109,7 @@ GAIT_fnc_updateNativeStaminaOwnership = {
         [] call GAIT_fnc_releaseNativeStaminaOwnership;
     };
     private _saved = missionNamespace getVariable ["GAIT_nativeStaminaOwnership", []];
-    if ((count _saved) > 0 && {(_saved select 0) isNotEqualTo _unit}) then {
+    if (_saved isNotEqualTo [] && {(_saved select 0) isNotEqualTo _unit}) then {
         [] call GAIT_fnc_releaseNativeStaminaOwnership;
         _saved = [];
     };

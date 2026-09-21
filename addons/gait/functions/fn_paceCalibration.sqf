@@ -39,8 +39,8 @@ GAIT_fnc_paceObservationStep = {
 
 GAIT_fnc_measuredReleaseTarget = {
     params ["_speed", "_applied", "_ordinary", "_destinationReference"];
-    if (!(_speed > 0.05) || {!(_applied > 0.05)} ||
-        {!(_ordinary > 0.05)} || {!(_destinationReference > 0.1 && {_destinationReference < 25})}) exitWith {[]};
+    if (_speed <= 0.05 || {_applied <= 0.05} ||
+        {_ordinary <= 0.05} || {_destinationReference <= 0.1 || {_destinationReference >= 25}}) exitWith {[]};
     private _sourceReference = _speed / _applied;
     private _ratio = _destinationReference / _sourceReference;
     // Refuse implausible/contaminated measurements, including collision stalls.

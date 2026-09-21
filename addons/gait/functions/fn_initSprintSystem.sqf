@@ -290,7 +290,7 @@ GAIT_fnc_tripPlayer = {
                     uiSleep 3;
 
                     if (missionNamespace getVariable ["GAIT_ss_showStartupMessage", true]) then {
-                        private _aceText = if (call GAIT_fnc_aceAdvancedFatigueActive) then {"ACE AF bridge active"} else {"ACE AF bridge waiting/disabled"};
+                        private _aceText = ["ACE AF bridge waiting/disabled", "ACE AF bridge active"] select (call GAIT_fnc_aceAdvancedFatigueActive);
                         systemChat format ["GAIT active | Preset: %1 | Mode: %2 | %3", missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, _aceText];
                     };
 
@@ -645,7 +645,7 @@ GAIT_fnc_setTunnelVisionFX = {
 
         private _selectedPreset = missionNamespace getVariable ["GAIT_ss_preset", "Balanced"];
         private _lastPresetApplied = missionNamespace getVariable ["GAIT_lastPresetApplied", ""];
-        if !(_selectedPreset isEqualTo _lastPresetApplied) then {
+        if (_selectedPreset isNotEqualTo _lastPresetApplied) then {
             [_selectedPreset] call GAIT_fnc_applyPreset;
         };
 
@@ -843,7 +843,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _aceMovementPresent = isClass (configFile >> "CfgPatches" >> "ace_movement");
                 missionNamespace setVariable ["GAIT_aceMovementDetected", _aceMovementPresent];
                 missionNamespace setVariable ["GAIT_conflictScanHits", _conflicts];
-                if ((count _conflicts) > 0 && {missionNamespace getVariable ["GAIT_ss_rptLogging", true]}) then {
+                if (_conflicts isNotEqualTo [] && {missionNamespace getVariable ["GAIT_ss_rptLogging", true]}) then {
                     diag_log format ["[GAIT] Compatibility scan warning: movement/animation-related addons detected: %1", _conflicts];
                 };
             };
@@ -877,7 +877,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _externalSprintLock = !(isSprintAllowed player) || {(player getVariable ["ace_common_effect_blockSprint", 0]) > 0};
                 private _externalWalkLock = isForcedWalk player || {(player getVariable ["ace_common_effect_forceWalk", 0]) > 0};
                 private _movementEligible = [player, _isAceCarrying] call GAIT_fnc_nativeMovementEligible;
-                private _isSprinting = _turboHeld && {_isForwardHeld} && {!((stance player) isEqualTo "PRONE")} && {_movementEligible} && {!_externalSprintLock} && {!_externalWalkLock};
+                private _isSprinting = _turboHeld && {_isForwardHeld} && {(stance player) isNotEqualTo "PRONE"} && {_movementEligible} && {!_externalSprintLock} && {!_externalWalkLock};
                 // v1.6.0 (FIX 3 - prone): a real "standing" gate for anim/velocity
                 // forcing. `stance` can still report "STAND" on the exact frame the
                 // player triggers prone (or crouch) while sprinting; forcing a sprint
@@ -1006,7 +1006,7 @@ GAIT_fnc_setTunnelVisionFX = {
                         } else {
                             private _slopeDiff = _rawSlopeDegrees - _smoothedSlopeDegrees;
                             private _slopeMagnitudeIncreasing = (abs _rawSlopeDegrees) > (abs _smoothedSlopeDegrees);
-                            private _slopeRate = if (_slopeMagnitudeIncreasing) then {_slopeAngleRiseRateDegPerSecond} else {_slopeAngleFallRateDegPerSecond};
+                            private _slopeRate = [_slopeAngleFallRateDegPerSecond, _slopeAngleRiseRateDegPerSecond] select _slopeMagnitudeIncreasing;
                             _slopeRate = (_slopeRate max 1.0) min 180.0;
                             private _slopeStep = _slopeRate * ((_dt max 0.001) min 0.20);
                             _slopeDiff = (_slopeDiff max (-_slopeStep)) min _slopeStep;
@@ -1525,7 +1525,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 // This is a target relation, not measured metres per second.
                 private _paceFloorRatio = (missionNamespace getVariable ["GAIT_ss_minSprintWalkRatio", 1.20]) + (_reserveRatio * (missionNamespace getVariable ["GAIT_ss_freshSprintWalkMargin", 0.20]));
                 private _pacePair = [_normalSpeed, _flatSprintPace, _hillWalkSlowdownMultiplier, _slopeSpeedMultiplier, _weightSpeedMult, _paceFloorRatio] call GAIT_fnc_slopePaceModel;
-                private _targetSpeed = _pacePair select (if (_isSprinting) then {1} else {0});
+                private _targetSpeed = _pacePair select (parseNumber _isSprinting);
                 missionNamespace setVariable ["GAIT_walkPaceTarget", _pacePair select 0];
                 missionNamespace setVariable ["GAIT_sprintPaceTarget", _pacePair select 1];
                 missionNamespace setVariable ["GAIT_loadPaceMultiplier", _weightSpeedMult];
@@ -1591,7 +1591,7 @@ GAIT_fnc_setTunnelVisionFX = {
                 if (_gaitMovementEnabled && {_movementEligible} && {_hasMovementInput}) then {
                     private _ramp = if (_uphillBrakeActive) then {_uphillBrakeRamp} else {
                         if (_isSprinting && {_sprintBraceEndTime > time}) then {_sprintStartBraceLerp} else {
-                            if (_walkStartBraceActive) then {1} else {_speedLerp}
+                            [_speedLerp, 1] select _walkStartBraceActive
                         }
                     };
                     private _rampTarget = if (_uphillBrakeActive) then {_uphillBrakeTarget min _currentSpeed} else {

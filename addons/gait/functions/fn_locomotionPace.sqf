@@ -72,7 +72,7 @@ GAIT_fnc_locomotionPaceReferences = {
     private _profile = _matches select 0;
     if ((count _profile) isNotEqualTo 5) exitWith {[]};
     private _malformed = (_profile select [2, 3]) findIf {
-        !(_x isEqualTo -1) && {!([_x] call GAIT_fnc_paceReferenceValid)}
+        _x isNotEqualTo -1 && {!([_x] call GAIT_fnc_paceReferenceValid)}
     };
     if (_malformed >= 0) exitWith {[]};
     private _walk = _profile select 2;

@@ -516,7 +516,7 @@ GAIT_fnc_redirectLocomotionEntryDirection = {
         {!([_unit, false] call GAIT_fnc_nativeMovementEligible)}) exitWith {false};
     private _direction = [_input select 0, _input select 1] call GAIT_fnc_slopeDirection;
     private _oldTarget = _unit getVariable ["GAIT_slopeEntryTarget", ""];
-    if !([_oldTarget, _direction] call GAIT_fnc_locomotionDirectionRedirectNeeded) exitWith {false};
+    if (([_oldTarget, _direction] call GAIT_fnc_locomotionDirectionRedirectNeeded) isEqualTo false) exitWith {false};
     private _family = [_unit] call GAIT_fnc_slopeWeaponFamily;
     if (_family isEqualTo "" ||
         {currentWeapon _unit isNotEqualTo (_unit getVariable ["GAIT_slopeAttemptWeapon", currentWeapon _unit])}) exitWith {false};

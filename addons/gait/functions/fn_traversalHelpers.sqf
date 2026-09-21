@@ -59,7 +59,7 @@ GAIT_fnc_isStandingLocomotionBlend = {
         private _base = _parts select 0;
         private _suffix = _parts param [1, ""];
         if !(_suffix in ["", "gait", "gaitstop", "ver2"]) exitWith {""};
-        if (!((_base select [0, 8]) isEqualTo "amovperc") ||
+        if ((_base select [0, 8]) isNotEqualTo "amovperc" ||
             {!((_base select [8, 4]) in ["mstp", "mwlk", "mrun", "mtac", "meva", "mspr"])} ||
             {!((_base select [12, 8]) in ["sraswrfl", "slowwrfl", "sraswpst", "slowwpst", "snonwnon"])} ||
             {!((_base select [20]) in ["dnon", "df", "dfl", "dl", "dbl", "db", "dbr", "dr", "dfr"])}) exitWith {""};
@@ -73,7 +73,7 @@ GAIT_fnc_isStandingLocomotionBlend = {
             private _ordinary = (_pace isEqualTo "mstp" && {_direction isEqualTo "dnon"}) ||
                 {_pace in ["mrun", "mwlk"] && {_direction isNotEqualTo "dnon"}} ||
                 {_pace isEqualTo "meva" && {_direction in ["df", "dfl", "dfr"]}};
-            if (_suffix isEqualTo "" && {_ordinary}) then {_base} else {""}
+            ["", _base] select (_suffix isEqualTo "" && {_ordinary})
         };
         if (_suffix isEqualTo "gaitstop") exitWith {
             if ((_base select [8, 4]) isEqualTo "mstp" && {(_base select [20]) isEqualTo "dnon"}) then {_base + "_gaitstop"} else {""}

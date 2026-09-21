@@ -79,6 +79,7 @@ _testUnit setVariable ["GAIT_stanceCarryCoefficient", _savedCarry];
 // Stop retiming is edge-triggered. Holding no keys cannot repeatedly request
 // idle, and changing directly from W to A remains movement rather than stop.
 _testUnit setVariable ["GAIT_movementInputHeld",true];
+_testUnit setVariable ["GAIT_liveInputDirection","Df"];
 {
     _x params ["_input","_expectedEdge"];
     [_testUnit,_input] call GAIT_fnc_observeLocomotionInput;
@@ -86,6 +87,20 @@ _testUnit setVariable ["GAIT_movementInputHeld",true];
         _failures pushBack "Stop input edge was repeated, dropped, or confused with a live strafe";
     };
 } forEach [[[0,0,false],true],[[0,0,false],false],[[1,0,false],false],[[0,1,false],false],[[0,0,false],true]];
+
+_testUnit setVariable ["GAIT_liveInputDirection","Df"];
+[_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput;
+if (_testUnit getVariable ["GAIT_directionChangedThisFrame",true]) then {
+    _failures pushBack "Held forward input created a false direction edge";
+};
+[_testUnit,[0.707,-0.707,true]] call GAIT_fnc_observeLocomotionInput;
+if !(_testUnit getVariable ["GAIT_directionChangedThisFrame",false]) then {
+    _failures pushBack "W+A direction edge was not observed during acceleration";
+};
+[_testUnit,[0.707,-0.707,true]] call GAIT_fnc_observeLocomotionInput;
+if (_testUnit getVariable ["GAIT_directionChangedThisFrame",true]) then {
+    _failures pushBack "Held W+A repeated its direction edge";
+};
 // If the feature loop handled release before this render frame, observation
 // must not restart it. A fresh press rearms this latch for the next release.
 _testUnit setVariable ["GAIT_sprintReleaseHandled",true];

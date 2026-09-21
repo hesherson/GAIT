@@ -102,6 +102,11 @@ GAIT_fnc_observeLocomotionInput = {
     private _previousForwardForRelease = _unit getVariable ["GAIT_forwardInputHeld", true];
     _unit setVariable ["GAIT_movementReleasedThisFrame", !_movingHeld && {_unit getVariable ["GAIT_movementInputHeld", false]}];
     _unit setVariable ["GAIT_movementInputHeld", _movingHeld];
+    private _direction = [_input select 0, _input select 1] call GAIT_fnc_slopeDirection;
+    private _previousDirection = _unit getVariable ["GAIT_liveInputDirection", "Dnon"];
+    _unit setVariable ["GAIT_directionChangedThisFrame",
+        _movingHeld && {_direction isNotEqualTo _previousDirection}];
+    _unit setVariable ["GAIT_liveInputDirection", _direction];
     if (_movingHeld) then {_unit setVariable ["GAIT_nativeStopPaceLease", []];};
     private _turbo = _input select 2;
     private _previousTurbo = _unit getVariable ["GAIT_turboInputHeld", false];
@@ -618,21 +623,26 @@ GAIT_fnc_beginLocomotionEntry = {
     [_unit, _target] call GAIT_fnc_requestLocomotionMove;
 };
 
-// Pending entry never owns lateral intent. A/D can replace the pending target
-// before the old entry blend completes, including on steep grades.
+// Direction input outranks both pending entry and active acceleration.
+// Only a raw direction edge can replace the current target, so held A/D never
+// turns this into an animation watchdog.
 GAIT_fnc_redirectLocomotionEntryDirection = {
     params [["_unit", objNull, [objNull]], ["_input", [], [[]]]];
-    if (isNull _unit || {(_unit getVariable ["GAIT_locomotionPhase", "native"]) isNotEqualTo "entering"} ||
-        {(count _input) < 3} || {!(_input select 2)}) exitWith {false};
+    private _phase = _unit getVariable ["GAIT_locomotionPhase", "native"];
+    if (isNull _unit || {!(_phase in ["entering", "active"])} ||
+        {(count _input) < 3} || {!(_unit getVariable ["GAIT_directionChangedThisFrame", false])}) exitWith {false};
     private _moving = abs (_input select 0) > 0.05 || {abs (_input select 1) > 0.05};
     if (!_moving || {!isTouchingGround _unit} || {(stance _unit) isNotEqualTo "STAND"} ||
         {!([_unit, false] call GAIT_fnc_nativeMovementEligible)}) exitWith {false};
     private _direction = [_input select 0, _input select 1] call GAIT_fnc_slopeDirection;
-    private _oldTarget = _unit getVariable ["GAIT_slopeEntryTarget", ""];
-    if (([_oldTarget, _direction] call GAIT_fnc_locomotionDirectionRedirectNeeded) isEqualTo false) exitWith {false};
     private _family = [_unit] call GAIT_fnc_slopeWeaponFamily;
     if (_family isEqualTo "" ||
         {currentWeapon _unit isNotEqualTo (_unit getVariable ["GAIT_slopeAttemptWeapon", currentWeapon _unit])}) exitWith {false};
+    private _target = [_family, _direction, _input select 2] call GAIT_fnc_slopeStateName;
+    private _oldTarget = _unit getVariable ["GAIT_slopeEntryTarget", ""];
+    if ((toLower _oldTarget) isEqualTo (toLower _target)) exitWith {false};
+    if (!isClass (configFile >> "CfgMovesMaleSdr" >> "States" >> _target)) exitWith {false};
+
     private _animation = animationState _unit;
     private _source = _unit getVariable ["GAIT_slopeEntrySource", ""];
     private _beforeDeadline = diag_tickTime <= (_unit getVariable ["GAIT_slopeEntryDeadline", -1]);
@@ -642,12 +652,12 @@ GAIT_fnc_redirectLocomotionEntryDirection = {
     private _known = [_animation, _source, _beforeDeadline, _insideFamily, _handoffBlend, _handoffSource]
         call GAIT_fnc_locomotionEntryRedirectKnown;
     if (!_known) exitWith {false};
-    private _target = [_family, _direction, _input select 2] call GAIT_fnc_slopeStateName;
-    if (!isClass (configFile >> "CfgMovesMaleSdr" >> "States" >> _target)) exitWith {false};
+
     _unit setVariable ["GAIT_slopeEntrySource", _animation];
     _unit setVariable ["GAIT_slopeEntryTarget", _target];
     _unit setVariable ["GAIT_slopeEntryDeadline", diag_tickTime + 1.5];
-    diag_log format ["[GAIT_LOCOMOTION] entry direction redirect %1 -> %2", _animation, _target];
+    if ((toLower _animation) isEqualTo (toLower _target)) exitWith {false};
+    diag_log format ["[GAIT_LOCOMOTION] live direction redirect %1 -> %2", _animation, _target];
     [_unit, _target] call GAIT_fnc_requestLocomotionMove;
     true
 };

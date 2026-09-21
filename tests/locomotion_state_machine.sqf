@@ -131,6 +131,9 @@ if ((["SrasWrfl", "Dfl"] call GAIT_fnc_slopeStateName) isNotEqualTo "AmovPercMev
 if ((["SrasWrfl", "Dl"] call GAIT_fnc_slopeStateName) isNotEqualTo "AmovPercMrunSrasWrflDl_GAITSprint") then {
     _failures pushBack "Lateral redirect lost sprint-owned run family";
 };
+if ((["SrasWrfl", "Dl", false] call GAIT_fnc_slopeStateName) isNotEqualTo "AmovPercMrunSrasWrflDl_GAIT") then {
+    _failures pushBack "Ordinary lateral jog lost jog-owned run family";
+};
 
 private _nativeEntrySource = "AmovPercMrunSrasWrflDf";
 if !([_nativeEntrySource, _nativeEntrySource, true, false, false, false]

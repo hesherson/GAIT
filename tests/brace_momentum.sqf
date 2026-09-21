@@ -85,6 +85,28 @@ private _wall = [_empty, true, true, 0, 1.28, 0.86, 11, 0.05, 3, 2, 0.04] call G
 [!(_wall select 1), "held sprint against wall does not earn momentum"] call _assert;
 [!([false, false, true, true, true, true, true] call GAIT_fnc_shouldBrace), "disabled brace stays disabled"] call _assert;
 
+// Positive-grade launch burden is exponential and momentum-protected starts
+// bypass it completely.
+private _launchFactors = [5,15,25,35] apply {
+    [_x, false, 35] call GAIT_fnc_uphillLaunchBraceFactor
+};
+[(_launchFactors select 0) > 0, "any positive grade contributes a launch brace factor"] call _assert;
+[(_launchFactors select 0) < (_launchFactors select 1) &&
+    {(_launchFactors select 1) < (_launchFactors select 2)} &&
+    {(_launchFactors select 2) < (_launchFactors select 3)},
+    "uphill launch brace grows monotonically with grade"] call _assert;
+private _d1 = (_launchFactors select 1) - (_launchFactors select 0);
+private _d2 = (_launchFactors select 2) - (_launchFactors select 1);
+private _d3 = (_launchFactors select 3) - (_launchFactors select 2);
+[_d3 > _d2 && {_d2 > _d1}, "uphill launch brace steepens exponentially"] call _assert;
+[([35,true,35] call GAIT_fnc_uphillLaunchBraceFactor) isEqualTo 0,
+    "retained momentum vetoes uphill launch brace"] call _assert;
+[([0,false,35] call GAIT_fnc_uphillLaunchBraceFactor) isEqualTo 0 &&
+    {([-20,false,35] call GAIT_fnc_uphillLaunchBraceFactor) isEqualTo 0},
+    "flat and downhill starts get no uphill launch factor"] call _assert;
+private _overRef = [50,false,35] call GAIT_fnc_uphillLaunchBraceFactor;
+[_overRef > 1 && {_overRef <= 1.25}, "very steep uphill launch stays bounded"] call _assert;
+
 // Ordinary movement from a true stop gets a separate shallow, finite step.
 // Tier boundaries are inclusive and heavier kits are both deeper and longer.
 private _walkProfiles = [];
@@ -131,4 +153,4 @@ for "_i" from 0 to 2 do {
     } forEach [20,30,60,144];
 } forEach [20,45,65,90];
 
-diag_log "GAIT TEST PASS: sprint brace momentum plus weight-scaled ordinary walk-start brace, finite recovery, tier bounds and render-rate independence";
+diag_log "GAIT TEST PASS: sprint brace momentum, exponential zero-momentum uphill launch burden, and weight-scaled ordinary walk-start brace";

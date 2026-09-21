@@ -1200,14 +1200,21 @@ GAIT_fnc_setTunnelVisionFX = {
                 if (!_momentumContextOk || {!_isForwardHeld} || {_forwardReleasedSinceTick} || {(_braceMomentumState select 3) >= 0.15}) then {
                     _downhillMomentum = 0;
                 } else {
-                    private _momentumTarget = 0;
-                    if (_continuingSprint && {_horizontalSpeedMS > 0.25}) then {
-                        _momentumTarget = 1;
-                    } else {
-                        if (_hasRetainedSprintMomentum) then {_momentumTarget = _downhillMomentum;};
-                    };
-                    _downhillMomentum = [_downhillMomentum, _momentumTarget, _dt,
-                        missionNamespace getVariable ["GAIT_ss_downhillMomentumBuildSeconds", 2.5], 1.5]
+                    // Downhill momentum now comes from actual descending travel,
+                    // not from preloading while sprinting on flat ground. Steeper
+                    // descents build it faster so the player visibly accelerates.
+                    private _downhillTravelSeverity = linearConversion [
+                        _downhillBoostStartDegrees, 35, -_slopeDegrees, 0, 1, true
+                    ];
+                    _downhillTravelSeverity = _downhillTravelSeverity * _downhillTravelSeverity *
+                        (3 - (2 * _downhillTravelSeverity));
+                    private _downhillTravel = _slopeDegrees < -_downhillBoostStartDegrees;
+                    private _momentumTarget = parseNumber (
+                        _continuingSprint && {_horizontalSpeedMS > 0.25} && {_downhillTravel}
+                    );
+                    private _baseBuildSeconds = missionNamespace getVariable ["GAIT_ss_downhillMomentumBuildSeconds", 2.5];
+                    private _buildSeconds = _baseBuildSeconds * (1 - (0.55 * _downhillTravelSeverity));
+                    _downhillMomentum = [_downhillMomentum, _momentumTarget, _dt, _buildSeconds, 1.5]
                         call GAIT_fnc_stepDownhillMomentum;
                 };
                 missionNamespace setVariable ["GAIT_downhillMomentum", _downhillMomentum];
@@ -1327,12 +1334,29 @@ GAIT_fnc_setTunnelVisionFX = {
                     };
                     private _slopeBraceReady = _slopeStopBraceEnabled && {_slopeBraceFactor > 0} && {_recentSlopeStop || {_normalBraceReady} || {_zeroMomentumBraceReady}};
 
-                    private _canBrace = [_sprintStartBraceEnabled, _hasRetainedSprintMomentum || {_uphillBrakeResumed},
+                    private _momentumProtectedForBrace = _hasRetainedSprintMomentum || {_uphillBrakeResumed};
+                    private _canBrace = [_sprintStartBraceEnabled, _momentumProtectedForBrace,
                         _isCrouched, _braceArmedFromCrouch, _normalBraceReady, _zeroMomentumBraceReady, _slopeBraceReady]
                         call GAIT_fnc_shouldBrace;
 
-                    private _braceDurationNow = _sprintStartBraceDuration + (((_slopeStopBraceExtraDuration max 0) min 2.0) * _slopeBraceFactor);
-                    private _braceDipNow = ((_slopeStopBraceExtraDip max 0) min 0.90) * _slopeBraceFactor;
+                    // Positive-grade, zero-momentum starts exponentially deepen
+                    // and lengthen the existing brace. The existing slope-brace
+                    // settings remain the tuning knobs; this simply reshapes their
+                    // uphill launch contribution. Retained momentum bypasses it.
+                    private _uphillLaunchBraceFactor = 0;
+                    if (_canBrace) then {
+                        _uphillLaunchBraceFactor = [_slopeDegrees, _momentumProtectedForBrace,
+                            _slopeStopBraceMaxDegrees] call GAIT_fnc_uphillLaunchBraceFactor;
+                    };
+                    private _linearDurationExtra = ((_slopeStopBraceExtraDuration max 0) min 2.0) * _slopeBraceFactor;
+                    private _linearDipExtra = ((_slopeStopBraceExtraDip max 0) min 0.90) * _slopeBraceFactor;
+                    private _uphillDurationExtra = ((_slopeStopBraceExtraDuration max 0) min 2.0) *
+                        3.0 * _uphillLaunchBraceFactor;
+                    private _uphillDipExtra = ((_slopeStopBraceExtraDip max 0) min 0.90) *
+                        2.1 * _uphillLaunchBraceFactor;
+                    private _braceDurationNow = _sprintStartBraceDuration +
+                        (_linearDurationExtra max _uphillDurationExtra);
+                    private _braceDipNow = (_linearDipExtra max _uphillDipExtra) min 0.90;
                     _activeBraceSpeed = (_effectiveBraceSpeed * (1 - _braceDipNow)) max 0.08;
 
                     _sprintBraceEndTime = if (_canBrace) then {
@@ -1342,6 +1366,7 @@ GAIT_fnc_setTunnelVisionFX = {
                     };
 
                     missionNamespace setVariable ["GAIT_slopeBraceFactor", _slopeBraceFactor];
+                    missionNamespace setVariable ["GAIT_uphillLaunchBraceFactor", _uphillLaunchBraceFactor];
                     missionNamespace setVariable ["GAIT_activeBraceSpeed", _activeBraceSpeed];
                     missionNamespace setVariable ["GAIT_activeBraceDuration", _braceDurationNow];
 
@@ -1565,6 +1590,22 @@ GAIT_fnc_setTunnelVisionFX = {
                     private _direction = [_movementInput select 0, _movementInput select 1] call GAIT_fnc_slopeDirection;
                     private _resolved = [_normalSpeed, _flatSprintPace, _hillWalkSlowdownMultiplier, _slopeSpeedMultiplier, _weightSpeedMult, _paceFloorRatio,
                         missionNamespace getVariable ["GAIT_locomotionPaceProfiles", []], _family, _direction, "sprint"] call GAIT_fnc_locomotionPaceTargets;
+                    // When a measured sprint reference exists, steep downhill
+                    // momentum gets a physical gravity target. This is a model
+                    // target, not live-velocity feedback, so collisions still win.
+                    private _downhillTargetKmh = [_slopeDegrees, _gearLbs, _downhillMomentum]
+                        call GAIT_fnc_downhillGravityTargetKmh;
+                    if ((_resolved select 4) && {_downhillTargetKmh > 0} &&
+                        {_direction in ["Df", "Dfl", "Dfr"]} &&
+                        {(_resolved select 1) > 0} && {(_resolved select 3) > 0}) then {
+                        private _movingReference = (_resolved select 3) / (_resolved select 1);
+                        private _gravityTargetMS = _downhillTargetKmh / 3.6;
+                        if (_movingReference > 0.1 && {_gravityTargetMS > (_resolved select 3)}) then {
+                            _resolved set [1, (_gravityTargetMS / _movingReference) min 100];
+                            _resolved set [3, _gravityTargetMS];
+                        };
+                    };
+                    missionNamespace setVariable ["GAIT_downhillGravityTargetKmh", _downhillTargetKmh];
                     _pacePair = _resolved select [0, 2];
                     _targetSpeed = _pacePair select 1;
                     missionNamespace setVariable ["GAIT_walkPaceTarget", _pacePair select 0];

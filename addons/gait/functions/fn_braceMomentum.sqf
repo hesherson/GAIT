@@ -63,6 +63,28 @@ GAIT_fnc_shouldBrace = {
     _enabled && {!_momentumProtected} && {_crouched || {_crouchArmed} || {_normalReady} || {_zeroReady} || {_slopeReady}}
 };
 
+// Zero-momentum uphill launches get an additional brace burden beginning at
+// any positive grade. The curve is deliberately exponential: shallow grades
+// add only a small amount, while steep grades make the first step materially
+// harder. Retained sprint momentum is an absolute veto.
+// Returns a normalized strength; values above the reference grade can extend
+// modestly beyond 1 but remain capped for bounded launch timing.
+GAIT_fnc_uphillLaunchBraceFactor = {
+    params [
+        ["_gradeDegrees", 0, [0]],
+        ["_momentumProtected", false, [false]],
+        ["_referenceDegrees", 35, [0]],
+        ["_curve", 2.75, [0]]
+    ];
+    if (_momentumProtected || {_gradeDegrees <= 0}) exitWith {0};
+    _referenceDegrees = _referenceDegrees max 1;
+    _curve = (_curve max 0.5) min 6;
+    private _severity = (_gradeDegrees / _referenceDegrees) max 0 min 1.25;
+    private _denominator = (exp _curve) - 1;
+    if (_denominator <= 0) exitWith {0};
+    (((exp (_curve * _severity)) - 1) / _denominator) max 0 min 1.25
+};
+
 // Small ordinary-movement step from a true stop. This is deliberately much
 // shallower than the sprint brace. Weight classes use the configured tier
 // thresholds, while the curve itself is fixed so the settings surface stays

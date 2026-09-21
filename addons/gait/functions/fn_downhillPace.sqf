@@ -37,37 +37,63 @@ GAIT_fnc_downhillPaceMultiplier = {
         ["_peakDegrees", 18, [0]],
         ["_maximumBoost", 0.18, [0]],
         ["_loadReferenceLbs", 75, [0]],
-        ["_steepStartDegrees", 35, [0]],
-        ["_steepFullDegrees", 75, [0]]
+        ["_steepStartDegrees", 18, [0]],
+        ["_steepFullDegrees", 40, [0]]
     ];
     private _decline = (-_gradeDegrees) max 0;
     _startDegrees = (_startDegrees max 0) min 80;
     _peakDegrees = (_peakDegrees max (_startDegrees + 0.1)) min 89.9;
-    _maximumBoost = (_maximumBoost max 0) min 0.35;
+    _maximumBoost = (_maximumBoost max 0) min 0.45;
     _momentum = (_momentum max 0) min 1;
     if (_decline <= _startDegrees || {_maximumBoost <= 0} || {_momentum <= 0}) exitWith {1};
 
     private _angle = ((_decline - _startDegrees) / (_peakDegrees - _startDegrees)) max 0 min 1;
     _angle = _angle * _angle * (3 - (2 * _angle));
     private _momentumEase = _momentum * _momentum * (3 - (2 * _momentum));
-    // Preserve light/medium downhill pace. Above 55 lb, soften only the
-    // bonus's load attenuation. This joins with matching value/derivative
-    // and stays strictly decreasing as kit gets heavier. The common load
-    // curve still applies its full penalty to the complete sprint target.
-    private _bonusLoad = _gearLbs max 0;
-    if (_bonusLoad > 55) then {
-        private _extraLoad = _bonusLoad - 55;
-        _bonusLoad = 55 + (0.10 * _extraLoad) + (2.70 * (1 - exp (-_extraLoad / 3)));
-    };
-    private _loadFactor = 1 / (1 + (_bonusLoad / (_loadReferenceLbs max 1)));
 
-    // A steep descent calls for control. Reduce only the extra downhill bonus;
-    // the underlying sprint pace, walk floor and trip handling remain intact.
+    // Normal descents retain load attenuation, but steep grades increasingly
+    // behave like gravity-driven acceleration rather than another load gate.
+    // The steep-load reference remains monotonic with weight, so heavier kits
+    // are never faster solely because they are heavier.
+    private _baseLoadFactor = 1 / (1 + ((_gearLbs max 0) / (_loadReferenceLbs max 1)));
+    private _steepLoadFactor = 1 / (1 + ((_gearLbs max 0) / 250));
+
     _steepStartDegrees = _steepStartDegrees max _peakDegrees;
     _steepFullDegrees = _steepFullDegrees max (_steepStartDegrees + 0.1);
     private _steep = ((_decline - _steepStartDegrees) / (_steepFullDegrees - _steepStartDegrees)) max 0 min 1;
     _steep = _steep * _steep * (3 - (2 * _steep));
-    1 + (_maximumBoost * _angle * _momentumEase * _loadFactor * (1 - (0.75 * _steep)))
+
+    private _loadFactor = _baseLoadFactor + ((_steepLoadFactor - _baseLoadFactor) * _steep);
+    // Steeper hills continue adding acceleration instead of tapering the bonus.
+    // At full steepness the configured bonus is amplified up to 3x, with the
+    // final additive bonus bounded to 65%.
+    private _gravityScale = 1 + (2 * _steep);
+    private _bonus = (_maximumBoost * _gravityScale * _angle * _momentumEase * _loadFactor) min 0.65;
+    1 + _bonus
+};
+
+// A calibrated physical target supplements the coefficient boost above. It is
+// derived only from grade, load and downhill momentum, never from live velocity,
+// so collision/wall contact cannot cause feedback acceleration.
+// At full steep momentum this approaches 34 km/h unloaded and about 32 km/h at
+// 150 lb+, keeping heavy-kit steep descents above the requested 30 km/h region.
+GAIT_fnc_downhillGravityTargetKmh = {
+    params [
+        ["_gradeDegrees", 0, [0]],
+        ["_gearLbs", 0, [0]],
+        ["_momentum", 0, [0]],
+        ["_startDegrees", 8, [0]],
+        ["_fullDegrees", 35, [0]]
+    ];
+    private _decline = (-_gradeDegrees) max 0;
+    if (_decline <= _startDegrees || {_momentum <= 0}) exitWith {0};
+    _fullDegrees = _fullDegrees max (_startDegrees + 0.1);
+    private _severity = linearConversion [_startDegrees, _fullDegrees, _decline, 0, 1, true];
+    _severity = _severity * _severity * (3 - (2 * _severity));
+    private _momentumEase = (_momentum max 0 min 1);
+    _momentumEase = _momentumEase * _momentumEase * (3 - (2 * _momentumEase));
+    private _weightSeverity = linearConversion [75, 150, _gearLbs max 0, 0, 1, true];
+    24 + ((10 - (2 * _weightSeverity)) * _severity * _momentumEase)
 };
 
 GAIT_fnc_downhillTripSpeedFactors = {

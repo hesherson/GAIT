@@ -45,6 +45,19 @@ GAIT_fnc_scaleInertiaRamp = {
     1 - ((1 - _baseLerp) ^ _rateScale)
 };
 
+// Sprint acceleration alone uses a slower convergence than general movement.
+// 0.70 makes default 0.05 smoothing reach ~95% in about 4.1 s instead of
+// ~2.9 s, before the small load-tier rate adjustment.
+GAIT_fnc_sprintAccelerationRamp = {
+    params [
+        ["_baseLerp", 0.05, [0]],
+        ["_gearScale", 1, [0]],
+        ["_sprintScale", 0.70, [0]]
+    ];
+    [_baseLerp, (_gearScale max 0.05 min 3) * (_sprintScale max 0.25 min 1)]
+        call GAIT_fnc_scaleInertiaRamp
+};
+
 // Keep the stored hold argument for compatibility, but never apply it. Saved
 // alpha4 hold settings must not reintroduce input lag. The duration setting is
 // a scale: default .85 resolves to about .765-.978 seconds across default load tiers.

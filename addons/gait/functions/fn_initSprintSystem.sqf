@@ -1709,7 +1709,7 @@ GAIT_fnc_setTunnelVisionFX = {
                         // than ordinary coefficient changes. Preserve all release,
                         // brake and jog timing; only the run-up to sprint target
                         // uses this 0.70 rate scale (~40% longer to ~95% target).
-                        _ramp = [_ramp, _accelerationScale * 0.70] call GAIT_fnc_scaleInertiaRamp;
+                        _ramp = [_ramp, _accelerationScale] call GAIT_fnc_sprintAccelerationRamp;
                     };
                     _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
                     // Honor walk/injury locks and avoid carrying a sprint boost sideways.

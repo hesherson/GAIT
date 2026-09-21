@@ -94,7 +94,7 @@ private _loweredIdle = "AmovPercMstpSlowWpstDnon";
     [_loweredRun + "_" + _pistolLowSprint, _loweredRun, _pistolLowSprint, true],
     [_loweredIdle + "_" + _pistolLowSprint, _loweredIdle, _pistolLowSprint, true],
     [_pistolLowSprint + "_" + _loweredRun, _pistolLowSprint, _loweredRun, true],
-    [_loweredRun + "_AmovPercMevaSrasWpstDf_GAIT", _loweredRun, "AmovPercMevaSrasWpstDf_GAIT", true]
+    [_loweredRun + "_AmovPercMevaSrasWpstDf_GAIT", _loweredRun, "AmovPercMevaSrasWpstDf_GAIT", false]
 ];
 private _lowLaunchBlend = _loweredRun + "_" + _pistolLowSprint;
 private _lowExpectedLaunch = [_lowLaunchBlend, _loweredRun, _pistolLowSprint] call GAIT_fnc_isLocomotionHandoffBlend;

@@ -148,4 +148,15 @@ private _flat = [0,_window select 0,_window select 1] call GAIT_fnc_uphillBrakeC
 private _steep = [1,_window select 0,_window select 1] call GAIT_fnc_uphillBrakeCoastWindow;
 [abs ((_flat select 1) - (_window select 1)) < _epsilon,"flat release keeps short curve"] call _assert;
 [(_steep select 1) isEqualTo 0,"full uphill brake removes coast"] call _assert;
+
+// Upward sprint acceleration is deliberately slower than generic movement.
+private _genericRamp = [0.05, 1] call GAIT_fnc_scaleInertiaRamp;
+private _sprintRamp = [0.05, 1] call GAIT_fnc_sprintAccelerationRamp;
+[_sprintRamp < _genericRamp && {_sprintRamp > 0}, "sprint acceleration rate is slower but positive"] call _assert;
+private _generic95 = ln 0.05 / ln (1 - _genericRamp) * 0.05;
+private _sprint95 = ln 0.05 / ln (1 - _sprintRamp) * 0.05;
+[_generic95 > 2.8 && {_generic95 < 3.1}, "default generic ramp remains about three seconds to 95 percent"] call _assert;
+[_sprint95 > 4.0 && {_sprint95 < 4.4}, "default sprint acceleration stretches to about 4.1 seconds to 95 percent"] call _assert;
+[_sprint95 > (_generic95 * 1.35), "sprint acceleration is materially slower than generic movement"] call _assert;
+
 diag_log "GAIT TEST PASS: original sprint brace relief; modest acceleration; slower finite forward and diagonal release; no hold or tail; late tick completion; stop/retap cancellation; uphill priority";

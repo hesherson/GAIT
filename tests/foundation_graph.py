@@ -45,25 +45,27 @@ class FoundationGraph(unittest.TestCase):
             r"^        class (\w+): (\w+)\s*\{(.*?)^        \};",
             cls.text, re.M | re.S,
         )
-        cls.states = {name: (base, body) for name, base, body in blocks if name.endswith("_GAIT")}
+        cls.states = {name: (base, body) for name, base, body in blocks
+                      if name.endswith("_GAIT") or name.endswith("_GAITSprint")}
         cls.stops = {name: (base, body) for name, base, body in blocks if name.endswith("_GAITStop")}
         cls.actions = {name: (base, body) for name, base, body in blocks if name.startswith("GAIT_Slope")}
 
     def test_real_native_clip_parents_and_controller_markers(self):
-        self.assertEqual(len(self.states), 48)
+        self.assertEqual(len(self.states), 68)
         counts = {"idle": 0, "sprint": 0, "run": 0}
         for name, (parent, body) in self.states.items():
             with self.subTest(state=name):
                 p = properties(body)
-                match = re.fullmatch(r"AmovPerc(Mstp|Mrun|Meva)(\w{8})(Dnon|Df|Dfl|Dl|Dbl|Db|Dbr|Dr|Dfr)_GAIT", name)
+                match = re.fullmatch(r"AmovPerc(Mstp|Mrun|Meva)(\w{8})(Dnon|Df|Dfl|Dl|Dbl|Db|Dbr|Dr|Dfr)_(GAIT|GAITSprint)", name)
                 self.assertIsNotNone(match)
-                pace, family, direction = match.groups()
+                pace, family, direction, suffix = match.groups()
                 self.assertIn(family, FAMILIES)
-                self.assertEqual(parent, name.removesuffix("_GAIT"))
+                self.assertEqual(parent, name.rsplit("_", 1)[0])
                 self.assertEqual(p["GAIT_nativeState"], parent)
                 self.assertEqual(p["GAIT_slopeFamily"], family)
                 neutral_actions, jog_actions, sprint_actions, _ = FAMILIES[family]
-                expected_actions = neutral_actions if pace == "Mstp" else sprint_actions if pace == "Meva" else jog_actions
+                sprint_owned = pace == "Meva" or suffix == "GAITSprint"
+                expected_actions = neutral_actions if pace == "Mstp" else sprint_actions if sprint_owned else jog_actions
                 self.assertEqual(p["actions"], expected_actions)
                 self.assertRegex(body, r"\bGAIT_slopeState\s*=\s*1;")
                 self.assertRegex(body, r"\blooped\s*=\s*1;")
@@ -80,7 +82,7 @@ class FoundationGraph(unittest.TestCase):
                 # Root motion, clip speed, brace timing and pose properties
                 # remain inherited; this graph must not retune those values.
                 self.assertNotRegex(body, r"\b(?:file|speed|duty|stamina|disableWeapons|headBobStrength)\s*=")
-        self.assertEqual(counts, {"idle": 4, "sprint": 12, "run": 32})
+        self.assertEqual(counts, {"idle": 4, "sprint": 12, "run": 52})
 
     def test_default_stop_turn_and_every_direction_remain_in_family(self):
         self.assertEqual(len(self.actions), 12)
@@ -105,7 +107,8 @@ class FoundationGraph(unittest.TestCase):
                         else:
                             sprinting = pace in ("Fast", "PlayerFast")
                         expected_pace = "Meva" if sprinting and direction in FORWARD else "Mrun"
-                        self.assertEqual(p[pace + selector], f"AmovPerc{expected_pace}{family}{direction}_GAIT")
+                        suffix = "_GAITSprint" if sprinting and direction not in FORWARD else "_GAIT"
+                        self.assertEqual(p[pace + selector], f"AmovPerc{expected_pace}{family}{direction}{suffix}")
                 # Medical, stance, weapon and vehicle selectors remain inherited.
                 self.assertEqual(len(p), 71)
 
@@ -130,17 +133,18 @@ class FoundationGraph(unittest.TestCase):
     def test_idle_recovery_and_direction_reversals_have_direct_edges(self):
         for family in FAMILIES:
             members = {name for name, (_, body) in self.states.items() if properties(body)["GAIT_slopeFamily"] == family}
-            self.assertEqual(len(members), 12)
+            self.assertEqual(len(members), 17)
             for source in members:
                 pairs = edges(self.states[source][1], "InterpolateTo")
                 names = [name for name, _ in pairs]
                 self.assertEqual(len(names), len(set(names)))
-                internal = {name for name in names if name.endswith("_GAIT")}
+                internal = {name for name in names
+                            if name.endswith("_GAIT") or name.endswith("_GAITSprint")}
                 self.assertEqual(internal, members - {source})
                 for target, weight in pairs:
                     self.assertGreater(weight, 0)
                     self.assertLessEqual(weight, 0.025)
-                    if target.endswith("_GAIT"):
+                    if target.endswith("_GAIT") or target.endswith("_GAITSprint"):
                         self.assertIn(target, self.states)
 
     def test_live_handoffs_request_graph_without_switch_reset_or_walk_stage(self):
@@ -150,7 +154,7 @@ class FoundationGraph(unittest.TestCase):
         self.assertEqual(len(re.findall(r"\bplayMoveNow\b", code)), 1)
         self.assertNotIn("GAIT_fnc_braceLocomotionDecision", code)
         self.assertNotIn("GAIT_slopeBraceStage", code)
-        self.assertNotRegex(self.text, r"class AmovPercMwlk\w+_GAIT")
+        self.assertNotRegex(self.text, r"class AmovPercMwlk\w+_GAIT(?:Sprint)?")
 
     def test_entry_release_and_native_action_compatibility(self):
         for name, (_, body) in self.states.items():

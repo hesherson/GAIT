@@ -128,8 +128,8 @@ if ([_forwardTarget, "Df"] call GAIT_fnc_locomotionDirectionRedirectNeeded) then
 if ((["SrasWrfl", "Dfl"] call GAIT_fnc_slopeStateName) isNotEqualTo "AmovPercMevaSrasWrflDfl_GAIT") then {
     _failures pushBack "Diagonal redirect lost sprint family";
 };
-if ((["SrasWrfl", "Dl"] call GAIT_fnc_slopeStateName) isNotEqualTo "AmovPercMrunSrasWrflDl_GAIT") then {
-    _failures pushBack "Lateral redirect lost run family";
+if ((["SrasWrfl", "Dl"] call GAIT_fnc_slopeStateName) isNotEqualTo "AmovPercMrunSrasWrflDl_GAITSprint") then {
+    _failures pushBack "Lateral redirect lost sprint-owned run family";
 };
 
 private _nativeEntrySource = "AmovPercMrunSrasWrflDf";
@@ -184,7 +184,7 @@ if (({_x isEqualTo "enter"} count _failureSequence) isNotEqualTo 1) then {
 private _left = "amovpercmevasraswrfldf_gait";
 private _right = "amovpercmrunsraswrfldl_gait";
 private _blendCases = [
-    ["AmovPercMevaSrasWrflDf_GAIT_AmovPercMrunSrasWrflDl_GAIT", [_left, _right]],
+    ["AmovPercMevaSrasWrflDf_GAIT_AmovPercMrunSrasWrflDl_GAITSprint", [_left, "amovpercmrunsraswrfldl_gaitsprint"]],
     ["amovpercmstpsraswrfldnon_gait_amovpercmevasraswrfldfr_gait", ["amovpercmstpsraswrfldnon_gait", "amovpercmevasraswrfldfr_gait"]],
     ["AmovPercMevaSrasWrflDf_GAIT", []],
     ["AmovPercMevaSrasWrflDf_AmovPercMrunSrasWrflDl_GAIT", []],

@@ -28,7 +28,14 @@ GAIT_fnc_slopeStateName = {
     } else {
         if (_sprinting && {_direction in ["Df", "Dfl", "Dfr"]}) then {_pace = "Meva";};
     };
-    "AmovPerc" + _pace + _family + _direction + "_GAIT"
+    private _suffix = "_GAIT";
+    // Lateral/back sprint uses the same native Mrun clip as ordinary jogging,
+    // but it MUST retain sprint-owned actions so the next A/D/W direction
+    // change cannot fall into the jog map while Shift is still held.
+    if (_sprinting && {_direction in ["Dl", "Dbl", "Db", "Dbr", "Dr"]}) then {
+        _suffix = "_GAITSprint";
+    };
+    "AmovPerc" + _pace + _family + _direction + _suffix
 };
 
 GAIT_fnc_ordinarySlopeJogIntent = {
@@ -183,8 +190,10 @@ GAIT_fnc_splitSlopeBlend = {
     params [["_animation", "", [""]]];
     private _parts = (toLower _animation) splitString "_";
     if ((count _parts) isNotEqualTo 4) exitWith {[]};
-    if ((_parts select 1) isNotEqualTo "gait" || {(_parts select 3) isNotEqualTo "gait"}) exitWith {[]};
-    [(_parts select 0) + "_gait", (_parts select 2) + "_gait"]
+    if !((_parts select 1) in ["gait", "gaitsprint"]) exitWith {[]};
+    if !((_parts select 3) in ["gait", "gaitsprint"]) exitWith {[]};
+    [(_parts select 0) + "_" + (_parts select 1),
+     (_parts select 2) + "_" + (_parts select 3)]
 };
 
 GAIT_fnc_slopeAnimationFamily = {
@@ -229,10 +238,9 @@ GAIT_fnc_slopeFamilyAvailable = {
     private _required = [[_family, "Dnon", false] call GAIT_fnc_slopeStateName];
     {
         _required pushBack ([_family, _x, false] call GAIT_fnc_slopeStateName);
-        if (_x in ["Df", "Dfl", "Dfr"]) then {
-            _required pushBack ([_family, _x, true] call GAIT_fnc_slopeStateName);
-        };
+        _required pushBack ([_family, _x, true] call GAIT_fnc_slopeStateName);
     } forEach ["Df", "Dfl", "Dl", "Dbl", "Db", "Dbr", "Dr", "Dfr"];
+    _required = _required arrayIntersect _required;
     {
         private _state = _states >> _x;
         private _native = getText (_state >> "GAIT_nativeState");
@@ -290,11 +298,15 @@ GAIT_fnc_stanceYieldActive = {
     private _anim = toLower (animationState _unit);
     private _lowStanceVisible = (stance _unit) in ["CROUCH", "PRONE"] ||
         {(_anim find "pknl") >= 0} || {(_anim find "ppne") >= 0};
+    private _stanceBlend = (_anim find "_amov") >= 0 ||
+        {(_anim find "_ainv") >= 0} || {(_anim find "_acin") >= 0};
+    private _lowStanceSettled = _lowStanceVisible && {!_stanceBlend};
     // Keep a minimum render grace so the original input reaches Arma, then
-    // allow a visibly established low stance to end the lease early.
+    // hold the carried coefficient until the native low-stance state itself
+    // has settled, rather than releasing midway through its transition name.
     private _started = _unit getVariable ["GAIT_stanceYieldStarted", -1];
     private _minimumGrace = _started >= 0 && {diag_tickTime - _started < 0.12};
-    _held || {_minimumGrace} || {!_lowStanceVisible && {diag_tickTime <= _until}}
+    _held || {_minimumGrace} || {!_lowStanceSettled && {diag_tickTime <= _until}}
 };
 
 GAIT_fnc_beginStanceYield = {

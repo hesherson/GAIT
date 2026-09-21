@@ -37,6 +37,7 @@ private _target = "AmovPercMevaSrasWrflDf_GAIT";
     ["AmovPercMrunSrasWrflDf_AmovPercMevaSrasWrflDf", true],
     ["AmovPercMrunSrasWrflDf_AmovPercMevaSrasWrflDf_GAIT", true],
     ["AmovPercMrunSrasWrflDf_GAIT_AmovPercMevaSrasWrflDf_GAIT", true],
+    ["AmovPercMevaSrasWrflDf_GAIT_AmovPercMrunSrasWrflDl_GAITSprint", false],
     ["AmovPercMrunSrasWrflDf_AmovPknlMstpSrasWrflDnon", false],
     ["AmovPercMrunSrasWrflDf_AmovPpneMstpSrasWrflDnon", false],
     ["AmovPercMrunSrasWrflDf_AinvPknlMstpSnonWrflDnon_medic", false],

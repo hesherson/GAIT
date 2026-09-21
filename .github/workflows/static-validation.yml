@@ -1,0 +1,41 @@
+name: GAIT static validation
+
+on:
+  push:
+    branches:
+      - dev/gait-foundation-1.8.0
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  source-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check generated locomotion graph
+        run: python tools/generate_foundation_actions.py --check
+
+      - name: Settings audit
+        run: python tests/settings_audit.py
+
+      - name: Pace calibration integration
+        run: python tests/pace_calibration_integration.py
+
+      - name: Animation graph audit
+        run: python tests/foundation_graph.py
+
+      - name: Heartbeat configuration audit
+        run: python tests/heartbeat_audio.py
+
+      - name: Alpha19 invariant audit
+        run: python tests/alpha19_invariants.py
+
+      - name: Compile Python validation sources
+        run: python -m py_compile tools/generate_foundation_actions.py tests/settings_audit.py tests/pace_calibration_integration.py tests/foundation_graph.py tests/heartbeat_audio.py tests/alpha19_invariants.py

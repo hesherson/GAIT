@@ -84,4 +84,51 @@ private _unsafe = [_running select 0, true, false, 5.5, 1.20, 0.86, 11, 0.05, 3,
 private _wall = [_empty, true, true, 0, 1.28, 0.86, 11, 0.05, 3, 2, 0.04] call GAIT_fnc_stepBraceMomentum;
 [!(_wall select 1), "held sprint against wall does not earn momentum"] call _assert;
 [!([false, false, true, true, true, true, true] call GAIT_fnc_shouldBrace), "disabled brace stays disabled"] call _assert;
-diag_log "GAIT TEST PASS: walking and settled native-jog brace, moving re-tap veto, continuing uphill protection, crouch veto, stop/rearm, grace and unsafe contexts";
+
+// Ordinary movement from a true stop gets a separate shallow, finite step.
+// Tier boundaries are inclusive and heavier kits are both deeper and longer.
+private _walkProfiles = [];
+{
+    private _profile = [_x, [35,55,75]] call GAIT_fnc_walkStartBraceProfile;
+    _walkProfiles pushBack _profile;
+} forEach [20,45,65,90];
+for "_i" from 0 to 2 do {
+    private _lighter = _walkProfiles select _i;
+    private _heavier = _walkProfiles select (_i + 1);
+    [(_heavier select 0) > (_lighter select 0), "heavier walk brace lasts slightly longer"] call _assert;
+    [(_heavier select 1) < (_lighter select 1), "heavier walk brace has a deeper first step"] call _assert;
+};
+[((_walkProfiles select 0) select 1) < 0.90, "lightest walk brace remains noticeable"] call _assert;
+[((_walkProfiles select 3) select 1) >= 0.70, "heaviest walk brace stays bounded and non-annoying"] call _assert;
+[(([35,[35,55,75]] call GAIT_fnc_walkStartBraceProfile) select 3) isEqualTo 0, "light boundary is inclusive"] call _assert;
+[(([35.001,[35,55,75]] call GAIT_fnc_walkStartBraceProfile) select 3) isEqualTo 1, "medium begins above light boundary"] call _assert;
+[(([55.001,[35,55,75]] call GAIT_fnc_walkStartBraceProfile) select 3) isEqualTo 2, "moderate begins above medium boundary"] call _assert;
+[(([75.001,[35,55,75]] call GAIT_fnc_walkStartBraceProfile) select 3) isEqualTo 3, "heavy begins above moderate boundary"] call _assert;
+
+{
+    private _plan = [10, _x, [35,55,75]] call GAIT_fnc_walkStartBracePlan;
+    private _profile = [_x, [35,55,75]] call GAIT_fnc_walkStartBraceProfile;
+    private _duration = _profile select 0;
+    private _low = _profile select 1;
+    private _hold = _profile select 2;
+    private _first = [_plan, 10] call GAIT_fnc_walkStartBraceSample;
+    [abs ((_first select 0) - _low) < 0.00001 && {_first select 1}, "walk brace begins at its tier first-step factor"] call _assert;
+    private _held = [_plan, 10 + (_duration * (_hold * 0.5))] call GAIT_fnc_walkStartBraceSample;
+    [abs ((_held select 0) - _low) < 0.00001, "walk brace keeps a brief planted first step"] call _assert;
+    private _mid = [_plan, 10 + (_duration * ((_hold + 1) * 0.5))] call GAIT_fnc_walkStartBraceSample;
+    [(_mid select 0) > _low && {(_mid select 0) < 1} && {_mid select 1}, "walk brace recovers smoothly"] call _assert;
+    private _end = [_plan, 10 + _duration] call GAIT_fnc_walkStartBraceSample;
+    [_end select 0 isEqualTo 1 && {!(_end select 1)}, "walk brace reaches exact finite endpoint"] call _assert;
+    private _timestamp = 10 + (_duration * 0.73);
+    private _direct = [_plan, _timestamp] call GAIT_fnc_walkStartBraceSample;
+    {
+        private _hz = _x;
+        for "_frame" from 0 to floor (_duration * _hz * 0.73) do {
+            [_plan, 10 + (_frame / _hz)] call GAIT_fnc_walkStartBraceSample;
+        };
+        [([_plan, _timestamp] call GAIT_fnc_walkStartBraceSample) isEqualTo _direct,
+            format ["walk brace is render-rate independent at %1 Hz", _hz]] call _assert;
+    } forEach [20,30,60,144];
+} forEach [20,45,65,90];
+
+diag_log "GAIT TEST PASS: sprint brace momentum plus weight-scaled ordinary walk-start brace, finite recovery, tier bounds and render-rate independence";

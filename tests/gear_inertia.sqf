@@ -58,7 +58,7 @@ for "_weight" from 0 to 200 do {
     _lastAcceleration = _acceleration;
     private _window = [1,0.85,_response select 2] call GAIT_fnc_gearCoastWindow;
     [(_window select 0) isEqualTo 0,"saved sustain does not delay slowdown"] call _assert;
-    [(_window select 1) > 0.26 && {(_window select 1) < 0.35},"default release settles in about a third of a second for all loads"] call _assert;
+    [(_window select 1) >= (0.765 - _epsilon) && {(_window select 1) <= (0.978 + _epsilon)},"default release uses the slower tier-scaled window for all loads"] call _assert;
     [(_window select 1) >= (_lastDuration - _epsilon),"heavier release is slightly longer"] call _assert;
     _lastDuration = _window select 1;
 };
@@ -67,7 +67,7 @@ for "_weight" from 0 to 200 do {
 {
     private _window = _x call GAIT_fnc_gearCoastWindow;
     [(_window select 0) isEqualTo 0,"all hold settings are ignored"] call _assert;
-    [(_window select 1) >= 0.15 && {(_window select 1) <= 0.45},"custom response stays bounded and noninstant"] call _assert;
+    [(_window select 1) >= 0.35 && {(_window select 1) <= 1.20},"custom response stays bounded and noninstant"] call _assert;
 } forEach [[0,0.05,0.9],[3,4,1.15],[1000,1000,1000],[-100,-100,-100],[1,0.85,1]];
 
 private _light = [15] call GAIT_fnc_gearInertia;
@@ -148,4 +148,4 @@ private _flat = [0,_window select 0,_window select 1] call GAIT_fnc_uphillBrakeC
 private _steep = [1,_window select 0,_window select 1] call GAIT_fnc_uphillBrakeCoastWindow;
 [abs ((_flat select 1) - (_window select 1)) < _epsilon,"flat release keeps short curve"] call _assert;
 [(_steep select 1) isEqualTo 0,"full uphill brake removes coast"] call _assert;
-diag_log "GAIT TEST PASS: original tier brace relief and duration; modest acceleration; finite forward and diagonal release; no hold or tail; late tick completion; stop/retap cancellation; uphill priority";
+diag_log "GAIT TEST PASS: original sprint brace relief; modest acceleration; slower finite forward and diagonal release; no hold or tail; late tick completion; stop/retap cancellation; uphill priority";

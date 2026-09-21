@@ -73,14 +73,25 @@ GAIT_fnc_observeLocomotionInput = {
     params ["_unit", "_input"];
     private _forwardHeld = (_input select 0) > 0.05;
     private _movingHeld = abs (_input select 0) > 0.05 || {abs (_input select 1) > 0.05};
+    // Preserve the old startup release semantics while separately detecting
+    // the first real forward press for the ordinary walk-start brace.
+    private _previousForwardForPress = _unit getVariable ["GAIT_forwardInputHeld", false];
+    private _previousForwardForRelease = _unit getVariable ["GAIT_forwardInputHeld", true];
     _unit setVariable ["GAIT_movementReleasedThisFrame", !_movingHeld && {_unit getVariable ["GAIT_movementInputHeld", false]}];
     _unit setVariable ["GAIT_movementInputHeld", _movingHeld];
     if (_movingHeld) then {_unit setVariable ["GAIT_nativeStopPaceLease", []];};
     private _turbo = _input select 2;
     private _previousTurbo = _unit getVariable ["GAIT_turboInputHeld", false];
+    if (_forwardHeld && {!_previousForwardForPress}) then {
+        private _velocity = velocity _unit;
+        private _speedMS = sqrt (((_velocity select 0) ^ 2) + ((_velocity select 1) ^ 2));
+        private _serial = (_unit getVariable ["GAIT_forwardPressSerial", 0]) + 1;
+        _unit setVariable ["GAIT_forwardPressSerial", _serial];
+        _unit setVariable ["GAIT_forwardPressSnapshot", [_serial, diag_tickTime, _speedMS, _turbo]];
+    };
     _unit setVariable ["GAIT_turboPressedThisFrame", _turbo && {!_previousTurbo}];
     _unit setVariable ["GAIT_turboInputHeld", _turbo];
-    if (_turbo && {!_previousTurbo || {_forwardHeld && {!(_unit getVariable ["GAIT_forwardInputHeld", true])}}}) then {
+    if (_turbo && {!_previousTurbo || {_forwardHeld && {!_previousForwardForRelease}}}) then {
         _unit setVariable ["GAIT_sprintReleaseHandled", false];
     };
     if (_previousTurbo && {!_turbo} && {_forwardHeld} &&
@@ -97,7 +108,7 @@ GAIT_fnc_observeLocomotionInput = {
     if (!_forwardHeld || {_turbo && {!_previousTurbo}}) then {
         _unit setVariable ["GAIT_sprintReleaseSnapshot", []];
     };
-    if (!_forwardHeld && {_unit getVariable ["GAIT_forwardInputHeld", true]}) then {
+    if (!_forwardHeld && {_previousForwardForRelease}) then {
         _unit setVariable ["GAIT_forwardReleaseSerial", (_unit getVariable ["GAIT_forwardReleaseSerial", 0]) + 1];
     };
     _unit setVariable ["GAIT_forwardInputHeld", _forwardHeld];

@@ -62,3 +62,65 @@ GAIT_fnc_shouldBrace = {
     params ["_enabled", "_momentumProtected", "_crouched", "_crouchArmed", "_normalReady", "_zeroReady", "_slopeReady"];
     _enabled && {!_momentumProtected} && {_crouched || {_crouchArmed} || {_normalReady} || {_zeroReady} || {_slopeReady}}
 };
+
+// Small ordinary-movement step from a true stop. This is deliberately much
+// shallower than the sprint brace. Weight classes use the configured tier
+// thresholds, while the curve itself is fixed so the settings surface stays
+// compact. Return: [duration, lowPaceFactor, holdFraction, tier].
+GAIT_fnc_walkStartBraceProfile = {
+    params [
+        ["_gearLbs", 0, [0]],
+        ["_thresholds", [35, 55, 75], [[]]]
+    ];
+    if ((count _thresholds) < 3) then {_thresholds = [35, 55, 75];};
+    private _lightMax = (_thresholds param [0, 35, [0]]) max 1;
+    private _mediumMax = (_thresholds param [1, 55, [0]]) max (_lightMax + 1);
+    private _moderateMax = (_thresholds param [2, 75, [0]]) max (_mediumMax + 1);
+    private _tier = 3;
+    if (_gearLbs <= _lightMax) then {_tier = 0;} else {
+        if (_gearLbs <= _mediumMax) then {_tier = 1;} else {
+            if (_gearLbs <= _moderateMax) then {_tier = 2;};
+        };
+    };
+    private _profile = +([
+        [0.28, 0.86, 0.20],
+        [0.32, 0.82, 0.20],
+        [0.36, 0.78, 0.22],
+        [0.40, 0.74, 0.24]
+    ] select _tier);
+    _profile pushBack _tier;
+    _profile
+};
+
+// Plan is an immutable snapshot so changing inventory mid-step cannot restart
+// or deepen the step. [startTime, duration, lowPaceFactor, holdFraction, tier].
+GAIT_fnc_walkStartBracePlan = {
+    params [
+        ["_startTime", 0, [0]],
+        ["_gearLbs", 0, [0]],
+        ["_thresholds", [35, 55, 75], [[]]]
+    ];
+    private _profile = [_gearLbs, _thresholds] call GAIT_fnc_walkStartBraceProfile;
+    [_startTime, _profile select 0, _profile select 1, _profile select 2, _profile select 3]
+};
+
+// Returns [paceFactor, active, tier]. The first part of the first step stays
+// slightly planted, then a smoothstep reaches exactly 1.0 at the finite end.
+GAIT_fnc_walkStartBraceSample = {
+    params [["_plan", [], [[]]], ["_now", 0, [0]]];
+    if ((count _plan) isNotEqualTo 5 || {(_plan findIf {!(_x isEqualType 0)}) >= 0}) exitWith {[1, false, -1]};
+    _plan params ["_startTime", "_duration", "_lowFactor", "_holdFraction", "_tier"];
+    if (_now < _startTime || {_duration < 0.05 || {_duration > 1}} ||
+        {_lowFactor < 0.5 || {_lowFactor >= 1}} ||
+        {_holdFraction < 0 || {_holdFraction >= 0.5}} ||
+        {_tier < 0 || {_tier > 3}}) exitWith {[1, false, -1]};
+    private _t = ((_now - _startTime) / _duration) max 0 min 1;
+    if (_t >= 1) exitWith {[1, false, _tier]};
+    private _factor = _lowFactor;
+    if (_t > _holdFraction) then {
+        private _p = ((_t - _holdFraction) / ((1 - _holdFraction) max 0.01)) max 0 min 1;
+        private _ease = _p * _p * (3 - (2 * _p));
+        _factor = _lowFactor + ((1 - _lowFactor) * _ease);
+    };
+    [_factor, true, _tier]
+};

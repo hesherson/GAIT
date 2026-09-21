@@ -16,7 +16,7 @@ Heartbeat gain is fixed at 20% by the optional heartbeat PBO, independently of t
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Enable GAIT (`GAIT_ss_enabled`) | true | on / off | Master switch for runtime movement, brace, fatigue audio and vignette. Disabling releases owned effects. Terrain config and the optional 20% ACE heartbeat patch remain until their PBOs are unloaded. |
+| Enable GAIT (`GAIT_ss_enabled`) | true | on / off | Master switch for runtime movement, brace, fatigue audio and vignette. Disabling releases owned effects. Terrain config and the optional 10% ACE heartbeat patch remain until their PBOs are unloaded. |
 | Feature update interval (`GAIT_ss_tickRate`) | 0.05 | 0.01–0.2 | Seconds between terrain, reserve and ordinary acceleration updates. Release interpolation is sampled each rendered frame. Default: 0.05 seconds. |
 | Master: trip frequency (`GAIT_ss_masterTripFrequency`) | 1 | 0–3 | Meta-knob that scales downhill trip chance without changing thresholds. 1.00 is baseline. |
 | Fatigue effect intensity (`GAIT_ss_masterFxIntensity`) | 1 | 0–2 | Scales GAIT tinnitus, hearing reduction and vignette strength. Does not scale ACE heartbeat. Vignette opacity remains capped at 14%. Default: 1.00. |
@@ -42,7 +42,7 @@ Heartbeat gain is fixed at 20% by the optional heartbeat PBO, independently of t
 | Speed ramp smoothness (`GAIT_ss_speedLerp`) | 0.05 | 0.01–1 | How quickly current speed moves toward target speed. Lower is smoother/slower; higher is snappier. Default: 0.05. |
 | W-release zero-momentum delay (`GAIT_ss_wReleaseZeroMomentumDelay`) | 0.5 | 0–20 | Seconds after releasing forward movement before the next sprint start is treated as zero momentum. Lower values make brace return sooner. Default: 0.50. |
 | Smooth sprint release (`GAIT_ss_shiftReleaseRunTaperEnabled`) | true | on / off | Release sprint while keeping forward movement held to decelerate from current motion. Uses measured jog pace when a valid reference exists. Stop, direction changes and medical restrictions cancel promptly. Default: enabled. |
-| Sprint release duration scale (`GAIT_ss_shiftReleaseRunTaperDuration`) | 0.85 | 0.05–4 | Sets the ceiling for the release ramp, not a fixed duration: value x 0.35 x gear factor, bounded to 0.15-0.45 seconds. Actual excess velocity shortens this down to 0.08 seconds. Default 0.85 gives a ceiling near 0.27-0.34 seconds. |
+| Sprint release duration scale (`GAIT_ss_shiftReleaseRunTaperDuration`) | 0.85 | 0.05–4 | Sets the ceiling for the Shift-release ramp: value x gear factor, bounded to 0.35–1.20 seconds. The measured speed difference uses 75–100% of that window, beginning at the exact current running pace before easing to jog. Default 0.85 gives a ceiling near 0.77–0.98 seconds across the default weight tiers. |
 | Sprint release curve (`GAIT_ss_shiftReleaseRunTaperCurve`) | 1.45 | 1–3 | Shapes the finite slowdown. Higher values lose pace sooner. Effective range: 1-3. Does not add a hold or extend the deadline. Default: 1.45. |
 | Unarmed sprint normalizer (`GAIT_ss_unarmedSprintNormalizer`) | 0.725 | 0.3–1.2 | Multiplier applied when sprinting with no weapon out so holstering does not create an unrealistic speed boost. Default: 0.725. |
 ### Carry
@@ -72,10 +72,10 @@ Heartbeat gain is fixed at 20% by the optional heartbeat PBO, independently of t
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Enable brace step (`GAIT_ss_sprintStartBraceEnabled`) | true | on / off | Enables the initial heavy step/pace dip when starting sprint from zero or settled momentum. |
-| Brace duration (`GAIT_ss_sprintStartBraceDuration`) | 0.15 | 0–1 | How long the start-brace slowdown lasts, in seconds. Default: 0.15. |
-| Brace speed (`GAIT_ss_sprintStartBraceSpeed`) | 0.42 | 0.1–1.2 | Animation speed target during the brace step. Lower is a stronger dip. Default: 0.42. |
-| Brace snap (`GAIT_ss_sprintStartBraceLerp`) | 0.575 | 0.01–1 | How abruptly speed moves into the brace step. Higher is sharper; lower is smoother. Default: 0.575. |
+| Enable start brace step (`GAIT_ss_sprintStartBraceEnabled`) | true | on / off | Enables the small weight-scaled first step when beginning ordinary forward movement from rest and the stronger sprint-start brace. |
+| Sprint brace duration (`GAIT_ss_sprintStartBraceDuration`) | 0.15 | 0–1 | How long the sprint-start brace lasts. The smaller walk-start step uses a fixed short tier curve: light 0.28 s, medium 0.32 s, moderate 0.36 s, heavy 0.40 s. |
+| Sprint brace speed (`GAIT_ss_sprintStartBraceSpeed`) | 0.42 | 0.1–1.2 | Animation speed target during the sprint-start brace. The walk-start step automatically uses a shallower 14%–26% initial pace reduction by kit tier. |
+| Sprint brace snap (`GAIT_ss_sprintStartBraceLerp`) | 0.575 | 0.01–1 | How abruptly speed moves into the sprint-start brace. The walk-start step uses a deterministic smooth finite recovery instead. |
 | Brace settle time (`GAIT_ss_braceRequiredWalkTime`) | 2 | 0–10 | Non-sprint settle interval used by normal brace readiness and momentum recovery. A true stop can independently rearm the brace; a moving sprint retap is protected. Default: 2 seconds. |
 | Recent sprint grace (`GAIT_ss_braceRecentSprintCooldown`) | 3 | 0–10 | Recent-sprint interval used by normal brace readiness and retained momentum. A real stop can still rearm brace before it expires. Default: 3 seconds. |
 | Brace reserve gate (`GAIT_ss_braceMinReserveRatio`) | 0.98 | 0–1 | Minimum GAIT reserve ratio needed for brace when ACE reserve is not active. With ACE active, movement state owns brace. Default: 0.98. |
@@ -92,7 +92,7 @@ Heartbeat gain is fixed at 20% by the optional heartbeat PBO, independently of t
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Enable tinnitus (`GAIT_ss_tinnitusEnabled`) | true | on / off | Enables GAIT tinnitus at high exhaustion. Separate optional gait_heartbeat.pbo fixes ACE heartbeat gain at 20% of original; this checkbox does not control it. |
+| Enable tinnitus (`GAIT_ss_tinnitusEnabled`) | true | on / off | Enables GAIT tinnitus at high exhaustion. Separate optional gait_heartbeat.pbo fixes ACE heartbeat gain at 10% of original; this checkbox does not control it. |
 | Tinnitus starts at exhaustion (`GAIT_ss_tinnitusStartExhaustion`) | 0.7 | 0–1 | Exhaustion level where tinnitus begins. 0 = immediately, 1 = only at max exhaustion. Default: 0.70. |
 | Tinnitus stop threshold (`GAIT_ss_audioStopExhaustion`) | 0.1 | 0–1 | GAIT tinnitus fades out below this exhaustion level. Does not stop ACE heartbeat or breathing. Default: 0.10. |
 | Tinnitus maximum gain (`GAIT_ss_tinnitusMaxVolume`) | 0.55 | 0–2 | Maximum GAIT tinnitus gain before the fatigue effect intensity multiplier. Does not change ACE heartbeat. Default: 0.55. |

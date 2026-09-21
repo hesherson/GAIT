@@ -8,7 +8,7 @@
     - Native locomotion with scoped ACE fatigue movement-lock integration
     - Native/ACE weapon handling; tinnitus and hearing reduction
     - Short fatigue vignette pulses with clear intervals and owned cleanup
-    - ACE Medical Feedback heartbeat samples use 20% volume config overrides
+    - ACE Medical Feedback heartbeat samples use 10% volume config overrides
 
     Removed from mission version:
     - Fast Carry script startup
@@ -605,6 +605,8 @@ GAIT_fnc_setTunnelVisionFX = {
     private _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85];
     private _shiftReleaseRunTaperEnabled = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true];
     private _lastForwardReleaseSerial = -1;
+    private _lastForwardPressSerial = player getVariable ["GAIT_forwardPressSerial", 0];
+    private _walkStartBraceState = [];
     private _slopeSmoothInitialized = false;
     private _smoothedSlopeDegrees = 0;
     private _uphillFatigueDrainEnabled = missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainEnabled", true];
@@ -672,6 +674,11 @@ GAIT_fnc_setTunnelVisionFX = {
             _lastSprintStopTime = -999;
             _activeBraceSpeed = _sprintStartBraceSpeed;
             _sprintBraceEndTime = -1;
+            _walkStartBraceState = [];
+            _lastForwardPressSerial = player getVariable ["GAIT_forwardPressSerial", 0];
+            missionNamespace setVariable ["GAIT_walkStartBraceActive", false];
+            missionNamespace setVariable ["GAIT_walkStartBraceFactor", 1];
+            missionNamespace setVariable ["GAIT_walkStartBraceTier", -1];
             _walkingStartTime = -1;
             _lastSprintEndTime = -999;
             _braceArmedFromCrouch = false;
@@ -968,6 +975,10 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _forwardReleaseSerial = player getVariable ["GAIT_forwardReleaseSerial", 0];
                 private _forwardReleasedSinceTick = _forwardReleaseSerial isNotEqualTo _lastForwardReleaseSerial;
                 _lastForwardReleaseSerial = _forwardReleaseSerial;
+                private _forwardPressSerial = player getVariable ["GAIT_forwardPressSerial", 0];
+                private _forwardPressedSinceTick = _forwardPressSerial isNotEqualTo _lastForwardPressSerial;
+                _lastForwardPressSerial = _forwardPressSerial;
+                private _forwardPressSnapshot = player getVariable ["GAIT_forwardPressSnapshot", []];
                 private _renderReleasedSinceTick = player getVariable ["GAIT_releaseSinceFeatureTick", false];
                 player setVariable ["GAIT_releaseSinceFeatureTick", false];
                 // Raw input can cancel a launch between feature ticks. Only
@@ -1134,6 +1145,32 @@ GAIT_fnc_setTunnelVisionFX = {
                 // A transient animation blend does not clear physical history.
                 private _momentumContextOk = _gaitMovementEnabled && {!_isAceCarrying} && {!_isAceDragging} &&
                     {!_externalSprintLock} && {!_externalWalkLock} && {[player] call GAIT_fnc_fatigueMovementContextEligible};
+
+                // Ordinary W start from a true stop gets one small planted first
+                // step. It is independent of sprint momentum and never stacks
+                // with Turbo, carry/drag, medical locks, airborne movement or an
+                // already-moving re-press. The render snapshot prevents a slow
+                // feature tick from mistaking newly acquired speed for momentum.
+                if (_forwardPressedSinceTick) then {
+                    _walkStartBraceState = [];
+                    private _snapshotValid = (count _forwardPressSnapshot) isEqualTo 4 &&
+                        {(_forwardPressSnapshot select 0) isEqualTo _forwardPressSerial} &&
+                        {diag_tickTime >= (_forwardPressSnapshot select 1)} &&
+                        {diag_tickTime - (_forwardPressSnapshot select 1) <= 0.35};
+                    if (_sprintStartBraceEnabled && {_snapshotValid} &&
+                        {!(_forwardPressSnapshot select 3)} && {!_isSprinting} &&
+                        {_isForwardHeld} && {_momentumContextOk} && {_gaitStanceOk} &&
+                        {_onGroundNow} && {(_forwardPressSnapshot select 2) <= 0.35}) then {
+                        _walkStartBraceState = [_forwardPressSnapshot select 1, _gearLbs,
+                            [_lightWeightMax, _mediumWeightMax, _moderateWeightMax]]
+                            call GAIT_fnc_walkStartBracePlan;
+                    };
+                };
+                if (!_isForwardHeld || {_isSprinting} || {!_momentumContextOk} ||
+                    {!_gaitStanceOk} || {!_onGroundNow}) then {
+                    _walkStartBraceState = [];
+                };
+
                 private _continuingSprint = _isSprinting && {_wasSprinting} && {_sprintBraceEndTime <= time} && {!_forwardReleasedSinceTick};
                 private _motion = [_braceMomentumState, _continuingSprint, _momentumContextOk,
                     _horizontalSpeedMS, _currentSpeed, _effectiveNormalSpeed * _hillWalkSlowdownMultiplier,
@@ -1535,14 +1572,32 @@ GAIT_fnc_setTunnelVisionFX = {
                 missionNamespace setVariable ["GAIT_uphillBrakeEndTime", if (_uphillBrakeActive) then {_uphillBrakeState select 3} else {-1}];
                 [player, _movementInput] call GAIT_fnc_observeReleaseMomentum;
 
+                private _walkStartBraceFactor = 1;
+                private _walkStartBraceActive = false;
+                private _walkStartBraceTier = -1;
+                if (_walkStartBraceState isNotEqualTo []) then {
+                    private _walkBraceSample = [_walkStartBraceState, diag_tickTime] call GAIT_fnc_walkStartBraceSample;
+                    _walkStartBraceFactor = _walkBraceSample select 0;
+                    _walkStartBraceActive = _walkBraceSample select 1;
+                    _walkStartBraceTier = _walkBraceSample select 2;
+                    if (!_walkStartBraceActive) then {_walkStartBraceState = [];};
+                };
+                missionNamespace setVariable ["GAIT_walkStartBraceActive", _walkStartBraceActive];
+                missionNamespace setVariable ["GAIT_walkStartBraceFactor", _walkStartBraceFactor];
+                missionNamespace setVariable ["GAIT_walkStartBraceTier", _walkStartBraceTier];
+
                 // Frame-rate independent speed ramp. Direction is never filtered.
                 private _hasMovementInput = _isForwardHeld || {_isBackHeld} || {_isLateralHeld};
                 if (_gaitMovementEnabled && {_movementEligible} && {_hasMovementInput}) then {
                     private _ramp = if (_uphillBrakeActive) then {_uphillBrakeRamp} else {
-                        if (_isSprinting && {_sprintBraceEndTime > time}) then {_sprintStartBraceLerp} else {_speedLerp}
+                        if (_isSprinting && {_sprintBraceEndTime > time}) then {_sprintStartBraceLerp} else {
+                            if (_walkStartBraceActive) then {1} else {_speedLerp}
+                        }
                     };
                     private _rampTarget = if (_uphillBrakeActive) then {_uphillBrakeTarget min _currentSpeed} else {
-                        if (_isSprinting && {_sprintBraceEndTime > time}) then {_activeBraceSpeed min _targetSpeed} else {_targetSpeed}
+                        if (_isSprinting && {_sprintBraceEndTime > time}) then {_activeBraceSpeed min _targetSpeed} else {
+                            if (_walkStartBraceActive) then {_targetSpeed * _walkStartBraceFactor} else {_targetSpeed}
+                        }
                     };
                     // A modest load effect applies only while building sprint.
                     // Braces, uphill braking and ordinary movement keep their rates.

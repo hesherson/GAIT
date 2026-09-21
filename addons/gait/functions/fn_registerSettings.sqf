@@ -118,10 +118,10 @@ private _addList = {
 // -----------------------------------------------------
 // 06 Brace Step and Momentum
 // -----------------------------------------------------
-["GAIT_ss_sprintStartBraceEnabled", "Enable brace step", "Enables the initial heavy step/pace dip when starting sprint from zero or settled momentum.", _categoryBrace, true] call _addCheckbox;
-["GAIT_ss_sprintStartBraceDuration", "Brace duration", "How long the start-brace slowdown lasts, in seconds. Default: 0.15.", _categoryBrace, 0.00, 1.00, 0.15, 2] call _addSlider;
-["GAIT_ss_sprintStartBraceSpeed", "Brace speed", "Animation speed target during the brace step. Lower is a stronger dip. Default: 0.42.", _categoryBrace, 0.10, 1.20, 0.42, 2] call _addSlider;
-["GAIT_ss_sprintStartBraceLerp", "Brace snap", "How abruptly speed moves into the brace step. Higher is sharper; lower is smoother. Default: 0.575.", _categoryBrace, 0.01, 1.00, 0.575, 3] call _addSlider;
+["GAIT_ss_sprintStartBraceEnabled", "Enable start brace step", "Enables both the small weight-scaled first step when beginning ordinary forward movement from rest and the stronger sprint-start brace. Default: enabled.", _categoryBrace, true] call _addCheckbox;
+["GAIT_ss_sprintStartBraceDuration", "Sprint brace duration", "How long the sprint-start brace slowdown lasts. The smaller walk-start step uses its own short weight-tier curve. Default: 0.15 seconds.", _categoryBrace, 0.00, 1.00, 0.15, 2] call _addSlider;
+["GAIT_ss_sprintStartBraceSpeed", "Sprint brace speed", "Animation speed target during the sprint-start brace. Lower is a stronger dip. The walk-start step is automatically shallower. Default: 0.42.", _categoryBrace, 0.10, 1.20, 0.42, 2] call _addSlider;
+["GAIT_ss_sprintStartBraceLerp", "Sprint brace snap", "How abruptly speed moves into the sprint-start brace. The walk-start step uses a deterministic finite curve instead. Default: 0.575.", _categoryBrace, 0.01, 1.00, 0.575, 3] call _addSlider;
 ["GAIT_ss_braceRequiredWalkTime", "Brace settle time", "Non-sprint settle interval used by normal brace readiness and momentum recovery. A true stop can independently rearm the brace; a moving sprint retap is protected. Default: 2 seconds.", _categoryBrace, 0.00, 10.00, 2.00, 1] call _addSlider;
 ["GAIT_ss_braceRecentSprintCooldown", "Recent sprint grace", "Recent-sprint interval used by normal brace readiness and retained momentum. A real stop can still rearm brace before it expires. Default: 3 seconds.", _categoryBrace, 0.00, 10.00, 3.00, 1] call _addSlider;
 ["GAIT_ss_braceMinReserveRatio", "Brace reserve gate", "Minimum GAIT reserve ratio needed for brace when ACE reserve is not active. With ACE active, movement state owns brace. Default: 0.98.", _categoryBrace, 0.00, 1.00, 0.98, 2] call _addSlider;
@@ -142,7 +142,7 @@ private _addList = {
 // -----------------------------------------------------
 // 07 Audio and Hearing
 // -----------------------------------------------------
-["GAIT_ss_tinnitusEnabled", "Enable tinnitus", "Enables GAIT tinnitus at high exhaustion. Separate optional gait_heartbeat.pbo fixes ACE heartbeat gain at 20% of original; this checkbox does not control it.", _categoryAudio, true] call _addCheckbox;
+["GAIT_ss_tinnitusEnabled", "Enable tinnitus", "Enables GAIT tinnitus at high exhaustion. Separate optional gait_heartbeat.pbo fixes ACE heartbeat gain at 10% of original; this checkbox does not control it.", _categoryAudio, true] call _addCheckbox;
 ["GAIT_ss_tinnitusStartExhaustion", "Tinnitus starts at exhaustion", "Exhaustion level where tinnitus begins. 0 = immediately, 1 = only at max exhaustion. Default: 0.70.", _categoryAudio, 0.00, 1.00, 0.70, 2] call _addSlider;
 ["GAIT_ss_audioStopExhaustion", "Tinnitus stop threshold", "GAIT tinnitus fades out below this exhaustion level. Does not stop ACE heartbeat or breathing. Default: 0.10.", _categoryAudio, 0.00, 1.00, 0.10, 2] call _addSlider;
 ["GAIT_ss_tinnitusMaxVolume", "Tinnitus maximum gain", "Maximum GAIT tinnitus gain before the fatigue effect intensity multiplier. Does not change ACE heartbeat. Default: 0.55.", _categoryAudio, 0.00, 2.00, 0.55, 2] call _addSlider;

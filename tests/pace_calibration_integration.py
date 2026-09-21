@@ -33,5 +33,7 @@ class PaceIntegration(unittest.TestCase):
         self.assertIn('_turbo isNotEqualTo _reversing',text)
         self.assertIn('GAIT_releaseResume',text)
         anchor=main.index('private _releaseResume =')
-        self.assertIn('GAIT_paceHandoff',main[anchor-500:anchor])
+        handoff=main.index('if ((player getVariable ["GAIT_paceHandoff", []]) isNotEqualTo [])')
+        self.assertLess(handoff,anchor)
+        self.assertIn('call GAIT_fnc_applyNativeMovement;',main[handoff:anchor])
 if __name__=='__main__':unittest.main()

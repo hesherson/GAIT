@@ -50,7 +50,7 @@ class SettingsAudit(unittest.TestCase):
         self.assertEqual(rows['GAIT_ss_debugHudInterval']['min'],0.05)
         self.assertEqual(rows['GAIT_ss_compatibilityMode']['values'],[1,2,3,4])
         self.assertEqual(rows['GAIT_ss_compatibilityMode']['default'],1)
-        self.assertIn('20%',rows['GAIT_ss_tinnitusEnabled']['description'])
+        self.assertIn('10%',rows['GAIT_ss_tinnitusEnabled']['description'])
         self.assertIn('0.08',rows['GAIT_ss_shiftReleaseRunTaperDuration']['description'])
     def test_cleanup_cannot_be_disabled(self):
         main=(FUNCTIONS/'fn_initSprintSystem.sqf').read_text()

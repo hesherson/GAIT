@@ -21,7 +21,7 @@ if (_targets isEqualTo []) then {
 };
 
 {
-    ["zeus_module"] remoteExecCall ["GAIT_fnc_resetEffects", owner _x];
+    ["GAIT_resetEffects", ["zeus_module"], _x] call CBA_fnc_targetEvent;
 } forEach _targets;
 
 diag_log format ["[GAIT] Zeus reset module activated for %1 player(s).", count _targets];

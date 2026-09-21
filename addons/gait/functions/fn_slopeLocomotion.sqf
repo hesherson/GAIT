@@ -92,6 +92,38 @@ GAIT_fnc_isLocomotionHandoffSource = {
 // loop can discard its old forward coast instead of reviving it on re-press.
 // A cancelled numerical brace likewise cannot survive a release that happened
 // entirely between two scheduled feature updates.
+GAIT_fnc_clearLocomotionInputHistory = {
+    params [["_unit", objNull, [objNull]]];
+    if (isNull _unit) exitWith {};
+    {
+        _unit setVariable [_x, false];
+    } forEach [
+        "GAIT_movementReleasedThisFrame",
+        "GAIT_movementInputHeld",
+        "GAIT_directionChangedThisFrame",
+        "GAIT_turboPressedThisFrame",
+        "GAIT_turboInputHeld",
+        "GAIT_sprintReleaseHandled",
+        "GAIT_forwardInputHeld",
+        "GAIT_releaseSinceFeatureTick",
+        "GAIT_stanceInputHeld"
+    ];
+    {
+        _unit setVariable [_x, []];
+    } forEach [
+        "GAIT_nativeStopPaceLease",
+        "GAIT_sprintReleaseSnapshot",
+        "GAIT_forwardPressSnapshot",
+        "GAIT_stanceCarryCoefficient",
+        "GAIT_paceObservation"
+    ];
+    _unit setVariable ["GAIT_liveInputDirection", "Dnon"];
+    _unit setVariable ["GAIT_stanceYieldUntil", -1];
+    _unit setVariable ["GAIT_stanceYieldStarted", -1];
+    _unit setVariable ["GAIT_slopeCanceledBraceEndTime", -2];
+    _unit setVariable ["GAIT_paceNextSample", 0];
+};
+
 GAIT_fnc_observeLocomotionInput = {
     params ["_unit", "_input"];
     private _forwardHeld = (_input select 0) > 0.05;

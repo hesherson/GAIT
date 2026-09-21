@@ -87,32 +87,7 @@ GAIT_fnc_modeAllowsAceLockClearing = {
     (call GAIT_fnc_modeAllowsMovement) && {missionNamespace getVariable ["GAIT_ss_clearAceMovementLocks", true]}
 };
 
-GAIT_fnc_isSuspendedContext = {
-    if (isNull player) exitWith {true};
-    if (!alive player) exitWith {true};
-
-    if (player getVariable ["ACE_isUnconscious", false]) exitWith {true};
-
-    // v1.6.0 (FIX 2 - Zeus / remote control): GAIT polls inputAction(MoveForward/
-    // Turbo) and writes movement to `player`. When the Zeus/curator interface is
-    // open, or when the local input is driving a remote-controlled unit, those
-    // key states are still readable but the engine is NOT routing them to the
-    // avatar - so GAIT was injecting movement the avatar would not otherwise make
-    // (the "press W+Shift in Zeus and my body walks off" bug). Suspend GAIT
-    // whenever direct first-person/third-person control of the avatar is not in
-    // effect. These checks are unconditional so the
-    // avatar can never be driven from a delegated context.
-    //
-    // Zeus / curator display open (RscDisplayCurator == 312).
-    if (!isNull (findDisplay 312)) exitWith {true};
-    // BIS remote control leaves a back-reference on the controlling avatar.
-    if (!isNull (player getVariable ["bis_fnc_moduleRemoteControl_unit", objNull])) exitWith {true};
-
-    private _cam = cameraOn;
-    if (!isNull _cam && {_cam != player} && {_cam != vehicle player}) exitWith {true};
-
-    false
-};
+// Suspension/context eligibility is defined once in fn_traversalHelpers.sqf.
 
 // =====================================================
 // SAFE SPRINT AUDIO / HEARING HELPERS
@@ -153,6 +128,14 @@ GAIT_fnc_setSprintHearing = {
     } else {
         _fade fadeSound _volume;
         _fade fadeRadio _volume;
+    };
+};
+
+GAIT_fnc_stopTinnitusSound = {
+    private _id = missionNamespace getVariable ["GAIT_tinnitusSoundId", -1];
+    missionNamespace setVariable ["GAIT_tinnitusSoundId", -1];
+    if (_id isEqualType 0 && {_id >= 0}) then {
+        stopSound _id;
     };
 };
 
@@ -207,6 +190,14 @@ call compile preprocessFileLineNumbers "\gait\functions\fn_nativeController.sqf"
 call compile preprocessFileLineNumbers "\gait\functions\fn_aceFatigueVisualBridge.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_fatigueVisuals.sqf";
 [] call GAIT_fnc_installLocomotionController;
+
+if (!(missionNamespace getVariable ["GAIT_resetEventInstalled", false]) && {!isNil "CBA_fnc_addEventHandler"}) then {
+    ["GAIT_resetEffects", {
+        params [["_reason", "network", [""]]];
+        [_reason] call GAIT_fnc_resetEffects;
+    }] call CBA_fnc_addEventHandler;
+    missionNamespace setVariable ["GAIT_resetEventInstalled", true];
+};
 
 GAIT_fnc_tripPlayer = {
     params [
@@ -479,8 +470,15 @@ GAIT_fnc_setTunnelVisionFX = {
             private _vol = missionNamespace getVariable ["GAIT_tinnitusCurrentVolume", 0];
 
             if (_vol > 0.01 && {!isNull player}) then {
-                playSound3D [_soundPath, player, false, getPosASL player, _vol, 1, 4];
+                // Fatigue tinnitus is private player feedback. Explicit local=true
+                // prevents one client's tinnitus from broadcasting to the network.
+                private _soundId = playSound3D [_soundPath, player, false, getPosASL player,
+                    _vol, 1, 4, 0, true, false];
+                missionNamespace setVariable ["GAIT_tinnitusSoundId", _soundId];
                 uiSleep _loopDelay;
+                if ((missionNamespace getVariable ["GAIT_tinnitusSoundId", -1]) isEqualTo _soundId) then {
+                    missionNamespace setVariable ["GAIT_tinnitusSoundId", -1];
+                };
             } else {
                 uiSleep 0.10;
             };

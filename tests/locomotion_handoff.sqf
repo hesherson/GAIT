@@ -113,6 +113,27 @@ _testUnit setVariable ["GAIT_sprintReleaseHandled",true];
 [_testUnit,[0,0,true]] call GAIT_fnc_observeLocomotionInput;
 [_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput;
 if (_testUnit getVariable ["GAIT_sprintReleaseHandled",true]) then {_failures pushBack "W re-press with held Turbo did not rearm release capture";};
+
+// Central reset helper must retire transient input/stance ownership without
+// changing monotonic press/release serial counters used by the feature loop.
+_testUnit setVariable ["GAIT_movementInputHeld", true];
+_testUnit setVariable ["GAIT_directionChangedThisFrame", true];
+_testUnit setVariable ["GAIT_liveInputDirection", "Dfl"];
+_testUnit setVariable ["GAIT_turboInputHeld", true];
+_testUnit setVariable ["GAIT_stanceInputHeld", true];
+_testUnit setVariable ["GAIT_stanceYieldUntil", diag_tickTime + 10];
+_testUnit setVariable ["GAIT_stanceCarryCoefficient", [1.2, true]];
+_testUnit setVariable ["GAIT_forwardReleaseSerial", 17];
+[_testUnit] call GAIT_fnc_clearLocomotionInputHistory;
+if (_testUnit getVariable ["GAIT_movementInputHeld", true]) then {_failures pushBack "Reset helper retained movement input history";};
+if (_testUnit getVariable ["GAIT_directionChangedThisFrame", true]) then {_failures pushBack "Reset helper retained direction edge";};
+if ((_testUnit getVariable ["GAIT_liveInputDirection", ""]) isNotEqualTo "Dnon") then {_failures pushBack "Reset helper retained live direction";};
+if (_testUnit getVariable ["GAIT_turboInputHeld", true]) then {_failures pushBack "Reset helper retained Turbo history";};
+if (_testUnit getVariable ["GAIT_stanceInputHeld", true]) then {_failures pushBack "Reset helper retained stance input";};
+if ((_testUnit getVariable ["GAIT_stanceYieldUntil", 0]) isNotEqualTo -1) then {_failures pushBack "Reset helper retained stance lease";};
+if ((_testUnit getVariable ["GAIT_stanceCarryCoefficient", [1]]) isNotEqualTo []) then {_failures pushBack "Reset helper retained stance coefficient";};
+if ((_testUnit getVariable ["GAIT_forwardReleaseSerial", -1]) isNotEqualTo 17) then {_failures pushBack "Reset helper rewound release serial";};
+
 private _savedGlobals = [];
 {
     _x params ["_name", "_default"];

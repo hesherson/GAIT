@@ -461,7 +461,7 @@ GAIT_fnc_setTunnelVisionFX = {
     missionNamespace setVariable ["GAIT_tinnitusTargetVolume", 0];
     missionNamespace setVariable ["GAIT_tinnitusCurrentVolume", 0];
 
-    private _tinnitusSoundPath = "\gait\sounds\tinnitus_loop.ogg";
+    private _tinnitusSoundPath = "gait\sounds\tinnitus_loop.ogg";
 
     [_tinnitusLoopDelay, _tinnitusSoundPath] spawn {
         params ["_loopDelay", "_soundPath"];
@@ -470,10 +470,10 @@ GAIT_fnc_setTunnelVisionFX = {
             private _vol = missionNamespace getVariable ["GAIT_tinnitusCurrentVolume", 0];
 
             if (_vol > 0.01 && {!isNull player}) then {
-                // Fatigue tinnitus is private player feedback. Explicit local=true
-                // prevents one client's tinnitus from broadcasting to the network.
-                private _soundId = playSound3D [_soundPath, player, false, getPosASL player,
-                    _vol, 1, 4, 0, true, false];
+                // Tinnitus is internal player feedback, not a world emitter.
+                // playSoundUI is local and follows the listener rather than
+                // leaving a positional sound behind as the player moves.
+                private _soundId = playSoundUI [_soundPath, _vol, 1, true, 0, false];
                 missionNamespace setVariable ["GAIT_tinnitusSoundId", _soundId];
                 uiSleep _loopDelay;
                 if ((missionNamespace getVariable ["GAIT_tinnitusSoundId", -1]) isEqualTo _soundId) then {

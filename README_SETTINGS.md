@@ -1,14 +1,14 @@
-# GAIT 1.8.0-alpha11 settings reference
+# GAIT 1.8.0-alpha19 settings reference
 
 This reference is generated from the 122 current CBA registrations. Defaults below are registration defaults; presets and mission/server overrides can change effective values. Select Custom to keep individual tuning instead of having a preset reapply its values.
 
-## Cleanup in alpha11
+## Current cleanup and compatibility behavior
 
 Removed the inactive release sustain timer, redundant downhill onset cap, and three switches that allowed lifecycle cleanup to be disabled. Cleanup on player replacement, spectator/control changes and unconsciousness is now unconditional. The duplicate Full/Hybrid movement choice is one Movement and effects choice; saved legacy numeric values 0 and 1 still select movement and effects.
 
 For a custom old downhill onset cap, set the remaining Downhill boost starts control to the smaller of your previous onset and cap. Defaults are unchanged. The release curve slider now exposes its effective 1–3 range; HUD interval starts at the existing 0.05-second minimum.
 
-Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of the tinnitus switch. Removing that PBO restores ACE’s original heartbeat gain. There is no sway control. Automatic pace calibration has no extra user settings.
+Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of the tinnitus switch. Removing that PBO restores ACE’s original heartbeat gain. There is no sway control. Automatic pace calibration has no extra user settings. Stable same-clip measurements may automatically calibrate sprint physical targets; complete manual pace profiles remain optional.
 
 ## Active controls
 

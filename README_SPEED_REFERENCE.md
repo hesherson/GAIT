@@ -1,35 +1,66 @@
-# GAIT 1.8.0-alpha11 sprint speed reference
+# GAIT 1.8.0-alpha19 movement speed reference
 
-Balanced defaults, fresh reserve, weapon out, fully developed sprint/downhill momentum, no vegetation/injury penalty. Speed scales continuously within each gear tier.
+This document describes the current target model. Animation-speed coefficients are not interchangeable with km/h because weapon/pose families have different root motion. GAIT therefore distinguishes coefficient fallback behavior from calibrated physical targets.
 
-| Gear tier | GAIT load | Flat sprint multiplier | Peak downhill multiplier |
-| --- | --- | --- | --- |
-| Light | 0–35 lb | 1.3824–1.3440 | 1.6312–1.5089 |
-| Medium | >35–55 lb | <1.3440–1.3120 | <1.5089–1.4482 |
-| Moderate | >55–75 lb | <1.3120–1.2800 | <1.4482–1.4083 |
-| Heavy | >75 lb | Below 1.2800 | Below 1.4083 |
-| Heavy example | 100 lb | 1.1743 | 1.2899 |
-| Heavy example | 125 lb | 1.0847 | 1.1896 |
+## Flat sprint and load
 
-These are animation speed coefficients relative to the active sprint clip at 1.0. They are not km/h. The theoretical upper targets assume full reserve and full momentum simultaneously; fatigue and ramping can keep actual output below them. Heavier loads above 75 lb keep reducing speed instead of reaching a fixed heavy-tier value.
+Balanced defaults use an armed fresh sprint coefficient of **1.28** before slope and load scaling. The continuous load multiplier interpolates through the existing gear landmarks:
 
-Peak downhill gain occurs at 18–35 degrees of descent with default settings, then tapers. GAIT's displayed pounds use its configurable load conversion rather than literal engine SI mass.
+- 0 lb: 1.08
+- 35 lb: 1.05
+- 55 lb: 1.025
+- 75 lb: 1.00
+- above 75 lb: continues decreasing as `1 / (1 + 0.18 * extraLb / 50)`
 
-For default fresh armed sprint:
+The walk/sprint floor is evaluated after grade and load effects so a steady sprint target remains above the corresponding ordinary movement target.
 
-```
-flat coefficient = 1.28 * loadMultiplier
-peak downhill coefficient = flat * (1 + 0.18 / (1 + bonusLoad / 75))
-bonusLoad = loadLb when loadLb <= 55
-otherwise: extra = loadLb - 55
-           bonusLoad = 55 + 0.10 * extra + 2.70 * (1 - exp(-extra / 3))
-above 75 lb: loadMultiplier = 1 / (1 + 0.18 * (loadLb - 75) / 50)
-```
+## Sprint acceleration
 
-Alpha9 softens only the downhill bonus penalty above 55 lb. At 100 lb this adds about 2% to the peak downhill target; at 150 lb it adds about 3.3%. The bonus still decreases with load, and extreme slopes still taper it.
+General speed smoothing still defaults to `GAIT_ss_speedLerp = 0.05`. **Upward sprint acceleration alone** uses 70% of that rate before the small gear-inertia adjustment.
 
-The continuous load multiplier interpolates 1.08 at zero load, 1.05 at 35 lb, 1.025 at 55 lb and 1.0 at 75 lb. These values and thresholds come from the original defaults.
+At default tuning this is approximately:
 
-There is currently no fixed physical top-speed cap. Native animation root motion, weapon family, terrain, fatigue and other active constraints affect actual speed. No measured clip-speed profiles are bundled, so assigning exact km/h values would be unsupported. The in-game GAIT HUD and acceptance recorder show observed km/h/horizontal m/s for calibration.
+- generic 95% convergence: ~2.9 s
+- sprint build to 95% target: ~4.1 s
 
-Unarmed sprint uses a separate normalizer and the existing walk-relative floor, so it cannot be calculated by simply multiplying this table by 0.725. Other presets and server-forced Addon Options change these figures. Alpha11 preserves the original brace tuning and alpha9's pace targets and sprint access for every gear tier. The short W-held release samples actual velocity and the applied coefficient together. A valid observed destination jog reference converts its endpoint into the current running clip's coefficient, then compensates for the changing clip weights during the native blend. Normal steady jogging supplies the reference; it is scoped to clip/config, character, weapon, surface and a two-degree grade tolerance, expires after ten minutes, and is session-local. Missing or unsafe references retain the alpha10 release calculation. This is a two-clip root-motion model; actual in-engine velocity continuity still needs acceptance testing.
+Brace, uphill braking, Shift-release taper and ordinary movement keep their own existing timing.
+
+## Uphill
+
+Uphill steady sprint pace begins reducing at the configured onset (default 5°) and reaches the configured reference penalty at 35°. The curve continues beyond 35° rather than imposing a walking cutoff.
+
+The penalty is also exposed progressively through time: shallow inclines build slowly, while steep inclines converge much faster. A zero-momentum uphill sprint start adds the separate exponential brace burden. Retained sprint momentum bypasses that launch burden.
+
+## Ordinary movement on slopes
+
+Standing W-only slope movement uses a custom **Mrun jog** family rather than a custom Mwlk state. There are no custom Mwlk states in the generated graph.
+
+Without a complete physical walk/jog profile, the fallback target is coefficient-space: the jog target uses a 1.06 minimum ratio over the ordinary slope target. That is intentionally only a small coefficient margin; it is not an unsupported claim that every animation family is physically exactly 6% faster in km/h.
+
+## Downhill acceleration
+
+Downhill momentum is earned only by actual descending sprint travel. Flat sprinting does not preload it.
+
+The coefficient-space downhill bonus starts at the configured decline onset (default 4°), reaches the configured base angle response around 18°, and continues increasing on steeper grades rather than tapering. Steep grades transition toward lighter gravity-specific load attenuation, can amplify the configured base+sustained component up to 3x, and cap the final additive coefficient bonus at 65%.
+
+A separate calibrated physical target begins beyond an 8° decline and reaches full grade severity at 35°. At full downhill momentum it approaches **34 km/h** below the heavy-weight band and **32 km/h** at 150 lb and above, with continuous interpolation between those load points.
+
+The physical target is only converted into an animation coefficient when GAIT has a safe reference for the exact current sprint clip/context. A complete manual `GAIT_locomotionPaceProfiles` entry can provide that reference, but alpha19 also reuses automatic passive session calibration. Passive references are scoped to clip/config, character, weapon, surface and ±2° grade, expire after ten minutes, and are collected only during stable, unobstructed, grounded movement without brace/release/vegetation contamination.
+
+Until a valid physical reference exists, the coefficient-space downhill model remains active. Current live velocity is never divided back into the target, so collision or wall contact cannot create a feedback accelerator.
+
+## Release continuity
+
+Shift release captures the current applied coefficient and observed horizontal velocity, then follows one finite W-held taper toward ordinary movement. When a safe destination jog reference exists, the handoff compensates for changing source/destination root-motion weights. A/D direction changes remain independent of that speed taper.
+
+## Weapon/pose families
+
+The generated graph has five first-class standing pose families:
+
+- raised rifle: `SrasWrfl`
+- lowered rifle: `SlowWrfl`
+- raised pistol: `SrasWpst`
+- lowered pistol: `SlowWpst`
+- unarmed: `SnonWnon`
+
+Raised/lowered pistol identity is preserved through GAIT locomotion; the controller does not introduce a `SlowWpst <-> SrasWpst` conversion during acceleration.

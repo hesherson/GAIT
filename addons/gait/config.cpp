@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha12: strafe-safe transition build
+// GAIT 1.8.0-alpha13: startup strafe and progressive uphill build
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha12";
-        versionAr[] = {1,8,0,12};
+        versionStr = "1.8.0-alpha13";
+        versionAr[] = {1,8,0,13};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

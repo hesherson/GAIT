@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha12: strafe-safe movement transitions
+# GAIT 1.8.0-alpha13: immediate sprint-start strafing and progressive uphill slowdown
 
 Requires Arma 3 2.18+, CBA_A3 and ACE3. Load only the new GAIT copy and start a fresh mission. Full build/deploy instructions are in README_HEMTT.md; the packaged mod is under ready_to_load/GAIT.
 
@@ -6,9 +6,9 @@ Requires Arma 3 2.18+, CBA_A3 and ACE3. Load only the new GAIT copy and start a 
 
 The final sprint-to-jog handoff now has a measured destination pace when a matching reference is available. Normal steady jogging supplies a session-local reference using horizontal velocity divided by the applied animation coefficient. Measurements require settled motion, ground contact, an eligible healthy character, a clear path and no active brace/release/vegetation penalty. References match the clip/config, character, weapon, surface and a narrow grade band and expire after ten minutes. No guessed km/h values are bundled.
 
-Hold W and release Shift: the controller captures current speed and eases toward jog pace with the current weight-tier release window. Speed continuity no longer owns direction. Pressing A or D during the numerical release immediately retires the old directional identity while carrying the exact current coefficient into ordinary locomotion. Pending sprint-entry and native-exit blends can retarget to the live direction instead of queuing lateral input behind the previous phase.
+Hold W and release Shift: the controller captures current speed and eases toward jog pace with the current weight-tier release window. Speed continuity does not own direction. Pressing A or D during the numerical release immediately retires the old directional identity while carrying the exact current coefficient into ordinary locomotion. Sprint-entry redirection now also works during the earliest native-source frames, before Arma reports the custom blend, so lateral input cannot be queued behind the initial forward sprint request.
 
-Until normal jogging has supplied a valid reference (roughly two seconds of stable travel), the alpha10 release remains the fallback. Changing weapon, surface or grade may require a new reference. This does not retune steady sprint/jog targets or impose a physical top-speed cap. The compensation uses a two-clip root-motion model; automated tests cannot prove how Arma blends root motion in every transition.
+Uphill sprint slowdown now has a separate time component. The existing slope start angle, reference angle and maximum penalty still define the final target, but the penalty builds as uphill running continues. Shallow slopes approach that target slowly, while steep slopes converge much faster. Returning toward flat terrain recovers smoothly. Until normal jogging has supplied a valid reference (roughly two seconds of stable travel), the alpha10 release remains the fallback. Changing weapon, surface or grade may require a new reference.
 
 ## Settings pass
 
@@ -32,17 +32,17 @@ The shared brief brace, original gear tuning, heavy sprint access, lowered-pisto
 
 ## In-game acceptance
 
-1. With rifle, pistol and unarmed movement, jog steadily for about two seconds on level ground before sprinting. Test both raised and lowered pistol starts for the reported run/skip/run interruption.
+1. With rifle, pistol and unarmed movement, start sprinting from rest and immediately press W+A, W+D, pure A and pure D before the sprint blend visibly settles. The weapon/body must redirect immediately instead of pointing forward and queuing the strafe. Repeat raised and lowered pistol starts and repeat on steep uphill terrain.
 2. Keep W held and release Shift during partial acceleration and at full sprint. Verify the release starts at the current pace and the final jog handoff has no speed step. Repeat with light, medium and heavy gear, and on a descent after collecting a matching jog reference.
 3. Tap Shift again during both the release and the animation blend. Repeat release/retap sequences; check for no restart, rebrace or stale top-speed value.
 4. During the release itself, during the sprint-to-jog body blend, and while entering/exiting the custom family on a steep slope, press W+A, W+D, pure A and pure D. Lateral input must take over immediately without waiting for the old phase or direction. Then release W/all movement keys and repeat with S. Repeat while reloading, changing weapon/stance, entering medical/carry actions and becoming unconscious.
-5. Check heavy backpack sprint access, uphill braking, respawn, spectator, disabled mode and fully clear intervals between fatigue vignette pulses. Confirm the current 10% heartbeat.
+5. Sprint continuously up shallow, moderate and steep hills. Speed should bleed down progressively rather than jump to the full slope penalty: shallow hills should take longer, steep hills should converge faster, and flattening terrain should recover smoothly. Then check heavy backpack sprint access, uphill braking, respawn, spectator, disabled mode and the current 10% heartbeat.
 6. Repeat immediately after mission start, before calibration, and after changing surface/weapon. The existing release must remain available when no valid reference exists.
 
 For a read-only capture, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
 
 ```sqf
-[90, "alpha11 measured handoff"] execVM "foundation_capture.sqf";
+[90, "alpha13 startup strafe + uphill buildup"] execVM "foundation_capture.sqf";
 ```
 
 Send the RPT after STOP with approximate issue times. Its releaseMotion fields include whether a measured release was selected, reference count and the current handoff state.

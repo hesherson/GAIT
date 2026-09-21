@@ -47,10 +47,12 @@ GAIT_fnc_scaleInertiaRamp = {
 
 // Keep the stored hold argument for compatibility, but never apply it. Saved
 // alpha4 hold settings must not reintroduce input lag. The duration setting is
-// a scale: default .85 resolves to .268-.342 seconds across default load tiers.
+// a scale: default .85 resolves to about .765-.978 seconds across default load tiers.
+// The release planner then uses measured excess velocity to consume 75-100% of
+// that window, so every tier inherits current sprint pace before easing to jog.
 GAIT_fnc_gearCoastWindow = {
     params [["_holdSeconds", 0, [0]], ["_taperSeconds", 0.85, [0]], ["_durationScale", 1, [0]]];
-    [0, ((_taperSeconds max 0.05 min 4) * 0.35 * (_durationScale max 0.9 min 1.15)) max 0.15 min 0.45]
+    [0, ((_taperSeconds max 0.05 min 4) * 1.00 * (_durationScale max 0.9 min 1.15)) max 0.35 min 1.20]
 };
 
 // Finite curve applied directly to the coefficient, not filtered a second

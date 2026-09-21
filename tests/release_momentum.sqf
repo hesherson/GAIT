@@ -12,8 +12,8 @@ if !((_slow select 1) < (_fast select 1)) then {
 if ((_slow select 2) != 3 || {(_fast select 2) != 9}) then {
     _failures pushBack "Plan replaced the measured release velocity";
 };
-private _light = [10, 9, 1.5, 0.5, 0.268, 1.45] call GAIT_fnc_releaseMomentumPlan;
-private _heavy = [10, 9, 1.5, 0.5, 0.342, 1.45] call GAIT_fnc_releaseMomentumPlan;
+private _light = [10, 9, 1.5, 0.5, 0.765, 1.45] call GAIT_fnc_releaseMomentumPlan;
+private _heavy = [10, 9, 1.5, 0.5, 0.978, 1.45] call GAIT_fnc_releaseMomentumPlan;
 if !((_light select 1) < (_heavy select 1)) then {
     _failures pushBack "Gear coast duration ordering was lost";
 };
@@ -90,12 +90,12 @@ if (abs ((_retapStart select 0) - (_partial select 0)) > 0.00001 ||
     };
 } forEach [[[], 10], [[10, 0.3], 10], [[10, 0.3, "bad", 1, 1.5, 0.5, 1.45], 10]];
 private _tiny = [10, 1, 0.51, 0.49, 0.3, 1.45] call GAIT_fnc_releaseMomentumPlan;
-if ((_tiny select 1) < 0.08 || {(_tiny select 1) > 0.3}) then {
+if ((_tiny select 1) < 0.12 || {(_tiny select 1) > 0.3}) then {
     _failures pushBack "Small release escaped the finite duration bounds";
 };
 
 if (_failures isEqualTo []) then {
-    diag_log "GAIT release momentum PASS: measured velocity controls duration; same-clip physical continuity; light/heavy order; partial retaps; finite endpoints; monotonic curve; render-rate independence; invalid/future/stale plans.";
+    diag_log "GAIT release momentum PASS: exact measured launch velocity; slower tier-scaled jog decay; light/heavy order; partial retaps; finite endpoints; monotonic curve; render-rate independence; invalid/future/stale plans.";
 } else {
     {diag_log ("FAIL " + _x);} forEach _failures;
 };

@@ -7,9 +7,10 @@
     of that clip on the current terrain. It is not a native jog/walk reference
     and must not be reused after a clip, direction or weapon change.
 
-    Measured metres per second to shed determine duration. The 2 m/s response
-    scale below tunes the duration, not an assumed animation speed. The
-    existing gear coast window remains its ceiling, preserving load ordering.
+    Measured metres per second to shed determine duration. Release always begins
+    at the exact measured running velocity, then consumes 75-100% of the gear
+    coast window while easing toward ordinary jog pace. The gear window remains
+    the ceiling, preserving load ordering across every weight tier.
     No subsequent velocity feedback accelerates against a wall or obstacle.
 
     Plan: [startTime, duration, startMS, targetMS,
@@ -23,7 +24,7 @@ GAIT_fnc_releaseMomentumPlan = {
     params [
         ["_now", 0, [0]], ["_startMS", 0, [0]],
         ["_startCoefficient", 0, [0]], ["_ordinaryCoefficient", 0, [0]],
-        ["_baseWindow", 0.3, [0]], ["_curve", 1.45, [0]]
+        ["_baseWindow", 0.85, [0]], ["_curve", 1.45, [0]]
     ];
     if (!(_now >= 0 && {_now < 1e10}) ||
         {!(_startMS > 0.05 && {_startMS <= 2500})} ||
@@ -37,8 +38,11 @@ GAIT_fnc_releaseMomentumPlan = {
     // Releasing during a low-speed brace must not create a speed hold.
     if (_excessMS <= 0.025 ||
         {_startCoefficient - _targetCoefficient <= 0.00001}) exitWith {[]};
-    private _ceiling = _baseWindow max 0.08 min 0.45;
-    private _duration = (_ceiling * (1 - exp (-_excessMS / 2))) max 0.08 min _ceiling;
+    private _ceiling = _baseWindow max 0.15 min 1.20;
+    // Never snap directly toward jog pace. Even a small excess gets most of
+    // the tier-specific release window; larger excess approaches the ceiling.
+    private _response = 0.75 + (0.25 * (1 - exp (-_excessMS / 2)));
+    private _duration = (_ceiling * _response) max 0.12 min _ceiling;
     [_now, _duration, _startMS, _targetMS, _startCoefficient,
         _targetCoefficient, _curve max 1 min 3]
 };
@@ -51,7 +55,7 @@ GAIT_fnc_releaseMomentumSample = {
         "_startCoefficient", "_targetCoefficient", "_curve"];
     if (!(_now >= _startTime && {_now < 1e10}) ||
         {!(_startTime >= 0 && {_startTime < 1e10})} ||
-        {!(_duration >= 0.08 && {_duration <= 0.45})} ||
+        {!(_duration >= 0.12 && {_duration <= 1.20})} ||
         {!(_startMS > 0.05 && {_startMS <= 2500})} ||
         {!(_targetMS >= 0 && {_targetMS < _startMS})} ||
         {!(_startCoefficient > 0.000001 && {_startCoefficient <= 100})} ||
@@ -109,7 +113,7 @@ GAIT_fnc_releaseMomentumContext = {
         {_now <= (missionNamespace getVariable ["GAIT_uphillBrakeReadyUntil", -1])}
     };
     [_eligible, _owns, currentWeapon _unit, _family, _animation, _coefficient, _speed, _brake,
-        _request param [1, 1], _request param [2, 0.3], _request param [3, 1.45],
+        _request param [1, 1], _request param [2, 0.85], _request param [3, 1.45],
         [_animation] call GAIT_fnc_isSlopeLocomotionState]
 };
 

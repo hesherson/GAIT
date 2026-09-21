@@ -62,6 +62,9 @@ if !([[1,0,false],0.1,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
 if !([[1,0,false],-35,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
     _failures pushBack "Steep downhill ordinary movement did not request jog override";
 };
+if !([[1,0,false],0,false,true] call GAIT_fnc_ordinarySlopeJogIntent) then {
+    _failures pushBack "Native forced-walk threshold did not immediately request jog override";
+};
 if ([[1,0,true],35,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
     _failures pushBack "Turbo movement was mistaken for ordinary slope jog";
 };

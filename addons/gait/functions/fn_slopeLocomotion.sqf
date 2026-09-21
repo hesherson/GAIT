@@ -35,11 +35,12 @@ GAIT_fnc_ordinarySlopeJogIntent = {
     params [
         ["_input", [], [[]]],
         ["_slopeDegrees", 0, [0]],
-        ["_aceMovementLock", false, [false]]
+        ["_aceMovementLock", false, [false]],
+        ["_nativeForcedWalk", false, [false]]
     ];
     (count _input) >= 3 && {!_aceMovementLock} &&
         {(_input select 0) > 0.05} && {!(_input select 2)} &&
-        {abs _slopeDegrees > 0.01}
+        {_nativeForcedWalk || {abs _slopeDegrees > 0.01}}
 };
 
 // playMoveNow replaces the pending movement request and follows the explicit
@@ -705,8 +706,8 @@ GAIT_fnc_tickLocomotion = {
     private _aceSlopeLock = (_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0 ||
         {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
     private _ordinarySlopeJog = [_input,
-        missionNamespace getVariable ["GAIT_lastKnownSlopeDegrees", 0], _aceSlopeLock]
-        call GAIT_fnc_ordinarySlopeJogIntent;
+        missionNamespace getVariable ["GAIT_lastKnownSlopeDegrees", 0],
+        _aceSlopeLock, isForcedWalk _unit] call GAIT_fnc_ordinarySlopeJogIntent;
     private _nativeSlopeLock = (!isSprintAllowed _unit || {isForcedWalk _unit}) && {!_ordinarySlopeJog};
     private _requestLock = (_request select 2) && {!_ordinarySlopeJog};
     private _locked = _requestLock || {_nativeSlopeLock} ||

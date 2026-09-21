@@ -1163,7 +1163,7 @@ GAIT_fnc_setTunnelVisionFX = {
                     {(player getVariable ["ace_common_effect_forceWalk", 0]) > 0};
                 private _slopeJogOverride = _slopeHandlingEnabled && {_gaitMovementEnabled} &&
                     {_gaitStanceOk} && {_movementEligible} && {_onGroundNow} &&
-                    {[_movementInput, _slopeDegrees, _aceSlopeMovementLock]
+                    {[_movementInput, _slopeDegrees, _aceSlopeMovementLock, isForcedWalk player]
                         call GAIT_fnc_ordinarySlopeJogIntent};
                 missionNamespace setVariable ["GAIT_slopeJogOverride", _slopeJogOverride];
 

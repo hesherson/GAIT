@@ -17,6 +17,15 @@ private _key = ["clip","file",1,"character","pistol","ground"];
 [([_cache,_key,3,11] call GAIT_fnc_lookupPaceReference) < 0,"different grade requires fresh measurement"] call _assert;
 [([_cache,_key,0,611] call GAIT_fnc_lookupPaceReference) < 0,"stale sample is rejected"] call _assert;
 [([_cache,_key,0,9] call GAIT_fnc_lookupPaceReference) < 0,"future sample is rejected"] call _assert;
+
+private _profileResolved = [0.8, 0.4, 2.4, 3.0, true];
+private _profileReference = [_profileResolved, 9] call GAIT_fnc_resolveMovingPaceReference;
+[abs (_profileReference - 7.5) < 0.00001, "complete profile reference takes precedence over passive cache"] call _assert;
+private _fallbackResolved = [0.8, 1.1, -1, -1, false];
+[abs (([_fallbackResolved, 4.2] call GAIT_fnc_resolveMovingPaceReference) - 4.2) < 0.00001,
+    "passive exact-clip reference activates physical target without full profile"] call _assert;
+[([_fallbackResolved, -1] call GAIT_fnc_resolveMovingPaceReference) < 0,
+    "missing profile and passive evidence retain coefficient-only fallback"] call _assert;
 for "_i" from 0 to 5 do {
     private _changed = +_key;
     _changed set [_i,"changed"];

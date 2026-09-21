@@ -142,6 +142,36 @@ GAIT_fnc_lookupPaceReference = {
     _reference
 };
 
+// Reuse the same guarded passive cache for steady physical targets. This is
+// historical evidence from stable travel, never the current live velocity.
+GAIT_fnc_lookupUnitPaceReference = {
+    params [
+        ["_unit", objNull, [objNull]],
+        ["_clip", "", [""]],
+        ["_grade", 0, [0]]
+    ];
+    if (isNull _unit || {_clip isEqualTo ""}) exitWith {-1};
+    private _key = [_unit, toLower _clip] call GAIT_fnc_paceReferenceKey;
+    private _cache = _unit getVariable ["GAIT_paceMeasurements", []];
+    [_cache, _key, _grade, diag_tickTime] call GAIT_fnc_lookupPaceReference
+};
+
+// Prefer a complete externally supplied profile when present. Otherwise a
+// valid passive reference for the exact moving clip is sufficient to convert a
+// physical target without inventing a walk reference or feeding back velocity.
+GAIT_fnc_resolveMovingPaceReference = {
+    params [
+        ["_resolved", [], [[]]],
+        ["_passiveReference", -1, [0]]
+    ];
+    if ((count _resolved) >= 5 && {_resolved select 4} &&
+        {(_resolved select 1) > 0} && {(_resolved select 3) > 0}) exitWith {
+        (_resolved select 3) / (_resolved select 1)
+    };
+    if (_passiveReference > 0.1 && {_passiveReference < 25}) exitWith {_passiveReference};
+    -1
+};
+
 GAIT_fnc_releasePaceMatch = {
     params ["_unit", "_animation", "_family", "_direction", "_speed", "_applied", "_ordinary"];
     private _target = toLower ("AmovPercMrun" + _family + _direction);

@@ -61,7 +61,7 @@ private _addList = {
 // -----------------------------------------------------
 // 01 General
 // -----------------------------------------------------
-["GAIT_ss_enabled", "Enable GAIT", "Master switch for runtime movement, brace, fatigue audio and vignette. Disabling releases owned effects. Terrain config and the optional 20% ACE heartbeat patch remain until their PBOs are unloaded.", _categoryGeneral, true] call _addCheckbox;
+["GAIT_ss_enabled", "Enable GAIT", "Master switch for runtime movement, brace, fatigue audio and vignette. Disabling releases owned effects. Terrain config and the optional 10% ACE heartbeat patch remain until their PBOs are unloaded.", _categoryGeneral, true] call _addCheckbox;
 ["GAIT_ss_tickRate", "Feature update interval", "Seconds between terrain, reserve and ordinary acceleration updates. Release interpolation is sampled each rendered frame. Default: 0.05 seconds.", _categoryGeneral, 0.01, 0.20, 0.05, 2] call _addSlider;
 
 ["GAIT_ss_masterTripFrequency", "Master: trip frequency", "Meta-knob that scales downhill trip chance without changing thresholds. 1.00 is baseline.", _categoryGeneral, 0.00, 3.00, 1.00, 2] call _addSlider;

@@ -1633,19 +1633,32 @@ GAIT_fnc_setTunnelVisionFX = {
                     private _direction = [_movementInput select 0, _movementInput select 1] call GAIT_fnc_slopeDirection;
                     private _resolved = [_normalSpeed, _flatSprintPace, _hillWalkSlowdownMultiplier, _slopeSpeedMultiplier, _weightSpeedMult, _paceFloorRatio,
                         missionNamespace getVariable ["GAIT_locomotionPaceProfiles", []], _family, _direction, "sprint"] call GAIT_fnc_locomotionPaceTargets;
-                    // When a measured sprint reference exists, steep downhill
-                    // momentum gets a physical gravity target. This is a model
-                    // target, not live-velocity feedback, so collisions still win.
+                    // A complete manual profile is optional. The automatic
+                    // passive sampler may also supply the exact current sprint
+                    // clip reference after stable same-context travel.
+                    private _sprintClip = [_family, _direction, true] call GAIT_fnc_slopeStateName;
+                    private _passiveSprintReference = [player, _sprintClip,
+                        missionNamespace getVariable ["GAIT_smoothedSlopeDegrees", _slopeDegrees]]
+                        call GAIT_fnc_lookupUnitPaceReference;
+                    private _movingReference = [_resolved, _passiveSprintReference]
+                        call GAIT_fnc_resolveMovingPaceReference;
+                    private _sprintReferenceCalibrated = _movingReference > 0.1;
+                    missionNamespace setVariable ["GAIT_sprintReferenceCalibrated", _sprintReferenceCalibrated];
+
+                    // Once any safe exact-clip reference exists, steep downhill
+                    // momentum can use its physical gravity target. The reference
+                    // is historical; current velocity never feeds this target.
                     private _downhillTargetKmh = [_slopeDegrees, _gearLbs, _downhillMomentum]
                         call GAIT_fnc_downhillGravityTargetKmh;
-                    if ((_resolved select 4) && {_downhillTargetKmh > 0} &&
-                        {_direction in ["Df", "Dfl", "Dfr"]} &&
-                        {(_resolved select 1) > 0} && {(_resolved select 3) > 0}) then {
-                        private _movingReference = (_resolved select 3) / (_resolved select 1);
+                    if (_sprintReferenceCalibrated && {_downhillTargetKmh > 0} &&
+                        {_direction in ["Df", "Dfl", "Dfr"]} && {(_resolved select 1) > 0}) then {
                         private _gravityTargetMS = _downhillTargetKmh / 3.6;
-                        if (_movingReference > 0.1 && {_gravityTargetMS > (_resolved select 3)}) then {
+                        private _currentTargetMS = (_resolved select 1) * _movingReference;
+                        if (_gravityTargetMS > _currentTargetMS) then {
                             _resolved set [1, (_gravityTargetMS / _movingReference) min 100];
                             _resolved set [3, _gravityTargetMS];
+                        } else {
+                            if ((_resolved select 3) < 0) then {_resolved set [3, _currentTargetMS];};
                         };
                     };
                     missionNamespace setVariable ["GAIT_downhillGravityTargetKmh", _downhillTargetKmh];

@@ -117,7 +117,7 @@ def render():
  * Custom-state variants are empty to avoid automatic native idle/fidget
  * variants leaving the family. No ConnectTo self-loop is forced. Animation
  * files, speed, duty, collision and other pose properties inherit unchanged.
- * Four native-action stop targets double idle interpolationSpeed from the
+ * Five native-action stop targets double idle interpolationSpeed from the
  * captured native value 4 to 8. They shorten the outgoing run blend without
  * scaling its clip playback or adding forward movement. They do not belong
  * to the sprint family and accept new movement immediately through native

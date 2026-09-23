@@ -34,11 +34,14 @@ jobs:
       - name: Heartbeat configuration audit
         run: python tests/heartbeat_audio.py
 
+      - name: PBO prefix source audit
+        run: python tests/pbo_prefix_layout.py
+
       - name: Alpha19 invariant audit
         run: python tests/alpha19_invariants.py
 
       - name: Compile Python validation sources
-        run: python -m py_compile tools/generate_foundation_actions.py tests/settings_audit.py tests/pace_calibration_integration.py tests/foundation_graph.py tests/heartbeat_audio.py tests/alpha19_invariants.py
+        run: python -m py_compile tools/generate_foundation_actions.py tests/settings_audit.py tests/pace_calibration_integration.py tests/foundation_graph.py tests/heartbeat_audio.py tests/pbo_prefix_layout.py tests/alpha19_invariants.py
 
 
   hemtt-build:

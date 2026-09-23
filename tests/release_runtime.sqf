@@ -135,22 +135,38 @@ private _durations = [];
 } forEach [1,6];
 if ((_durations select 0) >= (_durations select 1)) then {_failures pushBack "Release duration ignored actual velocity";};
 
-// Live input cancellation cannot keep boosted forward scalar into a new heading.
+// Direction owns input immediately. Pure strafe/back/stop cannot inherit a
+// sprint boost, while W+A/W+D may carry the exact current release coefficient
+// once so the direction change itself does not create a speed snap.
 {
     call _fixture;
     [_unit, [1,0,false], 10] call GAIT_fnc_observeReleaseMomentum;
+    private _beforeDirection = _unit getVariable ["GAIT_releaseMomentumState", []];
     GAIT_testReleaseNow = 10.02;
+    private _expectedCarry = if ((count _beforeDirection) isEqualTo 2) then {
+        ([_beforeDirection select 0, GAIT_testReleaseNow] call GAIT_fnc_releaseMomentumSample) select 0
+    } else {-1};
     [_unit, _x, GAIT_testReleaseNow] call GAIT_fnc_observeReleaseMomentum;
     if ((_unit getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo []) then {
-        _failures pushBack format ["Direction/stop %1 retained the release clip", _x];
+        _failures pushBack format ["Direction/stop %1 retained the old release identity", _x];
     };
-    if ((_x select 0) != 0 || {(_x select 1) != 0}) then {
+    private _forwardDiagonal = (_x select 0) > 0.05 && {abs (_x select 1) > 0.05};
+    if (_forwardDiagonal) then {
         _applied = [_unit, 1.1, false] call GAIT_fnc_applyNativeMovement;
-        if (_applied > 0.5) then {_failures pushBack format ["Direction %1 received stale sprint boost", _x];};
+        if (_expectedCarry < 0 ||
+            {abs (_applied - _expectedCarry) > 0.00001} ||
+            {(_unit getVariable ["GAIT_releasePendingCoefficient", -2]) isNotEqualTo -1}) then {
+            _failures pushBack format ["Direction %1 did not consume exact one-shot release continuity", _x];
+        };
     } else {
-        if ((_unit getVariable ["GAIT_testCoefficient", -1]) != 0.87 ||
-            {(missionNamespace getVariable ["GAIT_nativeOwner", _unit]) isNotEqualTo objNull}) then {
-            _failures pushBack "W-up stop retained owned pace instead of promptly returning the native stop blend";
+        if ((_x select 0) != 0 || {(_x select 1) != 0}) then {
+            _applied = [_unit, 1.1, false] call GAIT_fnc_applyNativeMovement;
+            if (_applied > 0.5) then {_failures pushBack format ["Direction %1 received stale sprint boost", _x];};
+        } else {
+            if ((_unit getVariable ["GAIT_testCoefficient", -1]) != 0.87 ||
+                {(missionNamespace getVariable ["GAIT_nativeOwner", _unit]) isNotEqualTo objNull}) then {
+                _failures pushBack "W-up stop retained owned pace instead of promptly returning the native stop blend";
+            };
         };
     };
 } forEach [[0,0,false], [0,1,false], [-1,0,false], [1,1,false]];
@@ -190,7 +206,7 @@ if ((_unit getVariable ["GAIT_releaseBrakeHold", []]) isNotEqualTo []) then {_fa
 if ((_unit getVariable ["GAIT_testCoefficient", -1]) != 0.7) then {_failures pushBack "Cleanup overwrote another coefficient writer";};
 
 if (_failures isEqualTo []) then {
-    diag_log "GAIT release runtime PASS: shared edge, ordered main/render sampling, finite endpoint, actual velocity duration, retap seed, no boost direction cancellation, uphill priority and owner-checked cleanup.";
+    diag_log "GAIT release runtime PASS: shared edge, ordered main/render sampling, finite endpoint, actual velocity duration, retap seed, one-shot diagonal continuity, no pure-direction boost, uphill priority and owner-checked cleanup.";
 } else {
     {diag_log ("GAIT release runtime FAIL: " + _x);} forEach _failures;
     throw "GAIT release runtime regression failed";

@@ -136,8 +136,11 @@ GAIT_fnc_walkStartBraceSample = {
         {_lowFactor < 0.5 || {_lowFactor >= 1}} ||
         {_holdFraction < 0 || {_holdFraction >= 0.5}} ||
         {_tier < 0 || {_tier > 3}}) exitWith {[1, false, -1]};
-    private _t = ((_now - _startTime) / _duration) max 0 min 1;
-    if (_t >= 1) exitWith {[1, false, _tier]};
+    private _elapsed = (_now - _startTime) max 0;
+    // start+duration can round a few ulps below the mathematical endpoint.
+    // Treat that timestamp as finished instead of leaking one extra active frame.
+    if (_elapsed >= (_duration - 0.000001)) exitWith {[1, false, _tier]};
+    private _t = (_elapsed / _duration) max 0 min 1;
     private _factor = _lowFactor;
     if (_t > _holdFraction) then {
         private _p = ((_t - _holdFraction) / ((1 - _holdFraction) max 0.01)) max 0 min 1;

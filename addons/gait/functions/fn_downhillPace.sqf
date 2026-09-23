@@ -88,11 +88,12 @@ GAIT_fnc_downhillGravityTargetKmh = {
     private _decline = (-_gradeDegrees) max 0;
     if (_decline <= _startDegrees || {_momentum <= 0}) exitWith {0};
     _fullDegrees = _fullDegrees max (_startDegrees + 0.1);
-    private _severity = linearConversion [_startDegrees, _fullDegrees, _decline, 0, 1, true];
+    private _severity = ((_decline - _startDegrees) /
+        (_fullDegrees - _startDegrees)) max 0 min 1;
     _severity = _severity * _severity * (3 - (2 * _severity));
     private _momentumEase = (_momentum max 0 min 1);
     _momentumEase = _momentumEase * _momentumEase * (3 - (2 * _momentumEase));
-    private _weightSeverity = linearConversion [75, 150, _gearLbs max 0, 0, 1, true];
+    private _weightSeverity = (((_gearLbs max 0) - 75) / 75) max 0 min 1;
     24 + ((10 - (2 * _weightSeverity)) * _severity * _momentumEase)
 };
 

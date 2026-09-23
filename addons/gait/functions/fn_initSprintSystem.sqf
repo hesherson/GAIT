@@ -677,6 +677,7 @@ GAIT_fnc_setTunnelVisionFX = {
             _activeBraceSpeed = _sprintStartBraceSpeed;
             _sprintBraceEndTime = -1;
             _walkStartBraceState = [];
+            _lastForwardReleaseSerial = player getVariable ["GAIT_forwardReleaseSerial", 0];
             _lastForwardPressSerial = player getVariable ["GAIT_forwardPressSerial", 0];
             missionNamespace setVariable ["GAIT_walkStartBraceActive", false];
             missionNamespace setVariable ["GAIT_walkStartBraceFactor", 1];

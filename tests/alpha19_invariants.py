@@ -118,6 +118,10 @@ class Alpha19Invariants(unittest.TestCase):
         self.assertIn("GAIT_fnc_clearLocomotionInputHistory", reset)
         self.assertIn("GAIT_resetRequested", reset)
         self.assertIn("GAIT_resetRequested", main)
+        reset_anchor = main.index('if (_resetRequest > _lastResetRequestHandled) then {')
+        reset_block = main[reset_anchor:main.index('// Refresh live Addon Options settings each tick.', reset_anchor)]
+        self.assertIn('_lastForwardReleaseSerial = player getVariable ["GAIT_forwardReleaseSerial", 0];', reset_block)
+        self.assertIn('_lastForwardPressSerial = player getVariable ["GAIT_forwardPressSerial", 0];', reset_block)
 
     def test_single_suspended_context_definition(self):
         count = 0

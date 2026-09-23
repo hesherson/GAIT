@@ -23,6 +23,16 @@ GAIT_fnc_readLocomotionStance = {
     stance _unit
 };
 
+GAIT_fnc_readLocomotionForcedWalk = {
+    params [["_unit", objNull, [objNull]]];
+    isForcedWalk _unit
+};
+
+GAIT_fnc_readLocomotionSprintAllowed = {
+    params [["_unit", objNull, [objNull]]];
+    isSprintAllowed _unit
+};
+
 // Pure directional selection shared by entry, release and regression tests.
 GAIT_fnc_slopeDirection = {
     params [["_forward", 0, [0]], ["_right", 0, [0]]];
@@ -514,12 +524,12 @@ GAIT_fnc_serviceLocomotionExit = {
         {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
     private _ordinarySlopeJog = [_input,
         missionNamespace getVariable ["GAIT_lastKnownSlopeDegrees", 0],
-        _aceSlopeLock, isForcedWalk _unit] call GAIT_fnc_ordinarySlopeJogIntent;
+        _aceSlopeLock, [_unit] call GAIT_fnc_readLocomotionForcedWalk] call GAIT_fnc_ordinarySlopeJogIntent;
     private _walk = ((_unit getVariable ["GAIT_slopeExitWalkOnly", false]) && {!_ordinarySlopeJog}) ||
-        {isForcedWalk _unit && {!_ordinarySlopeJog}} ||
+        {[_unit] call GAIT_fnc_readLocomotionForcedWalk && {!_ordinarySlopeJog}} ||
         {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
     private _pace = ["Mrun", "Mwlk"] select _walk;
-    if (!_walk && {isSprintAllowed _unit} && {(_unit getVariable ["ace_common_effect_blockSprint", 0]) <= 0} &&
+    if (!_walk && {[_unit] call GAIT_fnc_readLocomotionSprintAllowed} && {(_unit getVariable ["ace_common_effect_blockSprint", 0]) <= 0} &&
         {_input select 2} && {_direction in ["Df", "Dfl", "Dfr"]}) then {_pace = "Meva";};
     if (_direction isEqualTo "Dnon") then {_pace = "Mstp";};
     private _target = "AmovPerc" + _pace + _family + _direction;
@@ -621,7 +631,7 @@ GAIT_fnc_beginNativeLocomotionStop = {
     _unit setVariable ["GAIT_slopeExitPending", true];
     _unit setVariable ["GAIT_slopeExitIssued", true];
     _unit setVariable ["GAIT_slopeExitFailureReported", false];
-    _unit setVariable ["GAIT_slopeExitWalkOnly", isForcedWalk _unit];
+    _unit setVariable ["GAIT_slopeExitWalkOnly", [_unit] call GAIT_fnc_readLocomotionForcedWalk];
     _unit setVariable ["GAIT_slopeExitSource", _animation];
     _unit setVariable ["GAIT_slopeExitTarget", _target];
     _unit setVariable ["GAIT_slopeExitDeadline", diag_tickTime + 1.5];
@@ -725,7 +735,7 @@ GAIT_fnc_resumeLocomotionExit = {
         {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
     private _ordinarySlopeJog = [_input,
         missionNamespace getVariable ["GAIT_lastKnownSlopeDegrees", 0],
-        _aceSlopeLock, isForcedWalk _unit] call GAIT_fnc_ordinarySlopeJogIntent;
+        _aceSlopeLock, [_unit] call GAIT_fnc_readLocomotionForcedWalk] call GAIT_fnc_ordinarySlopeJogIntent;
     private _resumeInput = (_unit getVariable ["GAIT_turboPressedThisFrame", false]) || {_ordinarySlopeJog};
     if (!_resumeInput) exitWith {false};
     private _request = missionNamespace getVariable ["GAIT_locomotionRequest", []];
@@ -738,7 +748,7 @@ GAIT_fnc_resumeLocomotionExit = {
         call GAIT_fnc_locomotionIntent;
     private _enabled = (missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]) &&
         {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]} && {call GAIT_fnc_modeAllowsMovement};
-    private _nativeLock = (!isSprintAllowed _unit || {isForcedWalk _unit}) && {!_ordinarySlopeJog};
+    private _nativeLock = (![_unit] call GAIT_fnc_readLocomotionSprintAllowed || {[_unit] call GAIT_fnc_readLocomotionForcedWalk}) && {!_ordinarySlopeJog};
     private _locked = _nativeLock || {_aceSlopeLock};
     private _eligible = _enabled && {!_locked} && {([_unit] call GAIT_fnc_readLocomotionStance) isEqualTo "STAND"} &&
         {(_unit getVariable ["GAIT_slopeAttemptWeapon", ""]) isEqualTo (currentWeapon _unit)} &&
@@ -813,8 +823,8 @@ GAIT_fnc_tickLocomotion = {
         {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
     private _ordinarySlopeJog = [_input,
         missionNamespace getVariable ["GAIT_lastKnownSlopeDegrees", 0],
-        _aceSlopeLock, isForcedWalk _unit] call GAIT_fnc_ordinarySlopeJogIntent;
-    private _nativeSlopeLock = (!isSprintAllowed _unit || {isForcedWalk _unit}) && {!_ordinarySlopeJog};
+        _aceSlopeLock, [_unit] call GAIT_fnc_readLocomotionForcedWalk] call GAIT_fnc_ordinarySlopeJogIntent;
+    private _nativeSlopeLock = (![_unit] call GAIT_fnc_readLocomotionSprintAllowed || {[_unit] call GAIT_fnc_readLocomotionForcedWalk}) && {!_ordinarySlopeJog};
     private _requestLock = (_request select 2) && {!_ordinarySlopeJog};
     private _locked = _requestLock || {_nativeSlopeLock} ||
         {(_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0} || {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
@@ -833,7 +843,7 @@ GAIT_fnc_tickLocomotion = {
     private _phase = _unit getVariable ["GAIT_locomotionPhase", "native"];
     private _oldWeapon = _unit getVariable ["GAIT_slopeAttemptWeapon", ""];
     if (_phase isNotEqualTo "native" && {_oldWeapon isNotEqualTo (currentWeapon _unit)}) exitWith {
-        [_unit, _input, isForcedWalk _unit] call GAIT_fnc_releaseSlopeLocomotion;
+        [_unit, _input, [_unit] call GAIT_fnc_readLocomotionForcedWalk] call GAIT_fnc_releaseSlopeLocomotion;
     };
     private _expectedBlend = [_animation, _unit getVariable ["GAIT_slopeEntrySource", ""], _unit getVariable ["GAIT_slopeEntryTarget", ""]] call GAIT_fnc_isLocomotionHandoffBlend;
     _expectedBlend = _expectedBlend || {[_animation, _unit getVariable ["GAIT_slopeEntrySource", ""],
@@ -842,7 +852,7 @@ GAIT_fnc_tickLocomotion = {
         diag_tickTime > (_unit getVariable ["GAIT_slopeEntryDeadline", -1]), _moving] call GAIT_fnc_locomotionDecision;
     switch (_action) do {
         case "release": {
-            [_unit, _input, isForcedWalk _unit] call GAIT_fnc_releaseSlopeLocomotion;
+            [_unit, _input, [_unit] call GAIT_fnc_readLocomotionForcedWalk] call GAIT_fnc_releaseSlopeLocomotion;
             // Ordinary key release cancels body intent, not the still-valid
             // movement-context envelope needed for a render-frame re-press.
             if (_enabled && {!_locked} && {_eligible}) then {

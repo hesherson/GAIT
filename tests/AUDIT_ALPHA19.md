@@ -3,7 +3,7 @@
 Date: 2026-09-21
 Branch: `dev/gait-foundation-1.8.0`
 
-This record documents source-level audit work performed while preparing alpha19. It is **not** a claim that HEMTT, SQF-VM, or Arma runtime acceptance passed in this environment.
+This record documents the alpha19 foundation audit. Current GitHub CI enforces source/static contracts, a pinned HEMTT 1.22.0 build with source-matched PBO verification, and the pinned SQF-VM 2.0.0 behavioral suite. Arma runtime acceptance is still separate because CI cannot simulate engine root motion, animation appearance, physical collision, or dedicated-server rendering.
 
 ## Source/static findings
 
@@ -21,6 +21,8 @@ This record documents source-level audit work performed while preparing alpha19.
 - Passive pace calibration is connected to the steep-downhill physical target; a manual pace profile is no longer the only route to calibrated 32–34 km/h targeting.
 - Debug HUD reports the actual pose family, locomotion-active flag, automatic sprint-reference calibration and full-profile calibration separately.
 - Historical alpha11 validation files and the RC4/alpha11 byte-preservation harness are explicitly marked historical; current source invariants live in `tests/alpha19_invariants.py`.
+- GitHub CI runs all 22 current SQF-VM behavioral suites and stores their regression report/logs as an artifact.
+- GitHub CI builds both PBOs with HEMTT 1.22.0 and verifies virtual prefixes, checksums, the 18-script inventory, and embedded-script SHA256 equality against source.
 
 ## Current validation commands
 

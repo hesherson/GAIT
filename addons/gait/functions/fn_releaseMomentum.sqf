@@ -152,6 +152,13 @@ GAIT_fnc_clearReleaseMomentum = {
         missionNamespace setVariable ["GAIT_releaseMomentumActive", false];
         missionNamespace setVariable ["GAIT_shiftReleaseRunTaperActive", false];
         missionNamespace setVariable ["GAIT_shiftReleaseRunTaperKeep", 0];
+        missionNamespace setVariable ["GAIT_releaseDirectionalEscape", false];
+        missionNamespace setVariable ["GAIT_releaseDirectionalEscapeCoefficient", -1];
+        missionNamespace setVariable ["GAIT_releasePaceMatched", false];
+        missionNamespace setVariable ["GAIT_releaseStartMS", -1];
+        missionNamespace setVariable ["GAIT_releaseTargetMS", -1];
+        missionNamespace setVariable ["GAIT_releaseDuration", 0];
+        missionNamespace setVariable ["GAIT_shiftReleaseRunTaperTargetKmh", -1];
     };
 };
 

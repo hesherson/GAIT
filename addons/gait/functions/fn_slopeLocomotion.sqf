@@ -748,7 +748,7 @@ GAIT_fnc_resumeLocomotionExit = {
         call GAIT_fnc_locomotionIntent;
     private _enabled = (missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]) &&
         {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]} && {call GAIT_fnc_modeAllowsMovement};
-    private _nativeLock = (![_unit] call GAIT_fnc_readLocomotionSprintAllowed || {[_unit] call GAIT_fnc_readLocomotionForcedWalk}) && {!_ordinarySlopeJog};
+    private _nativeLock = (!([_unit] call GAIT_fnc_readLocomotionSprintAllowed) || {[_unit] call GAIT_fnc_readLocomotionForcedWalk}) && {!_ordinarySlopeJog};
     private _locked = _nativeLock || {_aceSlopeLock};
     private _eligible = _enabled && {!_locked} && {([_unit] call GAIT_fnc_readLocomotionStance) isEqualTo "STAND"} &&
         {(_unit getVariable ["GAIT_slopeAttemptWeapon", ""]) isEqualTo (currentWeapon _unit)} &&
@@ -824,7 +824,7 @@ GAIT_fnc_tickLocomotion = {
     private _ordinarySlopeJog = [_input,
         missionNamespace getVariable ["GAIT_lastKnownSlopeDegrees", 0],
         _aceSlopeLock, [_unit] call GAIT_fnc_readLocomotionForcedWalk] call GAIT_fnc_ordinarySlopeJogIntent;
-    private _nativeSlopeLock = (![_unit] call GAIT_fnc_readLocomotionSprintAllowed || {[_unit] call GAIT_fnc_readLocomotionForcedWalk}) && {!_ordinarySlopeJog};
+    private _nativeSlopeLock = (!([_unit] call GAIT_fnc_readLocomotionSprintAllowed) || {[_unit] call GAIT_fnc_readLocomotionForcedWalk}) && {!_ordinarySlopeJog};
     private _requestLock = (_request select 2) && {!_ordinarySlopeJog};
     private _locked = _requestLock || {_nativeSlopeLock} ||
         {(_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0} || {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};

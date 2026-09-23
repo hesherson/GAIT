@@ -61,3 +61,47 @@ jobs:
         shell: pwsh
         run: |
           ./tools/verify_build.ps1 -BuildPath ./.hemttout/build -SourceRoot .
+
+
+  sqfvm-regressions:
+    needs: source-contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned SQF-VM
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 \
+            -o /tmp/sqfvm.zip \
+            https://github.com/SQFvm/runtime/releases/download/v2026.04.03-ed9f5f5/sqfvm_linux_x64_gcc.zip
+          echo "bb4e3bb415305d2ef2c4cdb75e98f442baea3a4575887c6570a11435a780615b  /tmp/sqfvm.zip" | sha256sum -c -
+          mkdir -p /tmp/sqfvm
+          unzip -q /tmp/sqfvm.zip -d /tmp/sqfvm
+          SQFVM="$(find /tmp/sqfvm -type f -name 'sqfvm' | head -n 1)"
+          if [ -z "$SQFVM" ]; then
+            echo "Could not locate sqfvm executable in pinned release archive." >&2
+            find /tmp/sqfvm -maxdepth 3 -type f -print >&2
+            exit 1
+          fi
+          chmod +x "$SQFVM"
+          echo "SQFVM=$SQFVM" >> "$GITHUB_ENV"
+          "$SQFVM" --version
+
+      - name: Run 22 SQF regression suites
+        run: python tools/run_regressions.py --sqfvm "$SQFVM" --output tests/validation-ci
+
+      - name: Upload SQF regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gait-sqfvm-regression-evidence
+          path: tests/validation-ci
+          if-no-files-found: warn

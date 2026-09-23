@@ -54,7 +54,7 @@ jobs:
       - name: Set up HEMTT
         uses: arma-actions/hemtt@v1
         with:
-          version: '1.22.0'
+          version: 'v1.22.0'
 
       - name: Build GAIT
         run: hemtt build

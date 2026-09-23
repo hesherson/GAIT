@@ -18,6 +18,11 @@ GAIT_fnc_readLocomotionAnimation = {
     animationState _unit
 };
 
+GAIT_fnc_readLocomotionStance = {
+    params [["_unit", objNull, [objNull]]];
+    stance _unit
+};
+
 // Pure directional selection shared by entry, release and regression tests.
 GAIT_fnc_slopeDirection = {
     params [["_forward", 0, [0]], ["_right", 0, [0]]];
@@ -349,7 +354,7 @@ GAIT_fnc_stanceYieldActive = {
     private _until = _unit getVariable ["GAIT_stanceYieldUntil", -1];
     private _held = _unit getVariable ["GAIT_stanceInputHeld", false];
     private _anim = toLower ([_unit] call GAIT_fnc_readLocomotionAnimation);
-    private _lowStanceVisible = (stance _unit) in ["CROUCH", "PRONE"] ||
+    private _lowStanceVisible = ([_unit] call GAIT_fnc_readLocomotionStance) in ["CROUCH", "PRONE"] ||
         {(_anim find "pknl") >= 0} || {(_anim find "ppne") >= 0};
     private _stanceBlend = (_anim find "_amov") >= 0 ||
         {(_anim find "_ainv") >= 0} || {(_anim find "_acin") >= 0};
@@ -496,7 +501,7 @@ GAIT_fnc_serviceLocomotionExit = {
         false
     };
     if !([_unit] call GAIT_fnc_fatigueMovementContextEligible) exitWith {false};
-    if (!isTouchingGround _unit || {(stance _unit) isNotEqualTo "STAND"}) exitWith {false};
+    if (!isTouchingGround _unit || {([_unit] call GAIT_fnc_readLocomotionStance) isNotEqualTo "STAND"}) exitWith {false};
     private _gesture = toLower (gestureState _unit);
     if ((["reload", "melee", "throw"] findIf {(_gesture find _x) >= 0}) >= 0) exitWith {false};
     private _entryWeapon = _unit getVariable ["GAIT_slopeAttemptWeapon", currentWeapon _unit];
@@ -603,7 +608,7 @@ GAIT_fnc_beginNativeLocomotionStop = {
         {(_name select [8, 4]) in ["mrun", "mwlk", "mtac", "meva", "mspr"]} &&
         {([_animation] call GAIT_fnc_slopeAnimationFamily) isEqualTo ""};
     if !([true, _owns, true, _ordinary,
-        (stance _unit) isEqualTo "STAND" && {[_unit, false] call GAIT_fnc_nativeMovementEligible}]
+        ([_unit] call GAIT_fnc_readLocomotionStance) isEqualTo "STAND" && {[_unit, false] call GAIT_fnc_nativeMovementEligible}]
         call GAIT_fnc_nativeStopDecision) exitWith {false};
     private _family = [_unit] call GAIT_fnc_slopeWeaponFamily;
     if (_family isEqualTo "" || {(_name select [12, 8]) isNotEqualTo (toLower _family)}) exitWith {false};
@@ -680,7 +685,7 @@ GAIT_fnc_redirectLocomotionEntryDirection = {
     if (isNull _unit || {!(_phase in ["entering", "active"])} ||
         {(count _input) < 3} || {!(_unit getVariable ["GAIT_directionChangedThisFrame", false])}) exitWith {false};
     private _moving = abs (_input select 0) > 0.05 || {abs (_input select 1) > 0.05};
-    if (!_moving || {!isTouchingGround _unit} || {(stance _unit) isNotEqualTo "STAND"} ||
+    if (!_moving || {!isTouchingGround _unit} || {([_unit] call GAIT_fnc_readLocomotionStance) isNotEqualTo "STAND"} ||
         {!([_unit, false] call GAIT_fnc_nativeMovementEligible)}) exitWith {false};
     private _direction = [_input select 0, _input select 1] call GAIT_fnc_slopeDirection;
     private _family = [_unit] call GAIT_fnc_slopeWeaponFamily;
@@ -735,7 +740,7 @@ GAIT_fnc_resumeLocomotionExit = {
         {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]} && {call GAIT_fnc_modeAllowsMovement};
     private _nativeLock = (!isSprintAllowed _unit || {isForcedWalk _unit}) && {!_ordinarySlopeJog};
     private _locked = _nativeLock || {_aceSlopeLock};
-    private _eligible = _enabled && {!_locked} && {(stance _unit) isEqualTo "STAND"} &&
+    private _eligible = _enabled && {!_locked} && {([_unit] call GAIT_fnc_readLocomotionStance) isEqualTo "STAND"} &&
         {(_unit getVariable ["GAIT_slopeAttemptWeapon", ""]) isEqualTo (currentWeapon _unit)} &&
         {[_unit, false] call GAIT_fnc_nativeMovementEligible};
     private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
@@ -758,7 +763,7 @@ GAIT_fnc_tickLocomotion = {
         [player, _input] call GAIT_fnc_observeLocomotionInput;
         private _stanceHeld = call GAIT_fnc_getStanceInput;
         private _stanceEdge = [player, _stanceHeld] call GAIT_fnc_observeStanceInput;
-        if (_stanceEdge && {(stance player) isEqualTo "STAND"}) then {
+        if (_stanceEdge && {([player] call GAIT_fnc_readLocomotionStance) isEqualTo "STAND"}) then {
             [player] call GAIT_fnc_beginStanceYield;
         };
         _stanceYieldNow = [player] call GAIT_fnc_stanceYieldActive;
@@ -821,7 +826,7 @@ GAIT_fnc_tickLocomotion = {
     private _releaseHeld = (_unit getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo [] ||
         {(_unit getVariable ["GAIT_releaseBrakeHold", []]) isNotEqualTo []};
     _requested = _requested || {_enabled && {!_locked} && {_releaseHeld}};
-    private _eligible = (stance _unit) isEqualTo "STAND" && {[_unit, false] call GAIT_fnc_nativeMovementEligible};
+    private _eligible = ([_unit] call GAIT_fnc_readLocomotionStance) isEqualTo "STAND" && {[_unit, false] call GAIT_fnc_nativeMovementEligible};
     private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
     private _activeFamily = [_animation] call GAIT_fnc_slopeAnimationFamily;
     private _family = [_unit] call GAIT_fnc_slopeWeaponFamily;

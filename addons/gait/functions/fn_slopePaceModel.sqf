@@ -77,7 +77,7 @@ GAIT_fnc_stepUphillPaceExposure = {
     private _severity = ((_gradeDegrees - _startDegrees) /
         (_referenceDegrees - _startDegrees)) max 0 min 1;
     private _uphill = _sprinting && {_gradeDegrees > _startDegrees};
-    private _target = parseNumber _uphill;
+    private _target = [0, 1] select _uphill;
     private _duration = _recoverySeconds max 0;
     if (_uphill) then {
         private _ease = _severity * _severity * (3 - (2 * _severity));

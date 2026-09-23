@@ -48,6 +48,8 @@ class Alpha19Invariants(unittest.TestCase):
     def test_direction_owns_input_not_speed_phase(self):
         slope = read("fn_slopeLocomotion.sqf")
         self.assertIn('GAIT_directionChangedThisFrame', slope)
+        self.assertIn('GAIT_fnc_readLocomotionAnimation', slope)
+        self.assertIn('GAIT_fnc_readLocomotionStance', slope)
         self.assertIn('_phase in ["entering", "active"]', slope)
         self.assertIn('GAIT_liveInputDirection', slope)
         self.assertIn('"_GAITSprint"', slope)

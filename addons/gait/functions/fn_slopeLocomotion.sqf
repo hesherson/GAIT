@@ -11,6 +11,13 @@
     switchMove reset or a separate walking-animation stage.
 */
 
+// Engine boundary kept behind one adapter so pure dispatcher regressions can
+// exercise ownership/order without requiring SQF-VM to implement animationState.
+GAIT_fnc_readLocomotionAnimation = {
+    params [["_unit", objNull, [objNull]]];
+    animationState _unit
+};
+
 // Pure directional selection shared by entry, release and regression tests.
 GAIT_fnc_slopeDirection = {
     params [["_forward", 0, [0]], ["_right", 0, [0]]];
@@ -194,7 +201,7 @@ GAIT_fnc_slopeWeaponFamily = {
     } else {
         if (_weapon isEqualTo (handgunWeapon _unit)) then {
             _families = ["SlowWpst", "SrasWpst"];
-            private _pistolAnim = toLower (animationState _unit);
+            private _pistolAnim = toLower ([_unit] call GAIT_fnc_readLocomotionAnimation);
             _fallback = if ((_pistolAnim find "slowwpst") >= 0) then {
                 "SlowWpst"
             } else {
@@ -213,7 +220,7 @@ GAIT_fnc_slopeWeaponFamily = {
     };
     // Launcher, binocular and mod-specific weapon poses keep their own maps.
     if (_families isEqualTo []) exitWith {""};
-    private _animation = animationState _unit;
+    private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
     private _stateFamily = getText (configFile >> "CfgMovesMaleSdr" >> "States" >> _animation >> "GAIT_slopeFamily");
     if (_stateFamily in _families) exitWith {_stateFamily};
 
@@ -341,7 +348,7 @@ GAIT_fnc_stanceYieldActive = {
     if (isNull _unit) exitWith {false};
     private _until = _unit getVariable ["GAIT_stanceYieldUntil", -1];
     private _held = _unit getVariable ["GAIT_stanceInputHeld", false];
-    private _anim = toLower (animationState _unit);
+    private _anim = toLower ([_unit] call GAIT_fnc_readLocomotionAnimation);
     private _lowStanceVisible = (stance _unit) in ["CROUCH", "PRONE"] ||
         {(_anim find "pknl") >= 0} || {(_anim find "ppne") >= 0};
     private _stanceBlend = (_anim find "_amov") >= 0 ||
@@ -421,7 +428,7 @@ GAIT_fnc_releaseSlopeLocomotion = {
             [_unit] call GAIT_fnc_clearSlopeLocomotionState;
         };
         if ((_unit getVariable ["GAIT_locomotionPhase", "native"]) isEqualTo "exiting") exitWith {};
-        private _animation = animationState _unit;
+        private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
         private _inside = ([_animation] call GAIT_fnc_slopeAnimationFamily) isNotEqualTo "";
         private _source = _unit getVariable ["GAIT_slopeEntrySource", ""];
         private _entryBlend = [_animation, _source, _unit getVariable ["GAIT_slopeEntryTarget", ""]] call GAIT_fnc_isLocomotionHandoffBlend;
@@ -431,7 +438,7 @@ GAIT_fnc_releaseSlopeLocomotion = {
             [_unit] call GAIT_fnc_clearSlopeLocomotionState;
         };
         if !(_unit getVariable ["GAIT_slopeAttemptLatched", false]) then {
-            private _observedFamily = [animationState _unit] call GAIT_fnc_slopeAnimationFamily;
+            private _observedFamily = [[_unit] call GAIT_fnc_readLocomotionAnimation] call GAIT_fnc_slopeAnimationFamily;
             if (_observedFamily isEqualTo ([_unit] call GAIT_fnc_slopeWeaponFamily)) then {
                 // Adopt an orphan only when its pose matches the equipped
                 // weapon. An empty weapon is a valid unarmed entry value.
@@ -459,7 +466,7 @@ GAIT_fnc_releaseSlopeLocomotion = {
 GAIT_fnc_serviceLocomotionExit = {
     params [["_unit", objNull, [objNull]]];
     if (isNull _unit || {(_unit getVariable ["GAIT_locomotionPhase", "native"]) isNotEqualTo "exiting"}) exitWith {false};
-    private _animation = animationState _unit;
+    private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
     private _source = _unit getVariable ["GAIT_slopeEntrySource", ""];
     private _inside = ([_animation] call GAIT_fnc_slopeAnimationFamily) isNotEqualTo "";
     private _entryBlend = [_animation, _source, _unit getVariable ["GAIT_slopeEntryTarget", ""]] call GAIT_fnc_isLocomotionHandoffBlend;
@@ -590,7 +597,7 @@ GAIT_fnc_beginNativeLocomotionStop = {
     _unit setVariable ["GAIT_nativeStopPaceLease", []];
     _owns = _owns || {[_lease, diag_tickTime, currentWeapon _unit, getAnimSpeedCoef _unit]
         call GAIT_fnc_nativeStopLeaseValid};
-    private _animation = animationState _unit;
+    private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
     private _name = toLower _animation;
     private _ordinary = (_name select [0, 8]) isEqualTo "amovperc" &&
         {(_name select [8, 4]) in ["mrun", "mwlk", "mtac", "meva", "mspr"]} &&
@@ -684,7 +691,7 @@ GAIT_fnc_redirectLocomotionEntryDirection = {
     if ((toLower _oldTarget) isEqualTo (toLower _target)) exitWith {false};
     if (!isClass (configFile >> "CfgMovesMaleSdr" >> "States" >> _target)) exitWith {false};
 
-    private _animation = animationState _unit;
+    private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
     private _source = _unit getVariable ["GAIT_slopeEntrySource", ""];
     private _beforeDeadline = diag_tickTime <= (_unit getVariable ["GAIT_slopeEntryDeadline", -1]);
     private _insideFamily = ([_animation] call GAIT_fnc_slopeAnimationFamily) isNotEqualTo "";
@@ -731,7 +738,7 @@ GAIT_fnc_resumeLocomotionExit = {
     private _eligible = _enabled && {!_locked} && {(stance _unit) isEqualTo "STAND"} &&
         {(_unit getVariable ["GAIT_slopeAttemptWeapon", ""]) isEqualTo (currentWeapon _unit)} &&
         {[_unit, false] call GAIT_fnc_nativeMovementEligible};
-    private _animation = animationState _unit;
+    private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
     private _known = ([_animation] call GAIT_fnc_slopeAnimationFamily) isNotEqualTo "" ||
         {[_animation, _unit getVariable ["GAIT_slopeExitSource", ""],
             _unit getVariable ["GAIT_slopeExitTarget", ""]] call GAIT_fnc_isLocomotionHandoffBlend};
@@ -815,7 +822,7 @@ GAIT_fnc_tickLocomotion = {
         {(_unit getVariable ["GAIT_releaseBrakeHold", []]) isNotEqualTo []};
     _requested = _requested || {_enabled && {!_locked} && {_releaseHeld}};
     private _eligible = (stance _unit) isEqualTo "STAND" && {[_unit, false] call GAIT_fnc_nativeMovementEligible};
-    private _animation = animationState _unit;
+    private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
     private _activeFamily = [_animation] call GAIT_fnc_slopeAnimationFamily;
     private _family = [_unit] call GAIT_fnc_slopeWeaponFamily;
     private _phase = _unit getVariable ["GAIT_locomotionPhase", "native"];

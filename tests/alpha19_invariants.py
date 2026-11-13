@@ -111,15 +111,12 @@ class LocomotionInvariants(unittest.TestCase):
             for command in forbidden:
                 self.assertNotRegex(code, rf"\b{command}\b", f"{path.name}: {command}")
 
-    def test_locality_reset_and_audio_contract(self):
+    def test_locality_and_reset_contract(self):
         helper = read("fn_traversalHelpers.sqf")
         main = read("fn_initSprintSystem.sqf")
         module = read("fn_moduleResetEffects.sqf")
         reset = read("fn_resetEffects.sqf")
         self.assertIn("!local _unit", helper)
-        self.assertIn('playSoundUI [_soundPath, _vol, 1, true, 0, false]', main)
-        self.assertNotIn("playSound3D [_soundPath", main)
-        self.assertIn("GAIT_fnc_stopTinnitusSound", reset)
         self.assertIn("CBA_fnc_targetEvent", module)
         self.assertNotIn("remoteExecCall", module)
         self.assertIn("GAIT_fnc_clearLocomotionInputHistory", reset)
@@ -129,8 +126,24 @@ class LocomotionInvariants(unittest.TestCase):
         reset_block = main[reset_anchor:main.index('// Refresh live Addon Options settings each tick.', reset_anchor)]
         self.assertIn('_lastForwardReleaseSerial = player getVariable ["GAIT_forwardReleaseSerial", 0];', reset_block)
         self.assertIn('_lastForwardPressSerial = player getVariable ["GAIT_forwardPressSerial", 0];', reset_block)
-        self.assertIn('_lastOnGround = isTouchingGround player;', reset_block)
-        self.assertIn('_lastVerticalSpeed = (velocity player) select 2;', reset_block)
+        self.assertIn('!isTouchingGround _unit', helper)
+
+    def test_ace_owns_fatigue_feedback(self):
+        addon = ROOT / "addons/gait"
+        self.assertFalse((ROOT / "addons/heartbeat").exists())
+        self.assertFalse((addon / "sounds/tinnitus_loop.ogg").exists())
+        self.assertFalse((FUNCTIONS / "fn_fatigueVisuals.sqf").exists())
+        self.assertFalse((FUNCTIONS / "fn_aceFatigueVisualBridge.sqf").exists())
+        config = (addon / "config.cpp").read_text()
+        self.assertNotIn("GAIT_tinnitus_loop", config)
+        for path in FUNCTIONS.glob("*.sqf"):
+            source = path.read_text(encoding="utf-8-sig")
+            self.assertNotIn("ace_advanced_fatigue_ppeBlackout", source, path.name)
+            self.assertNotRegex(
+                executable(source),
+                r"\b(?:ppEffect\w+|ace_common_fnc_setHearingCapability|playSoundUI|playSound3D|addCamShake)\b",
+                path.name,
+            )
 
     def test_single_suspended_context_definition(self):
         count = 0

@@ -31,17 +31,14 @@ jobs:
       - name: Animation graph audit
         run: python tests/foundation_graph.py
 
-      - name: Heartbeat configuration audit
-        run: python tests/heartbeat_audio.py
-
       - name: PBO prefix source audit
         run: python tests/pbo_prefix_layout.py
 
-      - name: Alpha19 invariant audit
+      - name: Locomotion and ACE feedback ownership audit
         run: python tests/alpha19_invariants.py
 
       - name: Compile Python validation sources
-        run: python -m py_compile tools/generate_foundation_actions.py tests/settings_audit.py tests/pace_calibration_integration.py tests/foundation_graph.py tests/heartbeat_audio.py tests/pbo_prefix_layout.py tests/alpha19_invariants.py
+        run: python -m py_compile tools/generate_foundation_actions.py tests/settings_audit.py tests/pace_calibration_integration.py tests/foundation_graph.py tests/pbo_prefix_layout.py tests/alpha19_invariants.py
 
 
   hemtt-build:
@@ -59,7 +56,7 @@ jobs:
       - name: Build GAIT
         run: hemtt build
 
-      - name: Verify built PBOs against source
+      - name: Verify built PBO against source
         shell: pwsh
         run: |
           ./tools/verify_build.ps1 -BuildPath ./.hemttout/build -SourceRoot .
@@ -97,7 +94,7 @@ jobs:
           echo "SQFVM=$SQFVM" >> "$GITHUB_ENV"
           "$SQFVM" --version
 
-      - name: Run 22 SQF regression suites
+      - name: Run 20 SQF regression suites
         run: python tools/run_regressions.py --sqfvm "$SQFVM" --output tests/validation-ci
 
       - name: Upload SQF regression evidence

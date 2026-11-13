@@ -93,7 +93,7 @@ def read_pbo(path):
 class PboPrefixLayout(unittest.TestCase):
     def test_source_prefixes_and_core_function_paths(self):
         prefixes = source_prefixes(ROOT)
-        self.assertEqual(prefixes, {"gait": "gait", "heartbeat": "z\\gait\\addons\\heartbeat"})
+        self.assertEqual(prefixes, {"gait": "gait"})
         config = (ROOT / "addons/gait/config.cpp").read_text()
         self.assertIn('file = "\\gait\\functions";', config)
         paths = re.findall(r"'\\gait\\([^']+\.sqf)'", config)
@@ -118,18 +118,22 @@ class PboPrefixLayout(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Nested prefix marker"):
                 source_prefixes(root)
 
-    def test_built_prefixes_settings_payload_and_checksums(self):
+    def test_built_prefix_settings_payload_and_checksum(self):
         build = ROOT / ".hemttout/build/addons"
         if not build.exists():
-            self.skipTest("Run hemtt build to validate the packed PBOs")
-        for addon, prefix in source_prefixes(ROOT).items():
-            properties, contents = read_pbo(build / f"gait_{addon}.pbo")
-            self.assertEqual(properties["prefix"], prefix)
-            self.assertIn("config.bin", contents)
-            self.assertFalse(any(name.startswith("heartbeat/") for name in contents))
-            if addon == "gait":
-                for source in (ROOT / "addons/gait/functions").glob("*.sqf"):
-                    self.assertEqual(contents[f"functions/{source.name.lower()}"], source.read_bytes())
+            self.skipTest("Run hemtt build to validate the packed PBO")
+        self.assertEqual({p.name for p in build.glob("*.pbo")}, {"gait_gait.pbo"})
+        properties, contents = read_pbo(build / "gait_gait.pbo")
+        self.assertEqual(properties["prefix"], "gait")
+        self.assertIn("config.bin", contents)
+        self.assertFalse(any(name.startswith("heartbeat/") for name in contents))
+        self.assertNotIn("sounds/tinnitus_loop.ogg", contents)
+        source_functions = ROOT / "addons/gait/functions"
+        source_scripts = {f"functions/{p.name.lower()}": p.read_bytes()
+                          for p in source_functions.glob("*.sqf")}
+        embedded_scripts = {name: data for name, data in contents.items()
+                            if name.startswith("functions/") and name.endswith(".sqf")}
+        self.assertEqual(embedded_scripts, source_scripts)
 
 
 if __name__ == "__main__":

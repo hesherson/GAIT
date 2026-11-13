@@ -1,79 +1,41 @@
-# GAIT 1.8.0-alpha20 build and validation
+# GAIT 1.8.0-alpha20 build and deployment
 
-GAIT is developed from the Git checkout at `F:\GAIT` on branch `dev/gait-foundation-1.8.0`. Arma 3 2.18+, CBA_A3 and ACE3 are required. Close Arma before rebuilding the local mod.
+Requires Arma 3 2.18+, CBA_A3, ACE3, Git, and HEMTT. Close Arma before deploying to a mod folder.
+
+## First checkout
+
+Run once with a destination that does not exist yet:
+
+```powershell
+git clone --branch dev/gait-foundation-1.8.0 https://github.com/hesherson/GAIT.git F:\GAIT
+```
+
+If `F:\GAIT` is already your GAIT checkout, use it directly. Run `git fetch origin` and `git switch dev/gait-foundation-1.8.0` there if it is on another branch. If `F:\GAIT` contains an extracted ZIP, use a new empty destination and substitute that path below.
 
 ## Update and build
 
 ```powershell
 Set-Location 'F:\GAIT'
-
-git fetch origin
-git pull --ff-only origin dev/gait-foundation-1.8.0
-git log -1 --oneline
-
-hemtt build
-
-powershell.exe -NoProfile -ExecutionPolicy Bypass `
-    -File .\tools\verify_build.ps1 `
-    -BuildPath .\.hemttout\build `
-    -SourceRoot .
+git pull --ff-only
+if ($LASTEXITCODE -ne 0) { throw 'GAIT pull failed.' }
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\Deploy-GAIT.ps1
 ```
 
-Load only `F:\GAIT\.hemttout\build` as the local GAIT mod. Disable older GAIT copies before starting a fresh mission.
+Add `F:\GAIT\.hemttout\build` as a local mod in Arma Launcher. Enable one GAIT copy.
 
-The verifier requires exactly two PBOs:
+To keep using an existing launcher mod path, pass its full folder path as `-DeployPath` to the same script. The script verifies the staged build before replacing an existing GAIT folder and saves the previous folder beside it.
 
-| PBO | Virtual prefix |
-| --- | --- |
-| `gait_gait.pbo` | `gait` |
-| `gait_heartbeat.pbo` | `z\gait\addons\heartbeat` |
-
-It validates PBO checksums, prefixes, `config.bin`, the complete 18-file runtime SQF inventory, and source-vs-built SHA256 equality when `-SourceRoot .` is supplied.
-
-The optional heartbeat PBO keeps ACE Medical Feedback heartbeat samples at **10% of ACE's original amplitude**. Unloading that PBO restores ACE's normal heartbeat configuration.
-
-## Source/static checks
-
-Python is not required to play or build GAIT, but it is recommended before committing graph/settings changes:
+## Verify source
 
 ```powershell
-Set-Location 'F:\GAIT'
-
 python .\tools\generate_foundation_actions.py --check
 python .\tests\settings_audit.py
 python .\tests\pace_calibration_integration.py
 python .\tests\foundation_graph.py
-python .\tests\heartbeat_audio.py
 python .\tests\pbo_prefix_layout.py
 python .\tests\alpha19_invariants.py
+
+python .\tools\run_regressions.py --sqfvm 'C:\path\to\sqfvm.exe'
 ```
 
-The historical `tests\feature_preservation.py` harness remains an alpha11/RC4 byte-preservation contract. Current builds use the source checks above.
-
-## SQF-VM regression suite
-
-SQF-VM is supplied separately. The current runner contains 22 actual-helper suites:
-
-```powershell
-python .\tools\run_regressions.py `
-    --sqfvm 'C:\path\to\sqfvm.exe' `
-    --output '.\tests\validation-current'
-```
-
-This tests pure/state-machine SQF logic. It does not simulate Arma animation interpolation, root motion, physical collision, dedicated-server rendering, or perceived audiovisual behavior.
-
-## In-game validation
-
-Use `README_TEST_BUILD.md` for current acceptance cases. The debug HUD identifies the actual weapon/pose family, locomotion phase, automatic sprint-reference calibration and full manual pace-profile state.
-
-For a read-only capture, copy `tests/foundation_capture.sqf` into the test mission and run:
-
-```sqf
-[90, "alpha20 terrain and load"] execVM "foundation_capture.sqf";
-```
-
-The current source repository does not contain a prebuilt `ready_to_load/GAIT` package or a root `VERIFY_READY.ps1`. Build output is `.hemttout\build`; the supported verifier is `tools\verify_build.ps1`.
-
-## Deployment helper
-
-`DEPLOY_GITHUB.ps1` remains available for applying a complete extracted source package into the checkout. It stashes or rejects dirty work before replacement, builds with HEMTT, runs `tools\verify_build.ps1`, commits and optionally pushes `dev/gait-foundation-1.8.0`. For ordinary development on the existing checkout, use the direct update/build commands above.
+The deploy script verifies the single `gait_gait.pbo`, its `gait` prefix and checksum, and all 16 embedded runtime SQF files. The 20 SQF-VM suites exercise the movement model and ownership logic. See [in-game checks](README_TEST_BUILD.md) for physical pace and animation validation.

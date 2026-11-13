@@ -4,5 +4,20 @@
   "GAIT_ss_resetOnRespawn": "Owned effects must always be cleaned up when the player changes or control is suspended.",
   "GAIT_ss_suspendInSpectator": "Camera and delegated-control safety checks are always active.",
   "GAIT_ss_suspendWhileUnconscious": "Medical suspension is always active.",
-  "GAIT_ss_sprintExhaustedSpeed": "Exhausted sprint now uses a load-adjusted pace ratio relative to walking."
+  "GAIT_ss_sprintExhaustedSpeed": "Exhausted sprint now uses a load-adjusted pace ratio relative to walking.",
+  "GAIT_ss_masterFxIntensity": "ACE owns fatigue feedback.",
+  "GAIT_ss_tinnitusEnabled": "ACE owns fatigue feedback.",
+  "GAIT_ss_tinnitusStartExhaustion": "ACE owns fatigue feedback.",
+  "GAIT_ss_audioStopExhaustion": "ACE owns fatigue feedback.",
+  "GAIT_ss_tinnitusMaxVolume": "ACE owns fatigue feedback.",
+  "GAIT_ss_audioFadeLerp": "ACE owns fatigue feedback.",
+  "GAIT_ss_hearingEnabled": "ACE owns fatigue feedback.",
+  "GAIT_ss_hearingMinVolume": "ACE owns fatigue feedback.",
+  "GAIT_ss_hearingFadeDuration": "ACE owns fatigue feedback.",
+  "GAIT_ss_fatigueVignetteEnabled": "ACE owns fatigue feedback.",
+  "GAIT_ss_tunnelStartExhaustion": "ACE owns fatigue feedback.",
+  "GAIT_ss_tunnelMaxStrength": "ACE owns fatigue feedback.",
+  "GAIT_ss_hardLandingCamShakeEnabled": "GAIT does not add camera effects in this build.",
+  "GAIT_ss_hardLandingMinVerticalSpeed": "GAIT does not add camera effects in this build.",
+  "GAIT_ss_hardLandingShakeStrength": "GAIT does not add camera effects in this build."
 }

@@ -6,9 +6,7 @@
     - Custom sprint speed, reserve bridge, brace step, and momentum ramp
     - ACE Advanced Fatigue integration for physiology/acidosis/muscle damage
     - Native locomotion with scoped ACE fatigue movement-lock integration
-    - Native/ACE weapon handling; tinnitus and hearing reduction
-    - Short fatigue vignette pulses with clear intervals and owned cleanup
-    - ACE Medical Feedback heartbeat samples use 10% volume config overrides
+    - ACE owns weapon handling and fatigue feedback.
 
     Removed from mission version:
     - Fast Carry script startup
@@ -51,36 +49,18 @@ GAIT_fnc_log = {
 
 GAIT_fnc_compatModeIndex = {
     private _mode = missionNamespace getVariable ["GAIT_ss_compatibilityMode", 1];
-    if (_mode isEqualType "") then {
-        private _modern = ["Movement and effects", "Effects and hearing", "Visuals and tinnitus", "Disabled"] find _mode;
-        _mode = if (_modern >= 0) then {_modern + 1} else {
-            ["Full GAIT Control", "ACE-Friendly Hybrid", "Minimal Movement Override", "Visuals/Audio Only", "Disabled"] find _mode
-        };
-        if (_mode < 0) then {_mode = 1;};
+    if (_mode isEqualType "") exitWith {
+        [1, 4] select (_mode in ["Disabled", "Effects and hearing", "Visuals and tinnitus", "Minimal Movement Override", "Visuals/Audio Only"])
     };
-
-    _mode
+    [4, 1] select (_mode in [0, 1])
 };
 
 GAIT_fnc_compatModeName = {
-    private _names = ["Movement and effects", "Movement and effects", "Effects and hearing", "Visuals and tinnitus", "Disabled"];
-    _names param [call GAIT_fnc_compatModeIndex, "Movement and effects"]
-};
-
-GAIT_fnc_modeIsActive = {
-    (missionNamespace getVariable ["GAIT_ss_enabled", true]) && {(call GAIT_fnc_compatModeIndex) < 4}
+    ["Movement only", "Disabled"] select ((call GAIT_fnc_compatModeIndex) isEqualTo 4)
 };
 
 GAIT_fnc_modeAllowsMovement = {
-    (call GAIT_fnc_modeIsActive) && {(call GAIT_fnc_compatModeIndex) in [0, 1]}
-};
-
-GAIT_fnc_modeAllowsEffects = {
-    (call GAIT_fnc_modeIsActive) && {(call GAIT_fnc_compatModeIndex) in [0, 1, 2, 3]}
-};
-
-GAIT_fnc_modeAllowsHearing = {
-    (call GAIT_fnc_modeIsActive) && {(call GAIT_fnc_compatModeIndex) in [0, 1, 2]}
+    (missionNamespace getVariable ["GAIT_ss_enabled", true]) && {(call GAIT_fnc_compatModeIndex) isEqualTo 1}
 };
 
 GAIT_fnc_modeAllowsAceLockClearing = {
@@ -90,61 +70,10 @@ GAIT_fnc_modeAllowsAceLockClearing = {
 // Suspension/context eligibility is defined once in fn_traversalHelpers.sqf.
 
 // =====================================================
-// SAFE SPRINT AUDIO / HEARING HELPERS
-// =====================================================
-GAIT_fnc_playCfgSoundIfExists = {
-    params [
-        ["_soundClass", "", [""]]
-    ];
-
-    if (_soundClass isEqualTo "") exitWith {};
-
-    if (isClass (missionConfigFile >> "CfgSounds" >> _soundClass)) then {
-        playSound _soundClass;
-    };
-};
-
-GAIT_fnc_setSprintHearing = {
-    params [
-        ["_volume", 1, [0]],
-        ["_fade", 0.2, [0]],
-        ["_enabled", true, [false]]
-    ];
-
-    _volume = (_volume max 0) min 1;
-
-    // Avoid ACE _lowestVolume errors by ensuring the map exists and by
-    // restoring with volume 1 instead of removing the entry every frame.
-    if (!isNil "ace_common_fnc_setHearingCapability") then {
-        if (isNil "ace_common_setHearingCapabilityMap") then {
-            ace_common_setHearingCapabilityMap = createHashMap;
-        };
-
-        if (!_enabled) then {
-            _volume = 1;
-        };
-
-        ["GAIT_sprint_exhaustion", _volume, true, _fade] call ace_common_fnc_setHearingCapability;
-    } else {
-        _fade fadeSound _volume;
-        _fade fadeRadio _volume;
-    };
-};
-
-GAIT_fnc_stopTinnitusSound = {
-    private _id = missionNamespace getVariable ["GAIT_tinnitusSoundId", -1];
-    missionNamespace setVariable ["GAIT_tinnitusSoundId", -1];
-    if (_id isEqualType 0 && {_id >= 0}) then {
-        stopSound _id;
-    };
-};
-
-// =====================================================
 // ACE ADVANCED FATIGUE INTEGRATION
 // ACE keeps its physiology model: anaerobic reserve, aerobic reserve,
 // acidosis, muscle damage, breathing, and stamina bar.
-// MAV keeps movement feel: sprint speed, brace, momentum, carry speed,
-// intermittent fatigue vignette and tinnitus. Weapon sway stays with ACE/native handling.
+// GAIT reads ACE reserves and adjusts sprint pace, bracing, and momentum.
 // =====================================================
 GAIT_fnc_aceAdvancedFatigueActive = {
     (missionNamespace getVariable ["GAIT_ss_aceBridgeEnabled", true]) &&
@@ -187,8 +116,6 @@ call compile preprocessFileLineNumbers "\gait\functions\fn_paceCalibration.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_releaseMomentum.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_slopeLocomotion.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_nativeController.sqf";
-call compile preprocessFileLineNumbers "\gait\functions\fn_aceFatigueVisualBridge.sqf";
-call compile preprocessFileLineNumbers "\gait\functions\fn_fatigueVisuals.sqf";
 [] call GAIT_fnc_installLocomotionController;
 
 if (!(missionNamespace getVariable ["GAIT_resetEventInstalled", false]) && {!isNil "CBA_fnc_addEventHandler"}) then {
@@ -209,7 +136,6 @@ GAIT_fnc_tripPlayer = {
     if !(alive player) exitWith {};
     if (player getVariable ["ACE_isUnconscious", false]) exitWith {};
 
-    [] call GAIT_fnc_releaseFatigueVisuals;
     [] call GAIT_fnc_releaseNativeStaminaOwnership;
     [] call GAIT_fnc_releaseNativeMovement;
     player setVariable ["GAIT_isTripping", true, false];
@@ -267,7 +193,6 @@ GAIT_fnc_tripPlayer = {
 
     while {true} do {
         if (!isNull player && {player != _lastPlayer}) then {
-            [] call GAIT_fnc_releaseFatigueVisuals;
             [] call GAIT_fnc_releaseNativeStaminaOwnership;
             [] call GAIT_fnc_releaseNativeMovement;
             _lastPlayer = player;
@@ -307,57 +232,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha20"];
     };
 };
 
-// =====================================================
-// OLD VIGNETTE UI CLEANUP ONLY
-// No GUI overlay is used for tunnel vision anymore.
-// This only deletes leftover controls from the previous UI-vignette version.
-// =====================================================
-GAIT_fnc_clearOldExhaustionVignette = {
-    disableSerialization;
-
-    private _ctrls = uiNamespace getVariable ["GAIT_exhaustionVignetteCtrls", []];
-
-    {
-        if (!isNull _x) then {
-            ctrlDelete _x;
-        };
-    } forEach _ctrls;
-
-    uiNamespace setVariable ["GAIT_exhaustionVignetteCtrls", []];
-};
-
-// Legacy blur/aberration cleanup only. The alpha7 fatigue vignette has a
-// separate bounded owner and never reuses these old effect handles.
-GAIT_fnc_setTunnelVisionFX = {
-    params [
-        ["_strength", 0, [0]],
-        ["_instant", false, [false]]
-    ];
-
-    // Destroy any post-process handles a prior call/version may have created,
-    // returning the screen to a clean, effect-free state.
-    {
-        if (!isNil _x) then {
-            private _h = missionNamespace getVariable [_x, -1];
-            if (_h isEqualType 0 && {_h >= 0}) then {
-                _h ppEffectEnable false;
-                ppEffectDestroy _h;
-            };
-            missionNamespace setVariable [_x, nil];
-        };
-    } forEach ["GAIT_ppTunnelCC", "GAIT_ppTunnelRB", "GAIT_ppTunnelDB", "GAIT_ppTunnelCA"];
-
-    // Clean up any leftover GUI vignette controls from the legacy UI version.
-    if (!isNil "GAIT_fnc_clearOldExhaustionVignette") then {
-        [] call GAIT_fnc_clearOldExhaustionVignette;
-    };
-};
-
-// Clear legacy effects before the independent vignette watchdog starts.
-[0, true] call GAIT_fnc_setTunnelVisionFX;
-[] call GAIT_fnc_startFatigueVisualWatchdog;
-
-
 // Shared movement diagnostics, independent of weapon handling.
 [] spawn {
     waitUntil { sleep 0.25; !isNull player };
@@ -395,7 +269,7 @@ GAIT_fnc_setTunnelVisionFX = {
 // - Full sprint reserve lasts 8 seconds.
 // - Once empty, speed smoothly drops toward 0.85.
 // - Stop sprinting for about 5 seconds to fully recover.
-// - Feedback follows reserve depletion; native fatigue remains untouched.
+// - ACE provides fatigue feedback.
 // - Does not override Fast Carry pickup animation.
 [] spawn {
     waitUntil { sleep 0.25; !isNull player };
@@ -415,15 +289,6 @@ GAIT_fnc_setTunnelVisionFX = {
     private _carrySprintFullSpeed = missionNamespace getVariable ["GAIT_ss_carrySprintFullSpeed", 1.50];
     private _carrySprintExhaustedSpeed = missionNamespace getVariable ["GAIT_ss_carrySprintExhaustedSpeed", 0.9];
 
-    // Visual fatigue / panting settings
-    // These preserve your fatigue cap style while no longer hiding fatigue effects.
-
-    // ACE hearing reduction while sprint reserve is depleted.
-    // 1.0 = normal hearing, 0.50 = 50% hearing.
-    private _hearingMinVolume = missionNamespace getVariable ["GAIT_ss_hearingMinVolume", 0.20];
-    private _hearingFadeDuration = missionNamespace getVariable ["GAIT_ss_hearingFadeDuration", 0.20];
-    private _lastHearingVolume = 1.0;
-
     // Unarmed/no-weapon sprint normalizer.
     // This prevents holstering your weapon from making sprint speed much faster.
     private _unarmedSprintNormalizer = missionNamespace getVariable ["GAIT_ss_unarmedSprintNormalizer", 0.725];
@@ -439,48 +304,6 @@ GAIT_fnc_setTunnelVisionFX = {
     private _mediumBraceRelief = missionNamespace getVariable ["GAIT_ss_mediumBraceRelief", 0.35];
     private _moderateBraceRelief = missionNamespace getVariable ["GAIT_ss_moderateBraceRelief", 0.18];
     private _heavyBraceRelief = missionNamespace getVariable ["GAIT_ss_heavyBraceRelief", 0.00];
-
-    // Exhaustion audio settings.
-    // ACE Advanced Fatigue handles pulse audio.
-    // GAIT only keeps tinnitus as a separate exhaustion effect.
-    private _tinnitusStartExhaustion = missionNamespace getVariable ["GAIT_ss_tinnitusStartExhaustion", 0.70];   // tinnitus starts near heavy exhaustion
-    private _audioStopExhaustion = missionNamespace getVariable ["GAIT_ss_audioStopExhaustion", 0.10];       // audio fades out once recovered below this
-    private _tinnitusLoopDelay = 6.624;        // exact length of tinnitus_loop.ogg
-    private _tinnitusMaxVolume = missionNamespace getVariable ["GAIT_ss_tinnitusMaxVolume", 0.55];
-    private _audioFadeLerp = missionNamespace getVariable ["GAIT_ss_audioFadeLerp", 0.08];             // how smoothly target audio volume fades in/out
-
-    // Tunnel-vision style post-process FX.
-    // The pulse renderer enforces its own subtle opacity and duration caps.
-    private _tunnelStartExhaustion = missionNamespace getVariable ["GAIT_ss_tunnelStartExhaustion", 0.18];
-    private _tunnelMaxStrength = missionNamespace getVariable ["GAIT_ss_tunnelMaxStrength", 1.0];
-
-    missionNamespace setVariable ["GAIT_exhaustionLevel", 0];
-    missionNamespace setVariable ["GAIT_tinnitusTargetVolume", 0];
-    missionNamespace setVariable ["GAIT_tinnitusCurrentVolume", 0];
-
-    private _tinnitusSoundPath = "gait\sounds\tinnitus_loop.ogg";
-
-    [_tinnitusLoopDelay, _tinnitusSoundPath] spawn {
-        params ["_loopDelay", "_soundPath"];
-
-        while {true} do {
-            private _vol = missionNamespace getVariable ["GAIT_tinnitusCurrentVolume", 0];
-
-            if (_vol > 0.01 && {!isNull player}) then {
-                // Tinnitus is internal player feedback, not a world emitter.
-                // playSoundUI is local and follows the listener rather than
-                // leaving a positional sound behind as the player moves.
-                private _soundId = playSoundUI [_soundPath, _vol, 1, true, 0, false];
-                missionNamespace setVariable ["GAIT_tinnitusSoundId", _soundId];
-                uiSleep _loopDelay;
-                if ((missionNamespace getVariable ["GAIT_tinnitusSoundId", -1]) isEqualTo _soundId) then {
-                    missionNamespace setVariable ["GAIT_tinnitusSoundId", -1];
-                };
-            } else {
-                uiSleep 0.10;
-            };
-        };
-    };
 
     // Smoothing
     private _tickRate = missionNamespace getVariable ["GAIT_ss_tickRate", 0.05];
@@ -555,34 +378,21 @@ GAIT_fnc_setTunnelVisionFX = {
     private _downhillTripGetUpSpeedKmh = missionNamespace getVariable ["GAIT_ss_downhillTripGetUpSpeedKmh", 7.0];
     private _downhillTripMaxRagdollDuration = missionNamespace getVariable ["GAIT_ss_downhillTripMaxRagdollDuration", 6.0];
         _masterTripFrequency = missionNamespace getVariable ["GAIT_ss_masterTripFrequency", 1.00];
-        _masterFxIntensity = missionNamespace getVariable ["GAIT_ss_masterFxIntensity", 1.00];
         _shiftReleaseRunTaperEnabled = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true];
         _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85];
         _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
         _debugHudEnabled = missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false];
         _debugHudInterval = missionNamespace getVariable ["GAIT_ss_debugHudInterval", 0.10];
-        _hardLandingCamShakeEnabled = missionNamespace getVariable ["GAIT_ss_hardLandingCamShakeEnabled", true];
-        _hardLandingMinVerticalSpeed = missionNamespace getVariable ["GAIT_ss_hardLandingMinVerticalSpeed", 4.0];
-        _hardLandingShakeStrength = missionNamespace getVariable ["GAIT_ss_hardLandingShakeStrength", 1.00];
 
-        // v1.1.44: master knobs scale the important families without forcing
-        // admins to touch every single advanced setting. Keep bounds conservative
-        // so existing presets remain sane.
+        // Bound the global trip frequency scale.
         _masterTripFrequency = (_masterTripFrequency max 0.00) min 3.00;
-        _masterFxIntensity = (_masterFxIntensity max 0.00) min 2.00;
         _downhillTripBaseChancePerSecond = _downhillTripBaseChancePerSecond * _masterTripFrequency;
         _downhillTripMaxChancePerSecond = _downhillTripMaxChancePerSecond * _masterTripFrequency;
-        _tunnelMaxStrength = _tunnelMaxStrength * _masterFxIntensity;
-        _tinnitusMaxVolume = _tinnitusMaxVolume * _masterFxIntensity;
-        _hearingMinVolume = (1 - ((1 - _hearingMinVolume) * _masterFxIntensity)) max 0 min 1;
 
     private _activeBraceSpeed = _sprintStartBraceSpeed;
     private _conflictScanDone = false;
     private _debugHudEnabled = missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false];
     private _debugHudInterval = missionNamespace getVariable ["GAIT_ss_debugHudInterval", 0.10];
-    private _hardLandingCamShakeEnabled = missionNamespace getVariable ["GAIT_ss_hardLandingCamShakeEnabled", true];
-    private _hardLandingMinVerticalSpeed = missionNamespace getVariable ["GAIT_ss_hardLandingMinVerticalSpeed", 4.0];
-    private _hardLandingShakeStrength = missionNamespace getVariable ["GAIT_ss_hardLandingShakeStrength", 1.00];
     private _hillWalkDownhillMaxPenalty = missionNamespace getVariable ["GAIT_ss_hillWalkDownhillMaxPenalty", 0.08];
     private _hillWalkSlowdownEnabled = missionNamespace getVariable ["GAIT_ss_hillWalkSlowdownEnabled", true];
     private _hillWalkSlowdownMaxDegrees = missionNamespace getVariable ["GAIT_ss_hillWalkSlowdownMaxDegrees", 40.0];
@@ -590,11 +400,8 @@ GAIT_fnc_setTunnelVisionFX = {
     private _hillWalkUphillMaxPenalty = missionNamespace getVariable ["GAIT_ss_hillWalkUphillMaxPenalty", 0.32];
     private _lastDebugHudTime = -999;
     private _lastKnownSlopeDegrees = 0;
-    private _lastOnGround = true;
     private _lastSprintStopSlopeDegrees = 0;
     private _lastSprintStopTime = -999;
-    private _lastVerticalSpeed = 0;
-    private _masterFxIntensity = missionNamespace getVariable ["GAIT_ss_masterFxIntensity", 1.00];
     private _masterTripFrequency = missionNamespace getVariable ["GAIT_ss_masterTripFrequency", 1.00];
     private _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
     private _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85];
@@ -669,8 +476,6 @@ GAIT_fnc_setTunnelVisionFX = {
             _currentSpeed = _normalSpeed;
             _wasSprinting = false;
             _lastKnownSlopeDegrees = 0;
-            _lastOnGround = isTouchingGround player;
-            _lastVerticalSpeed = (velocity player) select 2;
             _lastSprintStopSlopeDegrees = 0;
             _lastSprintStopTime = -999;
             _activeBraceSpeed = _sprintStartBraceSpeed;
@@ -693,15 +498,11 @@ GAIT_fnc_setTunnelVisionFX = {
         // Refresh live Addon Options settings each tick.
         _debugHudEnabled = missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false];
         _debugHudInterval = missionNamespace getVariable ["GAIT_ss_debugHudInterval", 0.10];
-        _hardLandingCamShakeEnabled = missionNamespace getVariable ["GAIT_ss_hardLandingCamShakeEnabled", true];
-        _hardLandingMinVerticalSpeed = missionNamespace getVariable ["GAIT_ss_hardLandingMinVerticalSpeed", 4.0];
-        _hardLandingShakeStrength = missionNamespace getVariable ["GAIT_ss_hardLandingShakeStrength", 1.00];
         _hillWalkDownhillMaxPenalty = missionNamespace getVariable ["GAIT_ss_hillWalkDownhillMaxPenalty", 0.08];
         _hillWalkSlowdownEnabled = missionNamespace getVariable ["GAIT_ss_hillWalkSlowdownEnabled", true];
         _hillWalkSlowdownMaxDegrees = missionNamespace getVariable ["GAIT_ss_hillWalkSlowdownMaxDegrees", 40.0];
         _hillWalkSlowdownStartDegrees = missionNamespace getVariable ["GAIT_ss_hillWalkSlowdownStartDegrees", 15.0];
         _hillWalkUphillMaxPenalty = missionNamespace getVariable ["GAIT_ss_hillWalkUphillMaxPenalty", 0.32];
-        _masterFxIntensity = missionNamespace getVariable ["GAIT_ss_masterFxIntensity", 1.00];
         _masterTripFrequency = missionNamespace getVariable ["GAIT_ss_masterTripFrequency", 1.00];
         _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
         _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85];
@@ -718,8 +519,6 @@ GAIT_fnc_setTunnelVisionFX = {
         _carryWalkSpeed = missionNamespace getVariable ["GAIT_ss_carryWalkSpeed", 0.80];
         _carrySprintFullSpeed = missionNamespace getVariable ["GAIT_ss_carrySprintFullSpeed", 1.50];
         _carrySprintExhaustedSpeed = missionNamespace getVariable ["GAIT_ss_carrySprintExhaustedSpeed", 0.9];
-        _hearingMinVolume = missionNamespace getVariable ["GAIT_ss_hearingMinVolume", 0.20];
-        _hearingFadeDuration = missionNamespace getVariable ["GAIT_ss_hearingFadeDuration", 0.20];
         _unarmedSprintNormalizer = missionNamespace getVariable ["GAIT_ss_unarmedSprintNormalizer", 0.725];
         _loadAbsPerLb = missionNamespace getVariable ["GAIT_ss_loadAbsPerLb", 10];
         _lightSpeedBonus = missionNamespace getVariable ["GAIT_ss_lightSpeedBonus", 1.08];
@@ -730,12 +529,6 @@ GAIT_fnc_setTunnelVisionFX = {
         _mediumBraceRelief = missionNamespace getVariable ["GAIT_ss_mediumBraceRelief", 0.35];
         _moderateBraceRelief = missionNamespace getVariable ["GAIT_ss_moderateBraceRelief", 0.18];
         _heavyBraceRelief = missionNamespace getVariable ["GAIT_ss_heavyBraceRelief", 0.00];
-        _tinnitusStartExhaustion = missionNamespace getVariable ["GAIT_ss_tinnitusStartExhaustion", 0.70];
-        _audioStopExhaustion = missionNamespace getVariable ["GAIT_ss_audioStopExhaustion", 0.10];
-        _tinnitusMaxVolume = missionNamespace getVariable ["GAIT_ss_tinnitusMaxVolume", 0.55];
-        _audioFadeLerp = missionNamespace getVariable ["GAIT_ss_audioFadeLerp", 0.08];
-        _tunnelStartExhaustion = missionNamespace getVariable ["GAIT_ss_tunnelStartExhaustion", 0.18];
-        _tunnelMaxStrength = missionNamespace getVariable ["GAIT_ss_tunnelMaxStrength", 1.0];
         _tickRate = missionNamespace getVariable ["GAIT_ss_tickRate", 0.05];
         _speedLerp = missionNamespace getVariable ["GAIT_ss_speedLerp", 0.05];
         _wReleaseZeroMomentumDelay = missionNamespace getVariable ["GAIT_ss_wReleaseZeroMomentumDelay", 0.50];
@@ -793,23 +586,15 @@ GAIT_fnc_setTunnelVisionFX = {
         _downhillTripGetUpSpeedKmh = missionNamespace getVariable ["GAIT_ss_downhillTripGetUpSpeedKmh", 7.0];
         _downhillTripMaxRagdollDuration = missionNamespace getVariable ["GAIT_ss_downhillTripMaxRagdollDuration", 6.0];
         _masterTripFrequency = missionNamespace getVariable ["GAIT_ss_masterTripFrequency", 1.00];
-        _masterFxIntensity = missionNamespace getVariable ["GAIT_ss_masterFxIntensity", 1.00];
         _shiftReleaseRunTaperEnabled = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true];
         _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85];
         _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
         _debugHudEnabled = missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false];
         _debugHudInterval = missionNamespace getVariable ["GAIT_ss_debugHudInterval", 0.10];
-        _hardLandingCamShakeEnabled = missionNamespace getVariable ["GAIT_ss_hardLandingCamShakeEnabled", true];
-        _hardLandingMinVerticalSpeed = missionNamespace getVariable ["GAIT_ss_hardLandingMinVerticalSpeed", 4.0];
-        _hardLandingShakeStrength = missionNamespace getVariable ["GAIT_ss_hardLandingShakeStrength", 1.00];
 
         _masterTripFrequency = (_masterTripFrequency max 0.00) min 3.00;
-        _masterFxIntensity = (_masterFxIntensity max 0.00) min 2.00;
         _downhillTripBaseChancePerSecond = _downhillTripBaseChancePerSecond * _masterTripFrequency;
         _downhillTripMaxChancePerSecond = _downhillTripMaxChancePerSecond * _masterTripFrequency;
-        _tunnelMaxStrength = _tunnelMaxStrength * _masterFxIntensity;
-        _tinnitusMaxVolume = _tinnitusMaxVolume * _masterFxIntensity;
-        _hearingMinVolume = (1 - ((1 - _hearingMinVolume) * _masterFxIntensity)) max 0 min 1;
 
         if (_oldSprintReserveMax > 0 && {_oldSprintReserveMax != _sprintReserveMax}) then {
             private _reserveRatioBeforeChange = (_sprintReserve / _oldSprintReserveMax) max 0 min 1;
@@ -823,11 +608,9 @@ GAIT_fnc_setTunnelVisionFX = {
         // Scope exits must not display risk from the previous active tick.
         missionNamespace setVariable ["GAIT_tripEligible", false];
         missionNamespace setVariable ["GAIT_tripChancePerSecond", 0];
-        if (alive player && {call GAIT_fnc_modeIsActive} && {!(call GAIT_fnc_isSuspendedContext)}) then {
+        if (alive player && {call GAIT_fnc_modeAllowsMovement} && {!(call GAIT_fnc_isSuspendedContext)}) then {
             private _pickupActive = player getVariable ["MAV_fastCarry_pickupActive", false];
             private _gaitMovementEnabled = call GAIT_fnc_modeAllowsMovement;
-            private _gaitEffectsEnabled = call GAIT_fnc_modeAllowsEffects;
-            private _gaitHearingEnabled = call GAIT_fnc_modeAllowsHearing;
 
             if (!_conflictScanDone) then {
                 _conflictScanDone = true;
@@ -906,14 +689,6 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _isLateralHeld = abs (_movementInput select 1) > 0.05;
 
                 private _onGroundNow = isTouchingGround player;
-                if (_hardLandingCamShakeEnabled && {_onGroundNow} && {!_lastOnGround} && {_lastVerticalSpeed < -((_hardLandingMinVerticalSpeed max 0.5) min 20)}) then {
-                    private _landingSeverity = linearConversion [(_hardLandingMinVerticalSpeed max 0.5), 12, abs _lastVerticalSpeed, 0, 1, true];
-                    addCamShake [(_hardLandingShakeStrength max 0) * (0.35 + (1.65 * _landingSeverity)), 0.30 + (0.35 * _landingSeverity), 18];
-                    missionNamespace setVariable ["GAIT_hardLandingShakeSeverity", _landingSeverity];
-                };
-                _lastOnGround = _onGroundNow;
-                _lastVerticalSpeed = (velocity player) select 2;
-
                 // Track the last pre-sprint animation so post-run correction can be
                 // intent-aware. If the player was already jogging or in a raised
                 // combat stance before sprinting, do not force a stance correction
@@ -1495,79 +1270,6 @@ GAIT_fnc_setTunnelVisionFX = {
                 missionNamespace setVariable ["GAIT_exhaustionLevel", _exhaustion];
 
                 // =====================================================
-                // EXHAUSTION AUDIO: TINNITUS ONLY
-                // ACE Medical Feedback owns heartbeat audio.
-                // =====================================================
-                private _tinnitusTargetVolume = 0;
-                if (_gaitEffectsEnabled && {missionNamespace getVariable ["GAIT_ss_tinnitusEnabled", true]} && {_exhaustion > _tinnitusStartExhaustion}) then {
-                    private _tinnitusStrength = linearConversion [_tinnitusStartExhaustion, 1, _exhaustion, 0, 1, true];
-                    _tinnitusTargetVolume = _tinnitusMaxVolume * _tinnitusStrength;
-                };
-                if (_exhaustion < _audioStopExhaustion) then {
-                    _tinnitusTargetVolume = 0;
-                };
-
-                missionNamespace setVariable ["GAIT_tinnitusTargetVolume", _tinnitusTargetVolume];
-
-                private _tinnitusCurrentVolume = missionNamespace getVariable ["GAIT_tinnitusCurrentVolume", 0];
-                _tinnitusCurrentVolume = _tinnitusCurrentVolume + ((_tinnitusTargetVolume - _tinnitusCurrentVolume) * _audioFadeLerp);
-                if (abs _tinnitusCurrentVolume < 0.005) then {
-                    _tinnitusCurrentVolume = 0;
-                };
-                missionNamespace setVariable ["GAIT_tinnitusCurrentVolume", _tinnitusCurrentVolume];
-
-                // =====================================================
-                // INTERMITTENT FATIGUE VIGNETTE
-                // =====================================================
-                private _tunnelStrength = 0;
-                if (_gaitEffectsEnabled && {missionNamespace getVariable ["GAIT_ss_fatigueVignetteEnabled", true]} && {_exhaustion > _tunnelStartExhaustion}) then {
-                    _tunnelStrength = linearConversion [_tunnelStartExhaustion, 1, _exhaustion, 0, _tunnelMaxStrength, true];
-                };
-
-                // Refresh the watchdog lease even when exhaustion is unchanged.
-                // It expires independently if this scheduled loop stops updating.
-                [player, _tunnelStrength] call GAIT_fnc_updateFatigueVisuals;
-
-                // GAIT reserve drives movement and visual/audio feedback.
-                // Native fatigue and weapon handling remain owned by ACE/Arma.
-
-                // =====================================================
-                // ACE HEARING REDUCTION
-                // Ramps down as sprint reserve approaches empty.
-                // Resets to normal when reserve fully recovers.
-                // =====================================================
-                if (_gaitHearingEnabled && {missionNamespace getVariable ["GAIT_ss_hearingEnabled", true]} && {!isNil "ace_common_fnc_setHearingCapability"}) then {
-                    private _hearingVolume = 1 - ((1 - _hearingMinVolume) * (1 - _reserveRatio));
-
-                    if (_hearingVolume < _hearingMinVolume) then {
-                        _hearingVolume = _hearingMinVolume;
-                    };
-
-                    if (_hearingVolume > 1) then {
-                        _hearingVolume = 1;
-                    };
-
-                    if (_sprintReserve >= (_sprintReserveMax - 0.05)) then {
-                        if (_lastHearingVolume < 0.99) then {
-                            [1, _hearingFadeDuration, false] call GAIT_fnc_setSprintHearing;
-                            _lastHearingVolume = 1;
-                        };
-                    } else {
-                        if (abs (_hearingVolume - _lastHearingVolume) > 0.02) then {
-                            [_hearingVolume, _hearingFadeDuration, true] call GAIT_fnc_setSprintHearing;
-                            _lastHearingVolume = _hearingVolume;
-                        };
-                    };
-                } else {
-                    if (!isNil "ace_common_fnc_setHearingCapability") then {
-                        if (_lastHearingVolume < 0.99) then {
-                            [1, _hearingFadeDuration, false] call GAIT_fnc_setSprintHearing;
-                            _lastHearingVolume = 1;
-                        };
-                    };
-                };
-
-                // =====================================================
                 // SPEED CONTROL
                 // =====================================================
                 private _flatSprintPace = _sprintFullSpeed;
@@ -1853,7 +1555,7 @@ GAIT_fnc_setTunnelVisionFX = {
             [] call GAIT_fnc_releaseNativeMovement;
             _sprintReserve = _sprintReserveMax;
             _currentSpeed = _normalSpeed;
-            if (alive player && {!(call GAIT_fnc_modeIsActive)}) then {
+            if (alive player && {!(call GAIT_fnc_modeAllowsMovement)}) then {
                 [] call GAIT_fnc_releaseNativeMovement;
             };
             _wasSprinting = false;
@@ -1863,16 +1565,6 @@ GAIT_fnc_setTunnelVisionFX = {
             _braceArmedFromCrouch = false;
             _lastForwardInputTime = time;
             missionNamespace setVariable ["GAIT_exhaustionLevel", 0];
-            missionNamespace setVariable ["GAIT_tinnitusTargetVolume", 0];
-            missionNamespace setVariable ["GAIT_tinnitusCurrentVolume", 0];
-
-            if (!isNil "ace_common_fnc_setHearingCapability") then {
-                [1, 0.1, false] call GAIT_fnc_setSprintHearing;
-            };
-
-            [] call GAIT_fnc_releaseFatigueVisuals;
-            [0, true] call GAIT_fnc_setTunnelVisionFX;
-            _lastHearingVolume = 1;
         };
 
 

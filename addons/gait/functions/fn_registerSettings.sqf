@@ -11,8 +11,6 @@ private _categoryMove = ["GAIT", "03 Movement and Sprint"];
 private _categoryCarry = ["GAIT", "04 ACE Carry Movement"];
 private _categoryWeight = ["GAIT", "05 Gear Mass"];
 private _categoryBrace = ["GAIT", "06 Brace Step and Momentum"];
-private _categoryAudio = ["GAIT", "07 Audio and Hearing"];
-private _categoryVisual = ["GAIT", "08 Fatigue Vignette"];
 private _categorySlope = ["GAIT", "09 Terrain, Slopes, and Tripping"];
 private _categoryQoL = ["GAIT", "10 QoL, Presets, and Compatibility"];
 
@@ -61,17 +59,16 @@ private _addList = {
 // -----------------------------------------------------
 // 01 General
 // -----------------------------------------------------
-["GAIT_ss_enabled", "Enable GAIT", "Master switch for runtime movement, brace, fatigue audio and vignette. Disabling releases owned effects. Terrain config and the optional 10% ACE heartbeat patch remain until their PBOs are unloaded.", _categoryGeneral, true] call _addCheckbox;
+["GAIT_ss_enabled", "Enable GAIT", "Enables GAIT movement and bracing. ACE supplies fatigue feedback.", _categoryGeneral, true] call _addCheckbox;
 ["GAIT_ss_tickRate", "Feature update interval", "Seconds between terrain, reserve and ordinary acceleration updates. Release interpolation is sampled each rendered frame. Default: 0.05 seconds.", _categoryGeneral, 0.01, 0.20, 0.05, 2] call _addSlider;
 
 ["GAIT_ss_masterTripFrequency", "Master: trip frequency", "Meta-knob that scales downhill trip chance without changing thresholds. 1.00 is baseline.", _categoryGeneral, 0.00, 3.00, 1.00, 2] call _addSlider;
-["GAIT_ss_masterFxIntensity", "Fatigue effect intensity", "Scales GAIT tinnitus, hearing reduction and vignette strength. Does not scale ACE heartbeat. Vignette opacity remains capped at 14%. Default: 1.00.", _categoryGeneral, 0.00, 2.00, 1.00, 2] call _addSlider;
 
 // -----------------------------------------------------
 // 02 ACE Advanced Fatigue Integration
 // -----------------------------------------------------
 ["GAIT_ss_aceBridgeEnabled", "Read ACE Advanced Fatigue", "Allows GAIT to read active ACE Advanced Fatigue reserves and physiological penalties. This does not enable, disable or write ACE physiology. Default: enabled.", _categoryACE, true] call _addCheckbox;
-["GAIT_ss_useAceReserveModel", "Use ACE reserve for sprint strength", "Reads ACE anaerobic/aerobic reserves, acidosis, and muscle damage to scale GAIT sprint speed and exhaustion effects.", _categoryACE, true] call _addCheckbox;
+["GAIT_ss_useAceReserveModel", "Use ACE reserve for sprint strength", "Reads ACE anaerobic and aerobic reserves, acidosis, and muscle damage to scale GAIT sprint speed.", _categoryACE, true] call _addCheckbox;
 ["GAIT_ss_clearAceMovementLocks", "Prevent ACE walk-lock override", "Clears only ACE Advanced Fatigue's forced-walk and block-sprint locks so GAIT movement is not overwritten.", _categoryACE, true] call _addCheckbox;
 ["GAIT_ss_registerAceAnimExclusion", "Protect GAIT animation speed", "Adds GAIT to ACE Advanced Fatigue's animation-speed exclusion list so ACE does not reset GAIT speed every fatigue tick.", _categoryACE, true] call _addCheckbox;
 ["GAIT_ss_aceAcidosisPenaltyFactor", "Acidosis sprint penalty", "How strongly ACE anaerobic fatigue/acidosis reduces GAIT sprint reserve. Higher means acidosis hurts speed sooner. Default: 0.45.", _categoryACE, 0.00, 1.00, 0.45, 2] call _addSlider;
@@ -137,26 +134,6 @@ private _addList = {
 // -----------------------------------------------------
 // Weapon handling is left to ACE/native systems; no GAIT sway controls.
 // -----------------------------------------------------
-
-// -----------------------------------------------------
-// 07 Audio and Hearing
-// -----------------------------------------------------
-["GAIT_ss_tinnitusEnabled", "Enable tinnitus", "Enables GAIT tinnitus at high exhaustion. Separate optional gait_heartbeat.pbo fixes ACE heartbeat gain at 10% of original; this checkbox does not control it.", _categoryAudio, true] call _addCheckbox;
-["GAIT_ss_tinnitusStartExhaustion", "Tinnitus starts at exhaustion", "Exhaustion level where tinnitus begins. 0 = immediately, 1 = only at max exhaustion. Default: 0.70.", _categoryAudio, 0.00, 1.00, 0.70, 2] call _addSlider;
-["GAIT_ss_audioStopExhaustion", "Tinnitus stop threshold", "GAIT tinnitus fades out below this exhaustion level. Does not stop ACE heartbeat or breathing. Default: 0.10.", _categoryAudio, 0.00, 1.00, 0.10, 2] call _addSlider;
-["GAIT_ss_tinnitusMaxVolume", "Tinnitus maximum gain", "Maximum GAIT tinnitus gain before the fatigue effect intensity multiplier. Does not change ACE heartbeat. Default: 0.55.", _categoryAudio, 0.00, 2.00, 0.55, 2] call _addSlider;
-["GAIT_ss_audioFadeLerp", "Audio fade smoothness", "How quickly tinnitus volume moves toward its target. Higher changes faster. Default: 0.08.", _categoryAudio, 0.01, 1.00, 0.08, 2] call _addSlider;
-["GAIT_ss_hearingEnabled", "Fatigue hearing reduction", "Applies a GAIT hearing-capability contribution through ACE when available. Other ACE hearing effects remain independently owned. Default: enabled.", _categoryAudio, true] call _addCheckbox;
-["GAIT_ss_hearingMinVolume", "Minimum hearing volume", "Lowest hearing volume at maximum exhaustion. 1 = no reduction, 0 = muted. Default: 0.20.", _categoryAudio, 0.00, 1.00, 0.20, 2] call _addSlider;
-["GAIT_ss_hearingFadeDuration", "Hearing fade duration", "Seconds used when changing hearing volume. Default: 0.20.", _categoryAudio, 0.00, 5.00, 0.20, 2] call _addSlider;
-
-// -----------------------------------------------------
-// 09 Intermittent Fatigue Vignette
-// -----------------------------------------------------
-["GAIT_ss_fatigueVignetteEnabled", "Intermittent fatigue vignette", "Brief, subtle edge darkening when tired, separated by fully clear intervals. Replaces only ACE Advanced Fatigue blackout while active. Clears on recovery, disable or lost updates. Default: enabled.", _categoryVisual, true] call _addCheckbox;
-["GAIT_ss_tunnelStartExhaustion", "Visuals start at exhaustion", "Exhaustion level where intermittent vignette pulses begin. Default: 0.18.", _categoryVisual, 0.00, 1.00, 0.18, 2] call _addSlider;
-["GAIT_ss_tunnelMaxStrength", "Vignette strength scale", "Scales the fatigue pulse, together with fatigue effect intensity. Resulting strength saturates at 1 and peak edge opacity remains at most 14%. Default: 1.00.", _categoryVisual, 0.00, 2.00, 1.00, 2] call _addSlider;
-
 
 // -----------------------------------------------------
 // 09 Terrain, Slopes, and Tripping
@@ -228,10 +205,10 @@ private _addList = {
 [
     "GAIT_ss_compatibilityMode",
     "Compatibility mode",
-    "Movement and effects runs the full controller. Effects and hearing disables movement changes. Visuals and tinnitus also disables hearing reduction. Disabled releases runtime effects. The fixed config patches remain loaded.",
+    "Movement only enables GAIT traversal. Disabled releases movement control.",
     _categoryQoL,
-    [1, 2, 3, 4],
-    ["Movement and effects", "Effects and hearing", "Visuals and tinnitus", "Disabled"],
+    [1, 4],
+    ["Movement only", "Disabled"],
     0
 ] call _addList;
 
@@ -241,9 +218,6 @@ private _addList = {
 
 ["GAIT_ss_debugHudEnabled", "Enable debug HUD", "Shows grade, real speed, resolved direction, coefficient targets, animation family, reserve and ACE locks. Default: disabled.", _categoryQoL, false] call _addCheckbox;
 ["GAIT_ss_debugHudInterval", "Debug HUD refresh interval", "Seconds between debug HUD updates. Effective range: 0.05-1.00 seconds. Default: 0.10.", _categoryQoL, 0.05, 1.00, 0.10, 2] call _addSlider;
-["GAIT_ss_hardLandingCamShakeEnabled", "Hard landing camera shake", "Adds a small camera shake when landing hard after a drop. Default: enabled.", _categoryAudio, true] call _addCheckbox;
-["GAIT_ss_hardLandingMinVerticalSpeed", "Hard landing threshold", "Downward velocity required before landing shake can trigger. Default: 4 m/s.", _categoryAudio, 0.50, 20.00, 4.00, 1] call _addSlider;
-["GAIT_ss_hardLandingShakeStrength", "Hard landing shake strength", "Scales camera shake strength on hard landings. Default: 1.00.", _categoryAudio, 0.00, 3.00, 1.00, 2] call _addSlider;
 
 
 ["GAIT_ss_minSprintWalkRatio", "Exhausted sprint / walk pace ratio", "Target ratio over walking at empty reserve with heavy kit. Lighter kits add up to 6 percentage points. GAIT uses matching clip references when available and estimates the ratio otherwise. Default: 1.06.", _categorySlope, 1.05, 1.50, 1.06, 2] call _addSlider;

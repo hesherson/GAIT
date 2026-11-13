@@ -1,6 +1,6 @@
 /*
     GAIT_fnc_moduleResetEffects
-    Zeus module function. Resets GAIT client-side effects on synchronized player units.
+    Zeus module function. Resets GAIT movement on synchronized player units.
     If nothing is synchronized, all players are reset.
 */
 

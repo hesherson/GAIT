@@ -25,7 +25,7 @@ def read_settings():
     return rows
 class SettingsAudit(unittest.TestCase):
     def test_registry_unique_and_valid(self):
-        rows=read_settings();self.assertEqual(len(rows),121);self.assertEqual(len({r['name'] for r in rows}),121)
+        rows=read_settings();self.assertEqual(len(rows),106);self.assertEqual(len({r['name'] for r in rows}),len(rows))
         for r in rows:
             if r['kind']=='Slider':self.assertTrue(r['min']<=r['default']<=r['max'],r['name'])
             if r['kind']=='List':self.assertEqual(len(r['values']),len(r['labels']))
@@ -49,10 +49,9 @@ class SettingsAudit(unittest.TestCase):
         self.assertEqual((rows['GAIT_ss_shiftReleaseRunTaperCurve']['min'],rows['GAIT_ss_shiftReleaseRunTaperCurve']['max']),(1,3))
         self.assertEqual(rows['GAIT_ss_debugHudInterval']['min'],0.05)
         self.assertEqual(rows['GAIT_ss_minSprintWalkRatio']['default'],1.06)
-        self.assertEqual(rows['GAIT_ss_compatibilityMode']['values'],[1,2,3,4])
+        self.assertEqual(rows['GAIT_ss_compatibilityMode']['values'],[1,4])
+        self.assertEqual(rows['GAIT_ss_compatibilityMode']['labels'],['Movement only','Disabled'])
         self.assertEqual(rows['GAIT_ss_compatibilityMode']['default'],1)
-        self.assertIn('10%',rows['GAIT_ss_tinnitusEnabled']['description'])
-        self.assertIn('10%',rows['GAIT_ss_enabled']['description'])
         release_desc=rows['GAIT_ss_shiftReleaseRunTaperDuration']['description']
         self.assertIn('0.85',release_desc)
         self.assertIn('0.35-1.20',release_desc)
@@ -63,12 +62,8 @@ class SettingsAudit(unittest.TestCase):
         self.assertIn('if (_foreignCamera) exitWith {true};',helper)
         self.assertIn('if (player getVariable ["ACE_isUnconscious", false]) exitWith {true};',helper)
         self.assertNotIn('GAIT_fnc_isSuspendedContext = {',main)
-        self.assertIn('playSoundUI [_soundPath, _vol, 1, true, 0, false]',main)
-        self.assertNotIn('playSound3D [_soundPath',main)
-        self.assertIn('GAIT_fnc_stopTinnitusSound',main)
         reset=(FUNCTIONS/'fn_resetEffects.sqf').read_text()
         module=(FUNCTIONS/'fn_moduleResetEffects.sqf').read_text()
-        self.assertIn('GAIT_fnc_stopTinnitusSound',reset)
         self.assertIn('GAIT_fnc_clearLocomotionInputHistory',reset)
         self.assertIn('CBA_fnc_targetEvent',module)
         self.assertNotIn('remoteExecCall',module)

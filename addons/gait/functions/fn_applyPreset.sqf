@@ -49,7 +49,6 @@ private _set = {
     ["GAIT_ss_sprintFullSpeed", 1.28],
     ["GAIT_ss_speedLerp", 0.05],
     ["GAIT_ss_masterTripFrequency", 1.00],
-    ["GAIT_ss_masterFxIntensity", 1.00],
     ["GAIT_ss_wReleaseZeroMomentumDelay", 0.50],
     ["GAIT_ss_shiftReleaseRunTaperEnabled", true],
     ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85],
@@ -73,9 +72,6 @@ private _set = {
     ["GAIT_ss_mediumBraceRelief", 0.35],
     ["GAIT_ss_moderateBraceRelief", 0.18],
     ["GAIT_ss_heavyBraceRelief", 0.00],
-    ["GAIT_ss_tunnelMaxStrength", 1.00],
-    ["GAIT_ss_tinnitusMaxVolume", 0.55],
-    ["GAIT_ss_hearingMinVolume", 0.20],
     ["GAIT_ss_slopeHandlingEnabled", true],
     ["GAIT_ss_slopeSampleDistance", 2.0],
     ["GAIT_ss_uphillSlowdownEnabled", true],
@@ -118,10 +114,7 @@ private _set = {
     ["GAIT_ss_downhillTripGetUpSpeedKmh", 7.0],
     ["GAIT_ss_downhillTripMaxRagdollDuration", 6.0],
     ["GAIT_ss_debugHudEnabled", false],
-    ["GAIT_ss_debugHudInterval", 0.10],
-    ["GAIT_ss_hardLandingCamShakeEnabled", true],
-    ["GAIT_ss_hardLandingMinVerticalSpeed", 4.0],
-    ["GAIT_ss_hardLandingShakeStrength", 1.0]
+    ["GAIT_ss_debugHudInterval", 0.10]
 ];
 
 switch (_preset) do {
@@ -138,7 +131,6 @@ switch (_preset) do {
             ["GAIT_ss_mediumSpeedBonus", 1.02],
             ["GAIT_ss_moderateSpeedBonus", 1.00],
             ["GAIT_ss_heavySpeedBonus", 0.96],
-            ["GAIT_ss_tunnelMaxStrength", 1.10],
             ["GAIT_ss_uphillMaxPenalty", 0.45],
             ["GAIT_ss_downhillMaxBoost", 0.04]
         ];
@@ -156,9 +148,6 @@ switch (_preset) do {
             ["GAIT_ss_mediumBraceRelief", 0.65],
             ["GAIT_ss_moderateBraceRelief", 0.45],
             ["GAIT_ss_heavyBraceRelief", 0.25],
-            ["GAIT_ss_tunnelMaxStrength", 0.45],
-            ["GAIT_ss_tinnitusMaxVolume", 0.25],
-            ["GAIT_ss_hearingMinVolume", 0.60],
             ["GAIT_ss_uphillMaxPenalty", 0.22],
             ["GAIT_ss_downhillMaxBoost", 0.12]
         ];
@@ -167,10 +156,7 @@ switch (_preset) do {
     case "Training": {
         { _x call _set; } forEach [
             ["GAIT_ss_normalSpeed", 0.88],
-            ["GAIT_ss_sprintFullSpeed", 1.25],
-            ["GAIT_ss_tunnelMaxStrength", 1.25],
-            ["GAIT_ss_tinnitusMaxVolume", 0.65],
-            ["GAIT_ss_hearingMinVolume", 0.15]
+            ["GAIT_ss_sprintFullSpeed", 1.25]
         ];
     };
 

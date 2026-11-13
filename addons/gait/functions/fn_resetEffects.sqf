@@ -1,6 +1,6 @@
 /*
     GAIT_fnc_resetEffects
-    Local safety reset for movement speed, hearing, tinnitus, and post-process effects.
+    Local safety reset for GAIT movement and its temporary state.
     Intended for respawn, spectator transitions, Zeus reset module, and admin recovery.
 */
 
@@ -10,7 +10,6 @@ params [
 
 if (!hasInterface) exitWith {};
 
-if (!isNil "GAIT_fnc_releaseFatigueVisuals") then {[] call GAIT_fnc_releaseFatigueVisuals;};
 
 if (!isNil "GAIT_fnc_releaseNativeStaminaOwnership") then {
     [] call GAIT_fnc_releaseNativeStaminaOwnership;
@@ -28,8 +27,6 @@ missionNamespace setVariable ["GAIT_coastUnit", objNull];
 missionNamespace setVariable ["GAIT_coastActive", false];
 missionNamespace setVariable ["GAIT_coastReadyUntil", -1];
 missionNamespace setVariable ["GAIT_exhaustionLevel", 0];
-missionNamespace setVariable ["GAIT_tinnitusTargetVolume", 0];
-missionNamespace setVariable ["GAIT_tinnitusCurrentVolume", 0];
 missionNamespace setVariable ["GAIT_shiftHeld", false];
 missionNamespace setVariable ["GAIT_lastShiftRelease", time];
 missionNamespace setVariable ["GAIT_slopeDegrees", 0];
@@ -65,20 +62,4 @@ if (!isNull player) then {
     };
 };
 
-if (!isNil "GAIT_fnc_stopTinnitusSound") then {
-    [] call GAIT_fnc_stopTinnitusSound;
-};
-
-if (!isNil "GAIT_fnc_setSprintHearing") then {
-    [1, 0.15, false] call GAIT_fnc_setSprintHearing;
-};
-
-if (!isNil "GAIT_fnc_setTunnelVisionFX") then {
-    [0, true] call GAIT_fnc_setTunnelVisionFX;
-};
-
-if (!isNil "GAIT_fnc_clearOldExhaustionVignette") then {
-    [] call GAIT_fnc_clearOldExhaustionVignette;
-};
-
-diag_log format ["[GAIT] Effects reset (%1).", _reason];
+diag_log format ["[GAIT] Movement reset (%1).", _reason];

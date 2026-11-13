@@ -100,7 +100,7 @@ class CfgVehicles
     {
         scope = 2;
         scopeCurator = 2;
-        displayName = "Reset GAIT Effects";
+        displayName = "Reset GAIT Movement";
         category = "GAIT_Module_Category";
         function = "GAIT_fnc_moduleResetEffects";
         functionPriority = 1;
@@ -114,19 +114,7 @@ class CfgVehicles
 
         class ModuleDescription: ModuleDescription
         {
-            description = "Resets GAIT movement, hearing, tinnitus, and visual fatigue effects on synchronized players. If no players are synchronized, resets all players.";
+            description = "Resets GAIT movement on synchronized players. If no players are synchronized, resets all players.";
         };
-    };
-};
-
-class CfgSounds
-{
-    sounds[] = {"GAIT_tinnitus_loop"};
-
-    class GAIT_tinnitus_loop
-    {
-        name = "GAIT_tinnitus_loop";
-        sound[] = {"\gait\sounds\tinnitus_loop.ogg", 1, 1, 5};
-        titles[] = {};
     };
 };

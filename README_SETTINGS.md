@@ -1,14 +1,14 @@
 # GAIT 1.8.0-alpha20 settings reference
 
-This reference covers the 121 current CBA registrations. The table shows registration defaults. Presets and mission or server overrides can change effective values. Select Custom to keep individual tuning.
+This reference covers the 106 current CBA registrations. The table shows registration defaults. Presets and mission or server overrides can change effective values. Select Custom to keep individual tuning.
 
 ## Current cleanup and compatibility behavior
 
-Removed the inactive release sustain timer, redundant downhill onset cap, and three switches that allowed lifecycle cleanup to be disabled. Cleanup on player replacement, spectator/control changes and unconsciousness is now unconditional. The duplicate Full/Hybrid movement choice is one Movement and effects choice; saved legacy numeric values 0 and 1 still select movement and effects.
+Removed the inactive release sustain timer, redundant downhill onset cap, and three switches that allowed lifecycle cleanup to be disabled. Cleanup on player replacement, spectator/control changes and unconsciousness is now unconditional. Movement only is the default. Saved numeric values 0 and 1 enable movement, and the old effects-only modes resolve to Disabled.
 
 The Downhill boost starts control now defaults to 0.5°. Exhausted sprint uses the minimum sprint-to-walk ratio below. The release curve slider exposes its effective 1–3 range and HUD interval starts at 0.05 seconds.
 
-Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of the tinnitus switch. Removing that PBO restores ACE’s original heartbeat gain. There is no sway control. Automatic pace calibration has no extra user settings. Stable same-clip measurements may automatically calibrate sprint physical targets; complete manual pace profiles remain optional.
+ACE supplies fatigue feedback. Stable same-clip measurements may automatically calibrate sprint pace, and complete manual pace profiles are optional.
 
 ## Active controls
 
@@ -16,16 +16,15 @@ Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of t
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Enable GAIT (`GAIT_ss_enabled`) | true | on / off | Master switch for runtime movement, brace, fatigue audio and vignette. Disabling releases owned effects. Terrain config and the optional 10% ACE heartbeat patch remain until their PBOs are unloaded. |
+| Enable GAIT (`GAIT_ss_enabled`) | true | on / off | Enables GAIT movement and bracing. ACE supplies fatigue feedback. |
 | Feature update interval (`GAIT_ss_tickRate`) | 0.05 | 0.01–0.2 | Seconds between terrain, reserve and ordinary acceleration updates. Release interpolation is sampled each rendered frame. Default: 0.05 seconds. |
 | Master: trip frequency (`GAIT_ss_masterTripFrequency`) | 1 | 0–3 | Meta-knob that scales downhill trip chance without changing thresholds. 1.00 is baseline. |
-| Fatigue effect intensity (`GAIT_ss_masterFxIntensity`) | 1 | 0–2 | Scales GAIT tinnitus, hearing reduction and vignette strength. Does not scale ACE heartbeat. Vignette opacity remains capped at 14%. Default: 1.00. |
 ### ACE
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
 | Read ACE Advanced Fatigue (`GAIT_ss_aceBridgeEnabled`) | true | on / off | Allows GAIT to read active ACE Advanced Fatigue reserves and physiological penalties. This does not enable, disable or write ACE physiology. Default: enabled. |
-| Use ACE reserve for sprint strength (`GAIT_ss_useAceReserveModel`) | true | on / off | Reads ACE anaerobic/aerobic reserves, acidosis, and muscle damage to scale GAIT sprint speed and exhaustion effects. |
+| Use ACE reserve for sprint strength (`GAIT_ss_useAceReserveModel`) | true | on / off | Reads ACE anaerobic and aerobic reserves, acidosis, and muscle damage to scale GAIT sprint speed. |
 | Prevent ACE walk-lock override (`GAIT_ss_clearAceMovementLocks`) | true | on / off | Clears only ACE Advanced Fatigue's forced-walk and block-sprint locks so GAIT movement is not overwritten. |
 | Protect GAIT animation speed (`GAIT_ss_registerAceAnimExclusion`) | true | on / off | Adds GAIT to ACE Advanced Fatigue's animation-speed exclusion list so ACE does not reset GAIT speed every fatigue tick. |
 | Acidosis sprint penalty (`GAIT_ss_aceAcidosisPenaltyFactor`) | 0.45 | 0–1 | How strongly ACE anaerobic fatigue/acidosis reduces GAIT sprint reserve. Higher means acidosis hurts speed sooner. Default: 0.45. |
@@ -87,25 +86,6 @@ Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of t
 | Slope brace extra dip (`GAIT_ss_slopeStopBraceExtraDip`) | 0.28 | 0–0.9 | Base slope-induced brace speed dip. Zero-momentum uphill launches exponentially amplify it; retained momentum bypasses the added uphill burden. Default: 0.28. |
 | Slope brace memory (`GAIT_ss_slopeStopBraceMemoryTime`) | 2.5 | 0–10 | Seconds after stopping sprint on an incline where the next sprint start still uses the slope brace. Default: 2.5 sec. |
 | Uphill sprint-release brake (`GAIT_ss_uphillReleaseBraceEnabled`) | true | on / off | Brief dig-in braking when releasing a moving uphill sprint. Uses the slope brace angles, duration and dip and takes priority over the ordinary release ramp. Releasing forward movement cancels its animation hold. Default: enabled. |
-### Audio
-
-| Control / variable | Default | Allowed values | Implemented behavior |
-| --- | --- | --- | --- |
-| Enable tinnitus (`GAIT_ss_tinnitusEnabled`) | true | on / off | Enables GAIT tinnitus at high exhaustion. Separate optional gait_heartbeat.pbo fixes ACE heartbeat gain at 10% of original; this checkbox does not control it. |
-| Tinnitus starts at exhaustion (`GAIT_ss_tinnitusStartExhaustion`) | 0.7 | 0–1 | Exhaustion level where tinnitus begins. 0 = immediately, 1 = only at max exhaustion. Default: 0.70. |
-| Tinnitus stop threshold (`GAIT_ss_audioStopExhaustion`) | 0.1 | 0–1 | GAIT tinnitus fades out below this exhaustion level. Does not stop ACE heartbeat or breathing. Default: 0.10. |
-| Tinnitus maximum gain (`GAIT_ss_tinnitusMaxVolume`) | 0.55 | 0–2 | Maximum GAIT tinnitus gain before the fatigue effect intensity multiplier. Does not change ACE heartbeat. Default: 0.55. |
-| Audio fade smoothness (`GAIT_ss_audioFadeLerp`) | 0.08 | 0.01–1 | How quickly tinnitus volume moves toward its target. Higher changes faster. Default: 0.08. |
-| Fatigue hearing reduction (`GAIT_ss_hearingEnabled`) | true | on / off | Applies a GAIT hearing-capability contribution through ACE when available. Other ACE hearing effects remain independently owned. Default: enabled. |
-| Minimum hearing volume (`GAIT_ss_hearingMinVolume`) | 0.2 | 0–1 | Lowest hearing volume at maximum exhaustion. 1 = no reduction, 0 = muted. Default: 0.20. |
-| Hearing fade duration (`GAIT_ss_hearingFadeDuration`) | 0.2 | 0–5 | Seconds used when changing hearing volume. Default: 0.20. |
-### Visual
-
-| Control / variable | Default | Allowed values | Implemented behavior |
-| --- | --- | --- | --- |
-| Intermittent fatigue vignette (`GAIT_ss_fatigueVignetteEnabled`) | true | on / off | Brief, subtle edge darkening when tired, separated by fully clear intervals. Replaces only ACE Advanced Fatigue blackout while active. Clears on recovery, disable or lost updates. Default: enabled. |
-| Visuals start at exhaustion (`GAIT_ss_tunnelStartExhaustion`) | 0.18 | 0–1 | Exhaustion level where intermittent vignette pulses begin. Default: 0.18. |
-| Vignette strength scale (`GAIT_ss_tunnelMaxStrength`) | 1 | 0–2 | Scales the fatigue pulse, together with fatigue effect intensity. Resulting strength saturates at 1 and peak edge opacity remains at most 14%. Default: 1.00. |
 ### Slope
 
 | Control / variable | Default | Allowed values | Implemented behavior |
@@ -160,19 +140,12 @@ Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of t
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
 | Tuning preset (`GAIT_ss_preset`) | Balanced | Custom: Custom; Balanced: Balanced; Realistic: Realistic; Arcade: Arcade; Training: Training; Light Infantry: Light Infantry; Heavy Infantry: Heavy Infantry | Applies a readable starting point for GAIT tuning. Choose Custom after applying a preset if you want to hand-tune individual values without the preset reapplying on change. |
-| Compatibility mode (`GAIT_ss_compatibilityMode`) | 1 | 1: Movement and effects; 2: Effects and hearing; 3: Visuals and tinnitus; 4: Disabled | Movement and effects runs the full controller. Effects and hearing disables movement changes. Visuals and tinnitus also disables hearing reduction. Disabled releases runtime effects. The fixed config patches remain loaded. |
+| Compatibility mode (`GAIT_ss_compatibilityMode`) | 1 | 1: Movement only, 4: Disabled | Movement only enables GAIT traversal. Disabled releases movement control. |
 | Show startup message (`GAIT_ss_showStartupMessage`) | true | on / off | Shows a short systemChat message after mission start with the active preset, compatibility mode, and ACE Advanced Fatigue bridge state. |
 | Show server/settings indicator (`GAIT_ss_showServerIndicator`) | true | on / off | In multiplayer, shows a reminder that server or mission CBA settings may override local Addon Options. Useful for units with server-forced presets. |
 | Enable RPT logging (`GAIT_ss_rptLogging`) | true | on / off | Writes useful GAIT initialization, preset, lifecycle, and Zeus reset messages to the RPT for troubleshooting. |
 | Enable debug HUD (`GAIT_ss_debugHudEnabled`) | false | on / off | Shows grade, real speed, resolved direction, coefficient targets, animation family, reserve and ACE locks. Default: disabled. |
 | Debug HUD refresh interval (`GAIT_ss_debugHudInterval`) | 0.1 | 0.05–1 | Seconds between debug HUD updates. Effective range: 0.05-1.00 seconds. Default: 0.10. |
-### Audio
-
-| Control / variable | Default | Allowed values | Implemented behavior |
-| --- | --- | --- | --- |
-| Hard landing camera shake (`GAIT_ss_hardLandingCamShakeEnabled`) | true | on / off | Adds a small camera shake when landing hard after a drop. Default: enabled. |
-| Hard landing threshold (`GAIT_ss_hardLandingMinVerticalSpeed`) | 4 | 0.5–20 | Downward velocity required before landing shake can trigger. Default: 4 m/s. |
-| Hard landing shake strength (`GAIT_ss_hardLandingShakeStrength`) | 1 | 0–3 | Scales camera shake strength on hard landings. Default: 1.00. |
 ### Slope
 
 | Control / variable | Default | Allowed values | Implemented behavior |

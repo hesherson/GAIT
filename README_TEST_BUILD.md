@@ -12,22 +12,22 @@ Hold W and release Shift to ease from the current speed toward jog pace. Carried
 
 All alpha17 crouch and strafe ownership fixes remain. Alpha18 fixes the remaining secondary-weapon-only acceleration pause by making lowered pistol locomotion (`SlowWpst`) a first-class GAIT family instead of converting every handgun into raised-pistol `SrasWpst`. The current native handgun pose is read from animationState first, then weaponLowered only as fallback, and the selected pose family remains latched through sprint acceleration. `SlowWpst` now has its own jog, sprint, lateral sprint and stop states plus its own `PistolLowStandActions`-derived action maps. GAIT also rejects internal `SlowWpst <-> SrasWpst` locomotion handoffs so a mid-ramp gun-pose correction cannot be introduced by the movement controller. Upward sprint acceleration is slower globally: the existing speed-ramp value is passed through a fixed 0.70 sprint-acceleration rate, stretching the default ~95% convergence from about 2.9 seconds to about 4.1 seconds without changing release, braking or ordinary movement timing.
 
-Alpha19 audit hardening closes non-animation gaps found in the full foundation review: reset now clears recent input/stance/brake transients as well as owned movement; Zeus reset uses a CBA target event instead of direct RemoteExec; fatigue tinnitus is listener-local and stoppable immediately; duplicate suspended-context logic is removed; passive same-context sprint measurements can automatically activate the steep-downhill physical target; and the debug HUD reports the actual pose family plus passive/full calibration state separately.
+Alpha19 audit hardening closes non-animation gaps found in the full foundation review: reset now clears recent input/stance/brake transients as well as owned movement; Zeus reset uses a CBA target event instead of direct RemoteExec; duplicate suspended-context logic is removed; passive same-context sprint measurements can automatically activate the steep-downhill physical target; and the debug HUD reports the actual pose family plus passive/full calibration state separately.
 
 ## Settings pass
 
-The menu has 121 controls. Presets use the active controls.
+The menu has 106 controls. Presets use the active controls.
 
 | Removed control | Reason / current behavior |
 | --- | --- |
 | Shift-release sustain duration | Already inactive; the release starts immediately. |
 | Secondary downhill onset cap | Downhill boost starts sets the onset, now 0.5° by default. |
-| Reset on respawn | Owned state and effects must always be cleaned up when the player changes. |
+| Reset on respawn | Owned movement state must always be cleaned up when the player changes. |
 | Suspend in spectator | Camera/delegated-control suspension is always active. |
 | Suspend while unconscious | Medical suspension is always active. |
 | Exhausted sprint coefficient | Exhausted sprint uses a pace target just above walking with the same load. |
 
-The duplicate Full/Hybrid mode is now Movement and effects. Old saved numeric modes 0 and 1 remain compatible. Other choices remain Effects and hearing, Visuals and tinnitus, and Disabled. The release-curve slider now exposes the existing effective 1–3 range; HUD interval starts at the existing 0.05-second minimum. Descriptions now distinguish coefficients from physical speed, nominal timing from bounded release timing, ACE physiology from fallback reserve, and tinnitus from the fixed 10% heartbeat patch.
+Movement only and Disabled are the two modes. ACE supplies fatigue feedback. Saved numeric modes 0 and 1 both enable movement.
 
 README_SETTINGS.md lists every current setting, registration default, range and description. Presets and mission/server overrides can change effective values; Custom stops preset rewrites.
 
@@ -56,6 +56,6 @@ Send the RPT after STOP with approximate issue times. Its releaseMotion fields i
 
 ## Verification
 
-Run `tools\verify_build.ps1 -BuildPath .\.hemttout\build -SourceRoot .` after `hemtt build`. It validates both PBO prefixes/checksums and all eighteen embedded runtime scripts against source. Core prefix is `gait`; heartbeat prefix is `z\gait\addons\heartbeat`.
+Run `tools\verify_build.ps1 -BuildPath .\.hemttout\build -SourceRoot .` after `hemtt build`. It validates the `gait_gait.pbo` checksum, its `gait` prefix, and all 16 embedded runtime scripts against source.
 
 `tests/VALIDATION_FOUNDATION.txt` and `tests/VALIDATION_RESULTS.json` record alpha11 results. `tests/AUDIT_ALPHA19.md` records the alpha19 source audit and reproduction commands. Use the in-game cases above to verify physical pace and animation feel.

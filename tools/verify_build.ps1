@@ -70,21 +70,27 @@ function Read-VerifiedPbo([string]$Path, [string]$ExpectedPrefix) {
 $BuildPath = [IO.Path]::GetFullPath($BuildPath)
 $AddonPath = Join-Path $BuildPath 'addons'
 if (-not (Test-Path -LiteralPath $AddonPath -PathType Container)) { throw "Missing built addons folder: $AddonPath" }
-$ExpectedPbos = @('gait_gait.pbo', 'gait_heartbeat.pbo')
 $ActualPbos = @(Get-ChildItem -LiteralPath $AddonPath -Filter '*.pbo' -File)
-if ($ActualPbos.Count -ne 2 -or @($ActualPbos | Where-Object { $_.Name -notin $ExpectedPbos }).Count -ne 0) {
-    throw "Expected only gait_gait.pbo and gait_heartbeat.pbo in $AddonPath. Rebuild into a clean output folder."
+if ($ActualPbos.Count -ne 1 -or $ActualPbos[0].Name -ne 'gait_gait.pbo') {
+    throw "Expected only gait_gait.pbo in $AddonPath. Rebuild into a clean output folder."
 }
 $Core = Read-VerifiedPbo (Join-Path $AddonPath 'gait_gait.pbo') 'gait'
-$Heartbeat = Read-VerifiedPbo (Join-Path $AddonPath 'gait_heartbeat.pbo') 'z\gait\addons\heartbeat'
 $RequiredScripts = @(
-    'fn_aceFatigueVisualBridge.sqf', 'fn_applyPreset.sqf', 'fn_braceMomentum.sqf',
-    'fn_downhillPace.sqf', 'fn_fatigueVisuals.sqf', 'fn_gearInertia.sqf',
+    'fn_applyPreset.sqf', 'fn_braceMomentum.sqf', 'fn_downhillPace.sqf', 'fn_gearInertia.sqf',
     'fn_initSprintSystem.sqf', 'fn_locomotionPace.sqf', 'fn_moduleResetEffects.sqf',
     'fn_nativeController.sqf', 'fn_registerSettings.sqf', 'fn_releaseMomentum.sqf', 'fn_paceCalibration.sqf', 'fn_resetEffects.sqf',
     'fn_slopeLocomotion.sqf', 'fn_slopePaceModel.sqf', 'fn_traversalHelpers.sqf',
     'fn_uphillBrake.sqf'
 )
+$ExpectedScriptPaths = @($RequiredScripts | ForEach-Object { 'functions\' + $_.ToLowerInvariant() })
+$BuiltScriptPaths = @($Core.Files.Keys | Where-Object { $_ -like 'functions\*.sqf' })
+if ($BuiltScriptPaths.Count -ne $ExpectedScriptPaths.Count -or
+    @($BuiltScriptPaths | Where-Object { $_ -notin $ExpectedScriptPaths }).Count -ne 0) {
+    throw 'Embedded function inventory differs from the GAIT ACE-feedback-only package.'
+}
+if ($Core.Files.ContainsKey('sounds\tinnitus_loop.ogg')) {
+    throw 'Unexpected GAIT tinnitus audio in the ACE-feedback-only package.'
+}
 if ($SourceRoot -ne '') {
     $SourceRoot = [IO.Path]::GetFullPath($SourceRoot)
     $SourceFunctions = Join-Path $SourceRoot 'addons\gait\functions'
@@ -109,6 +115,6 @@ try {
         }
     }
 } finally { $Hasher.Dispose() }
-Write-Host 'GAIT build verified: two PBOs, correct virtual paths, valid checksums, and all 18 runtime scripts.'
-if ($SourceRoot -ne '') { Write-Host 'All 18 embedded SQF files match the current source by SHA256.' }
+Write-Host "GAIT build verified: one PBO, correct virtual paths, valid checksum, and all $($RequiredScripts.Count) runtime scripts."
+if ($SourceRoot -ne '') { Write-Host "All $($RequiredScripts.Count) embedded SQF files match the current source by SHA256." }
 Write-Host "Load this local mod folder: $BuildPath"

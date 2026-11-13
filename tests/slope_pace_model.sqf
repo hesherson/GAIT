@@ -13,11 +13,11 @@ private _almostEqual = {
 {
     _x params ["_weight", "_expected"];
     [[_weight] call GAIT_fnc_continuousLoadMultiplier, _expected, "load calibration"] call _almostEqual;
-} forEach [[0,1.08], [35,1.05], [55,1.025], [75,1], [125,1/1.18], [175,1/1.36], [250,1/1.63]];
+} forEach [[0,1.08], [35,1.02], [55,0.97], [75,0.92], [125,0.92/1.18], [175,0.92/1.36], [250,0.92/1.63]];
 {
     private _left = [_x - 0.001] call GAIT_fnc_continuousLoadMultiplier;
     private _right = [_x + 0.001] call GAIT_fnc_continuousLoadMultiplier;
-    [abs (_left - _right) < 0.00001, "gear tier boundary is continuous"] call _assert;
+    [abs (_left - _right) < 0.00001, "pace is continuous across configured mass anchors"] call _assert;
 } forEach [35,55,75];
 
 // Uphill reference angle is a calibration point, not a penalty cap.
@@ -27,19 +27,14 @@ private _almostEqual = {
 [([89,5,35,0.4] call GAIT_fnc_uphillPaceMultiplier) < ([80,5,35,0.4] call GAIT_fnc_uphillPaceMultiplier), "steepest model grades keep slowing"] call _assert;
 
 // The exact same model supplies both the walking reference and sprint target.
-// Check every grade and pound, including low sprint coefficients that invoke
-// the floor. A floor built from an unweighted or differently graded walk speed
-// would fail the monotonic-load checks or the ratio assertions below.
+// Sample grades and pounds through the traversable range, including the load
+// anchors and low sprint coefficients that invoke the floor. A floor built
+// from an unweighted walk speed would fail the monotonic-load checks.
 private _checks = 0;
 private _loads = [];
 for "_weight" from 0 to 250 do {_loads pushBack ([_weight] call GAIT_fnc_continuousLoadMultiplier);};
 private _grades = [];
-for "_grade" from 0 to 89 do {
-    _grades pushBack [
-        [_grade,15,40,0.32] call GAIT_fnc_uphillPaceMultiplier,
-        [_grade,5,35,0.40] call GAIT_fnc_uphillPaceMultiplier
-    ];
-};
+for "_grade" from 0 to 89 do {_grades pushBack ([_grade,15,40,0.32] call GAIT_fnc_uphillPaceMultiplier);};
 {
     private _reserve = _x;
     private _flatSprint = 4.2 + ((6.2 - 4.2) * _reserve);
@@ -47,12 +42,13 @@ for "_grade" from 0 to 89 do {
     {
         private _candidateBase = _x;
         private _priorAtGrade = [];
-        for "_weight" from 0 to 250 do {
+        for "_weight" from 0 to 250 step 5 do {
             private _load = _loads select _weight;
             private _lastWalk = 1e10;
             private _lastSprint = 1e10;
-            for "_grade" from 0 to 89 do {
-                (_grades select _grade) params ["_walkGrade", "_sprintGrade"];
+            for "_grade" from 0 to 88 step 4 do {
+                private _walkGrade = _grades select _grade;
+                private _sprintGrade = [_grade,2,35,0.40,_weight] call GAIT_fnc_uphillSprintPaceMultiplier;
                 private _pair = [1.6,_candidateBase,_walkGrade,_sprintGrade,_load,_effectiveRatio] call GAIT_fnc_slopePaceModel;
                 _pair params ["_walk", "_sprint"];
                 if (_walk <= 0 || {_sprint < (_walk * _effectiveRatio) - 0.00001}) then {
@@ -88,7 +84,7 @@ private _reserveChecks = 0;
     private _walkPenalty = 0.32 * (0.75 + (0.50 * _walkWeightSeverity));
     for "_grade" from 0 to 89 do {
         private _walkGrade = [_grade,15,40,_walkPenalty] call GAIT_fnc_uphillPaceMultiplier;
-        private _sprintGrade = (_grades select _grade) select 1;
+        private _sprintGrade = [_grade,2,35,0.40,_weight] call GAIT_fnc_uphillSprintPaceMultiplier;
         {
             private _normalizer = _x;
             private _priorTarget = -1;

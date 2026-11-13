@@ -289,7 +289,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha19"];
+missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha20"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -409,7 +409,6 @@ GAIT_fnc_setTunnelVisionFX = {
 
     // Normal sprint speeds
     private _sprintFullSpeed = missionNamespace getVariable ["GAIT_ss_sprintFullSpeed", 1.28];        // full-speed sprint while reserve remains
-    private _sprintExhaustedSpeed = missionNamespace getVariable ["GAIT_ss_sprintExhaustedSpeed", 0.89];   // exhausted sprint speed after reserve is empty
 
     // Carry movement speeds
     private _carryWalkSpeed = missionNamespace getVariable ["GAIT_ss_carryWalkSpeed", 0.80];
@@ -429,19 +428,17 @@ GAIT_fnc_setTunnelVisionFX = {
     // This prevents holstering your weapon from making sprint speed much faster.
     private _unarmedSprintNormalizer = missionNamespace getVariable ["GAIT_ss_unarmedSprintNormalizer", 0.725];
 
-    // Gear-weight speed gate.
-    // Arma loadAbs is not literal pounds; this mission uses loadAbs / 10 as displayed pounds.
-    // Lower carried weight gets a small overall speed bonus and a less severe brace-step dip.
+    // Read actual carried inventory mass; convert it to the configured gear curve units.
     private _loadAbsPerLb = missionNamespace getVariable ["GAIT_ss_loadAbsPerLb", 10];
-    private _lightSpeedBonus = missionNamespace getVariable ["GAIT_ss_lightSpeedBonus", 1.08];       // 0-35 lb
-    private _mediumSpeedBonus = missionNamespace getVariable ["GAIT_ss_mediumSpeedBonus", 1.05];      // 36-55 lb
-    private _moderateSpeedBonus = missionNamespace getVariable ["GAIT_ss_moderateSpeedBonus", 1.025];   // 56-75 lb
-    private _heavySpeedBonus = missionNamespace getVariable ["GAIT_ss_heavySpeedBonus", 1.00];       // 76+ lb baseline
+    private _lightSpeedBonus = missionNamespace getVariable ["GAIT_ss_lightSpeedBonus", 1.08];
+    private _mediumSpeedBonus = missionNamespace getVariable ["GAIT_ss_mediumSpeedBonus", 1.02];
+    private _moderateSpeedBonus = missionNamespace getVariable ["GAIT_ss_moderateSpeedBonus", 0.97];
+    private _heavySpeedBonus = missionNamespace getVariable ["GAIT_ss_heavySpeedBonus", 0.92];
 
-    private _lightBraceRelief = missionNamespace getVariable ["GAIT_ss_lightBraceRelief", 0.55];      // 0-35 lb, brace dip much less prominent
-    private _mediumBraceRelief = missionNamespace getVariable ["GAIT_ss_mediumBraceRelief", 0.35];     // 36-55 lb
-    private _moderateBraceRelief = missionNamespace getVariable ["GAIT_ss_moderateBraceRelief", 0.18];   // 56-75 lb
-    private _heavyBraceRelief = missionNamespace getVariable ["GAIT_ss_heavyBraceRelief", 0.00];      // 76+ lb baseline
+    private _lightBraceRelief = missionNamespace getVariable ["GAIT_ss_lightBraceRelief", 0.55];
+    private _mediumBraceRelief = missionNamespace getVariable ["GAIT_ss_mediumBraceRelief", 0.35];
+    private _moderateBraceRelief = missionNamespace getVariable ["GAIT_ss_moderateBraceRelief", 0.18];
+    private _heavyBraceRelief = missionNamespace getVariable ["GAIT_ss_heavyBraceRelief", 0.00];
 
     // Exhaustion audio settings.
     // ACE Advanced Fatigue handles pulse audio.
@@ -523,10 +520,10 @@ GAIT_fnc_setTunnelVisionFX = {
     private _slopeHandlingEnabled = missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true];
     private _slopeSampleDistance = missionNamespace getVariable ["GAIT_ss_slopeSampleDistance", 2.0];
     private _slopeTransitionSmoothingEnabled = missionNamespace getVariable ["GAIT_ss_slopeTransitionSmoothingEnabled", true];
-    private _slopeAngleRiseRateDegPerSecond = missionNamespace getVariable ["GAIT_ss_slopeAngleRiseRateDegPerSecond", 22.0];
+    private _slopeAngleRiseRateDegPerSecond = missionNamespace getVariable ["GAIT_ss_slopeAngleRiseRateDegPerSecond", 35.0];
     private _slopeAngleFallRateDegPerSecond = missionNamespace getVariable ["GAIT_ss_slopeAngleFallRateDegPerSecond", 30.0];
     private _uphillSlowdownEnabled = missionNamespace getVariable ["GAIT_ss_uphillSlowdownEnabled", true];
-    private _uphillStartDegrees = missionNamespace getVariable ["GAIT_ss_uphillStartDegrees", 5.0];
+    private _uphillStartDegrees = missionNamespace getVariable ["GAIT_ss_uphillStartDegrees", 2.0];
     private _uphillMaxDegrees = missionNamespace getVariable ["GAIT_ss_uphillMaxDegrees", 35.0];
     private _uphillMaxPenalty = missionNamespace getVariable ["GAIT_ss_uphillMaxPenalty", 0.40];
     private _slopeStopBraceEnabled = missionNamespace getVariable ["GAIT_ss_slopeStopBraceEnabled", true];
@@ -536,9 +533,9 @@ GAIT_fnc_setTunnelVisionFX = {
     private _slopeStopBraceExtraDip = missionNamespace getVariable ["GAIT_ss_slopeStopBraceExtraDip", 0.28];
     private _slopeStopBraceMemoryTime = missionNamespace getVariable ["GAIT_ss_slopeStopBraceMemoryTime", 2.5];
     private _downhillBoostEnabled = missionNamespace getVariable ["GAIT_ss_downhillBoostEnabled", true];
-    private _downhillBoostStartDegrees = missionNamespace getVariable ["GAIT_ss_downhillBoostStartDegrees", 4.0];
+    private _downhillBoostStartDegrees = missionNamespace getVariable ["GAIT_ss_downhillBoostStartDegrees", 0.5];
     private _downhillBoostMaxDegrees = missionNamespace getVariable ["GAIT_ss_downhillBoostMaxDegrees", 18.0];
-    private _downhillMaxBoost = missionNamespace getVariable ["GAIT_ss_downhillMaxBoost", 0.06];
+    private _downhillMaxBoost = missionNamespace getVariable ["GAIT_ss_downhillMaxBoost", 0.10];
     private _downhillTripEnabled = missionNamespace getVariable ["GAIT_ss_downhillTripEnabled", true];
     private _downhillTripThresholdDegrees = missionNamespace getVariable ["GAIT_ss_downhillTripThresholdDegrees", 28.0];
     private _downhillTripMaxDegrees = missionNamespace getVariable ["GAIT_ss_downhillTripMaxDegrees", 45.0];
@@ -718,7 +715,6 @@ GAIT_fnc_setTunnelVisionFX = {
         _sprintReserveMax = missionNamespace getVariable ["GAIT_ss_sprintReserveMax", 25.0];
         _sprintRecoverTime = missionNamespace getVariable ["GAIT_ss_sprintRecoverTime", 10.0];
         _sprintFullSpeed = missionNamespace getVariable ["GAIT_ss_sprintFullSpeed", 1.28];
-        _sprintExhaustedSpeed = missionNamespace getVariable ["GAIT_ss_sprintExhaustedSpeed", 0.89];
         _carryWalkSpeed = missionNamespace getVariable ["GAIT_ss_carryWalkSpeed", 0.80];
         _carrySprintFullSpeed = missionNamespace getVariable ["GAIT_ss_carrySprintFullSpeed", 1.50];
         _carrySprintExhaustedSpeed = missionNamespace getVariable ["GAIT_ss_carrySprintExhaustedSpeed", 0.9];
@@ -727,9 +723,9 @@ GAIT_fnc_setTunnelVisionFX = {
         _unarmedSprintNormalizer = missionNamespace getVariable ["GAIT_ss_unarmedSprintNormalizer", 0.725];
         _loadAbsPerLb = missionNamespace getVariable ["GAIT_ss_loadAbsPerLb", 10];
         _lightSpeedBonus = missionNamespace getVariable ["GAIT_ss_lightSpeedBonus", 1.08];
-        _mediumSpeedBonus = missionNamespace getVariable ["GAIT_ss_mediumSpeedBonus", 1.05];
-        _moderateSpeedBonus = missionNamespace getVariable ["GAIT_ss_moderateSpeedBonus", 1.025];
-        _heavySpeedBonus = missionNamespace getVariable ["GAIT_ss_heavySpeedBonus", 1.00];
+        _mediumSpeedBonus = missionNamespace getVariable ["GAIT_ss_mediumSpeedBonus", 1.02];
+        _moderateSpeedBonus = missionNamespace getVariable ["GAIT_ss_moderateSpeedBonus", 0.97];
+        _heavySpeedBonus = missionNamespace getVariable ["GAIT_ss_heavySpeedBonus", 0.92];
         _lightBraceRelief = missionNamespace getVariable ["GAIT_ss_lightBraceRelief", 0.55];
         _mediumBraceRelief = missionNamespace getVariable ["GAIT_ss_mediumBraceRelief", 0.35];
         _moderateBraceRelief = missionNamespace getVariable ["GAIT_ss_moderateBraceRelief", 0.18];
@@ -762,10 +758,10 @@ GAIT_fnc_setTunnelVisionFX = {
         _slopeHandlingEnabled = missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true];
             _slopeSampleDistance = missionNamespace getVariable ["GAIT_ss_slopeSampleDistance", 2.0];
         _slopeTransitionSmoothingEnabled = missionNamespace getVariable ["GAIT_ss_slopeTransitionSmoothingEnabled", true];
-        _slopeAngleRiseRateDegPerSecond = missionNamespace getVariable ["GAIT_ss_slopeAngleRiseRateDegPerSecond", 22.0];
+        _slopeAngleRiseRateDegPerSecond = missionNamespace getVariable ["GAIT_ss_slopeAngleRiseRateDegPerSecond", 35.0];
         _slopeAngleFallRateDegPerSecond = missionNamespace getVariable ["GAIT_ss_slopeAngleFallRateDegPerSecond", 30.0];
         _uphillSlowdownEnabled = missionNamespace getVariable ["GAIT_ss_uphillSlowdownEnabled", true];
-        _uphillStartDegrees = missionNamespace getVariable ["GAIT_ss_uphillStartDegrees", 5.0];
+        _uphillStartDegrees = missionNamespace getVariable ["GAIT_ss_uphillStartDegrees", 2.0];
         _uphillMaxDegrees = missionNamespace getVariable ["GAIT_ss_uphillMaxDegrees", 35.0];
         _uphillMaxPenalty = missionNamespace getVariable ["GAIT_ss_uphillMaxPenalty", 0.40];
         _slopeStopBraceEnabled = missionNamespace getVariable ["GAIT_ss_slopeStopBraceEnabled", true];
@@ -775,9 +771,9 @@ GAIT_fnc_setTunnelVisionFX = {
         _slopeStopBraceExtraDip = missionNamespace getVariable ["GAIT_ss_slopeStopBraceExtraDip", 0.28];
         _slopeStopBraceMemoryTime = missionNamespace getVariable ["GAIT_ss_slopeStopBraceMemoryTime", 2.5];
         _downhillBoostEnabled = missionNamespace getVariable ["GAIT_ss_downhillBoostEnabled", true];
-        _downhillBoostStartDegrees = missionNamespace getVariable ["GAIT_ss_downhillBoostStartDegrees", 4.0];
+        _downhillBoostStartDegrees = missionNamespace getVariable ["GAIT_ss_downhillBoostStartDegrees", 0.5];
         _downhillBoostMaxDegrees = missionNamespace getVariable ["GAIT_ss_downhillBoostMaxDegrees", 18.0];
-        _downhillMaxBoost = missionNamespace getVariable ["GAIT_ss_downhillMaxBoost", 0.06];
+        _downhillMaxBoost = missionNamespace getVariable ["GAIT_ss_downhillMaxBoost", 0.10];
         _downhillTripEnabled = missionNamespace getVariable ["GAIT_ss_downhillTripEnabled", true];
         _downhillTripThresholdDegrees = missionNamespace getVariable ["GAIT_ss_downhillTripThresholdDegrees", 28.0];
         _downhillTripMaxDegrees = missionNamespace getVariable ["GAIT_ss_downhillTripMaxDegrees", 45.0];
@@ -959,31 +955,19 @@ GAIT_fnc_setTunnelVisionFX = {
                 };
 
                 private _gearLbs = (loadAbs player) / (_loadAbsPerLb max 0.01);
-                private _weightSpeedMult = [_gearLbs, [_lightWeightMax, _mediumWeightMax, _moderateWeightMax], [_lightSpeedBonus, _mediumSpeedBonus, _moderateSpeedBonus, _heavySpeedBonus], missionNamespace getVariable ["GAIT_ss_extraHeavyPenaltyPer50Lb", 0.18]] call GAIT_fnc_continuousLoadMultiplier;
-                private _braceRelief = _heavyBraceRelief;
-
-                if (_gearLbs <= _lightWeightMax) then {
-                    _braceRelief = _lightBraceRelief;
-                } else {
-                    if (_gearLbs <= _mediumWeightMax) then {
-                        _braceRelief = _mediumBraceRelief;
-                    } else {
-                        if (_gearLbs <= _moderateWeightMax) then {
-                            _braceRelief = _moderateBraceRelief;
-                        };
-                    };
-                };
-
-                private _effectiveNormalSpeed = _normalSpeed * _weightSpeedMult;
-                // Every load gets the same brief step within the running clip.
-                // Keep the original base and duration, with only a small tier
-                // difference in the dip instead of nearly removing light brace.
-                private _effectiveBraceRelief = (_braceRelief max 0 min 1) * 0.20;
-                private _effectiveBraceSpeed = (_sprintStartBraceSpeed + ((_normalSpeed - _sprintStartBraceSpeed) * _effectiveBraceRelief)) * _weightSpeedMult;
-
+                private _loadAnchors = [_lightWeightMax, _mediumWeightMax, _moderateWeightMax];
+                private _unloadedSpeedMult = _lightSpeedBonus max 0.01;
+                private _weightSpeedMult = [_gearLbs, _loadAnchors,
+                    [_unloadedSpeedMult, _mediumSpeedBonus, _moderateSpeedBonus, _heavySpeedBonus],
+                    missionNamespace getVariable ["GAIT_ss_extraHeavyPenaltyPer50Lb", 0.18]]
+                    call GAIT_fnc_continuousLoadMultiplier;
                 private _gearInertia = [_gearLbs,
                     [_lightBraceRelief, _mediumBraceRelief, _moderateBraceRelief, _heavyBraceRelief],
-                    [_lightWeightMax, _mediumWeightMax, _moderateWeightMax]] call GAIT_fnc_gearInertia;
+                    _loadAnchors] call GAIT_fnc_gearInertia;
+                private _effectiveNormalSpeed = _normalSpeed * _weightSpeedMult;
+                private _effectiveBraceRelief = (_gearInertia select 4) * 0.20;
+                private _effectiveBraceSpeed = (_sprintStartBraceSpeed + ((_normalSpeed - _sprintStartBraceSpeed) * _effectiveBraceRelief)) * _weightSpeedMult;
+
                 private _accelerationScale = _gearInertia select 0;
                 private _coastScale = _gearInertia select 2;
                 missionNamespace setVariable ["GAIT_gearInertia", _gearInertia];
@@ -1005,14 +989,14 @@ GAIT_fnc_setTunnelVisionFX = {
                 // =====================================================
                 // TERRAIN / SLOPE MODIFIER
                 // Directional grade scales pace continuously; there is no maximum sprint angle.
-                // Downhill bonus grows with actual sustained travel, scales
-                // down with kit weight and tapers on extreme descents.
+                // Downhill entry and sustained travel each contribute to the target.
                 // =====================================================
+                private _rawSlopeDegrees = 0;
                 private _slopeDegrees = 0;
                 private _slopeSpeedMultiplier = 1;
 
                 if (_slopeHandlingEnabled && {_isOnFoot} && {!_isAceDragging}) then {
-                    private _rawSlopeDegrees = [player, _slopeSampleDistance, _movementInput] call GAIT_fnc_getTravelSlopeDegrees;
+                    _rawSlopeDegrees = [player, _slopeSampleDistance, _movementInput] call GAIT_fnc_getTravelSlopeDegrees;
 
                     if (_slopeTransitionSmoothingEnabled) then {
                         if (!_slopeSmoothInitialized) then {
@@ -1048,27 +1032,13 @@ GAIT_fnc_setTunnelVisionFX = {
                         _dt, _uphillStartDegrees, _uphillMaxDegSafe] call GAIT_fnc_stepUphillPaceExposure;
                     missionNamespace setVariable ["GAIT_uphillPaceExposure", _uphillPaceExposure];
 
-                    if (_isSprinting) then {
-                        private _downhillBoostMaxDegSafe = _downhillBoostMaxDegrees max (_downhillBoostStartDegrees + 0.1);
-
-                        if (_uphillSlowdownEnabled && {_slopeDegrees > _uphillStartDegrees}) then {
-                            private _fullUphillMultiplier = [_slopeDegrees, _uphillStartDegrees,
-                                _uphillMaxDegSafe, _uphillMaxPenalty] call GAIT_fnc_uphillPaceMultiplier;
-                            _slopeSpeedMultiplier = [_fullUphillMultiplier, _uphillPaceExposure]
-                                call GAIT_fnc_applyUphillPaceExposure;
-                        };
-                        missionNamespace setVariable ["GAIT_uphillPaceMultiplier", _slopeSpeedMultiplier];
-
-                        if (_downhillBoostEnabled && {_slopeDegrees < -_downhillBoostStartDegrees}) then {
-                            private _sustainedBonus = missionNamespace getVariable ["GAIT_ss_downhillSustainedExtraBoost", 0.12];
-                            _slopeSpeedMultiplier = _slopeSpeedMultiplier * ([_slopeDegrees, _gearLbs, _downhillMomentum,
-                                _downhillBoostStartDegrees, _downhillBoostMaxDegSafe, _downhillMaxBoost + _sustainedBonus]
-                                call GAIT_fnc_downhillPaceMultiplier);
-                        };
-
-                    } else {
-                        missionNamespace setVariable ["GAIT_uphillPaceMultiplier", 1];
+                    if (_uphillBuildContext) then {
+                        private _fullUphillMultiplier = [_slopeDegrees, _uphillStartDegrees,
+                            _uphillMaxDegSafe, _uphillMaxPenalty, _gearLbs] call GAIT_fnc_uphillSprintPaceMultiplier;
+                        _slopeSpeedMultiplier = [_fullUphillMultiplier, _uphillPaceExposure]
+                            call GAIT_fnc_applyUphillPaceExposure;
                     };
+                    missionNamespace setVariable ["GAIT_uphillPaceMultiplier", _slopeSpeedMultiplier];
 
                     private _downhillDegForTrip = abs _slopeDegrees;
                     private _downhillTripMaxDegSafe = _downhillTripMaxDegrees max (_downhillTripThresholdDegrees + 0.1);
@@ -1152,7 +1122,6 @@ GAIT_fnc_setTunnelVisionFX = {
                 };
 
                 missionNamespace setVariable ["GAIT_slopeDegrees", _slopeDegrees];
-                missionNamespace setVariable ["GAIT_slopeSpeedMultiplier", _slopeSpeedMultiplier];
                 missionNamespace setVariable ["GAIT_hillWalkSlowdownMultiplier", _hillWalkSlowdownMultiplier];
                 missionNamespace setVariable ["GAIT_hillWalkSlowdownSeverity", _hillWalkSlowdownSeverity];
 
@@ -1204,8 +1173,7 @@ GAIT_fnc_setTunnelVisionFX = {
                         {_isForwardHeld} && {_momentumContextOk} && {_gaitStanceOk} &&
                         {_onGroundNow} && {(_forwardPressSnapshot select 2) <= 0.35}) then {
                         _walkStartBraceState = [_forwardPressSnapshot select 1, _gearLbs,
-                            [_lightWeightMax, _mediumWeightMax, _moderateWeightMax]]
-                            call GAIT_fnc_walkStartBracePlan;
+                            _loadAnchors] call GAIT_fnc_walkStartBracePlan;
                     };
                 };
                 if (!_isForwardHeld || {_isSprinting} || {!_momentumContextOk} ||
@@ -1222,27 +1190,47 @@ GAIT_fnc_setTunnelVisionFX = {
                 private _hasRetainedSprintMomentum = (_motion select 1) || {_releaseResumed};
                 missionNamespace setVariable ["GAIT_braceMomentumProtected", _hasRetainedSprintMomentum];
 
-                if (!_momentumContextOk || {!_isForwardHeld} || {_forwardReleasedSinceTick} || {(_braceMomentumState select 3) >= 0.15}) then {
+                private _downhillMovementContext = _slopeHandlingEnabled && {_downhillBoostEnabled} &&
+                    {_momentumContextOk} && {_movementEligible} && {_gaitStanceOk} && {_onGroundNow};
+                private _downhillTravel = _rawSlopeDegrees < -_downhillBoostStartDegrees &&
+                    {_slopeDegrees < -_downhillBoostStartDegrees};
+                private _downhillJog = _downhillMovementContext && {_downhillTravel} && {_slopeJogOverride};
+                if (!_downhillMovementContext || {!_isForwardHeld} || {_forwardReleasedSinceTick} ||
+                    {(_braceMomentumState select 3) >= 0.15}) then {
                     _downhillMomentum = 0;
                 } else {
-                    // Downhill momentum now comes from actual descending travel,
-                    // not from preloading while sprinting on flat ground. Steeper
-                    // descents build it faster so the player visibly accelerates.
+                    // Earn momentum during descending travel. Steep terrain
+                    // builds it faster, and ordinary jog earns a smaller share.
                     private _downhillTravelSeverity = linearConversion [
-                        _downhillBoostStartDegrees, 35, -_slopeDegrees, 0, 1, true
+                        _downhillBoostStartDegrees, 35 max (_downhillBoostStartDegrees + 0.1), -_slopeDegrees, 0, 1, true
                     ];
                     _downhillTravelSeverity = _downhillTravelSeverity * _downhillTravelSeverity *
                         (3 - (2 * _downhillTravelSeverity));
-                    private _downhillTravel = _slopeDegrees < -_downhillBoostStartDegrees;
-                    private _momentumTarget = parseNumber (
-                        _continuingSprint && {_horizontalSpeedMS > 0.25} && {_downhillTravel}
-                    );
+                    private _momentumTarget = 0;
+                    if (_horizontalSpeedMS > 0.25 && {_downhillTravel}) then {
+                        if (_continuingSprint) then {_momentumTarget = 1;};
+                        if (_downhillJog) then {_momentumTarget = 0.45;};
+                    };
                     private _baseBuildSeconds = missionNamespace getVariable ["GAIT_ss_downhillMomentumBuildSeconds", 2.5];
-                    private _buildSeconds = _baseBuildSeconds * (1 - (0.55 * _downhillTravelSeverity));
+                    private _buildSeconds = _baseBuildSeconds * (1 - (0.55 * _downhillTravelSeverity)) *
+                        ([1, 1.4] select _downhillJog);
                     _downhillMomentum = [_downhillMomentum, _momentumTarget, _dt, _buildSeconds, 1.5]
                         call GAIT_fnc_stepDownhillMomentum;
                 };
                 missionNamespace setVariable ["GAIT_downhillMomentum", _downhillMomentum];
+                private _sustainedBonus = missionNamespace getVariable ["GAIT_ss_downhillSustainedExtraBoost", 0.18];
+                private _downhillJogMultiplier = 1;
+                if (_downhillMovementContext && {_downhillTravel} && {_isSprinting || {_downhillJog}}) then {
+                    private _downhillMultiplier = [_slopeDegrees, _gearLbs, _downhillMomentum,
+                        _downhillBoostStartDegrees, _downhillBoostMaxDegrees, _downhillMaxBoost,
+                        _sustainedBonus, _weightSpeedMult, _unloadedSpeedMult] call GAIT_fnc_downhillPaceMultiplier;
+                    if (_isSprinting) then {
+                        _slopeSpeedMultiplier = _downhillMultiplier;
+                    } else {
+                        _downhillJogMultiplier = 1 + (0.35 * (_downhillMultiplier - 1));
+                    };
+                };
+                missionNamespace setVariable ["GAIT_slopeSpeedMultiplier", _slopeSpeedMultiplier];
 
                 // A deliberate uphill release is a braking event, separate
                 // from launch-brace eligibility and retained-momentum vetoes.
@@ -1582,25 +1570,26 @@ GAIT_fnc_setTunnelVisionFX = {
                 // =====================================================
                 // SPEED CONTROL
                 // =====================================================
-                private _flatSprintPace = _sprintExhaustedSpeed + ((_sprintFullSpeed - _sprintExhaustedSpeed) * _reserveRatio);
+                private _flatSprintPace = _sprintFullSpeed;
                 if ((currentWeapon player) isEqualTo "") then {
                     _flatSprintPace = _flatSprintPace * _unarmedSprintNormalizer;
                 };
-                // Conservative coefficient floor: assume equal base root motion
-                // for the run and walking reference, until measured in Arma.
-                // Selected running clips must exceed walking at equal coefficient.
-                // This is a target relation, not measured metres per second.
-                private _paceFloorRatio = (missionNamespace getVariable ["GAIT_ss_minSprintWalkRatio", 1.20]) + (_reserveRatio * (missionNamespace getVariable ["GAIT_ss_freshSprintWalkMargin", 0.20]));
-                private _pacePair = [_normalSpeed, _flatSprintPace, _hillWalkSlowdownMultiplier, _slopeSpeedMultiplier, _weightSpeedMult, _paceFloorRatio] call GAIT_fnc_slopePaceModel;
-                private _targetSpeed = _pacePair select (parseNumber _isSprinting);
-                private _ordinaryReleaseTarget = _pacePair select 0;
+                private _walkPace = _effectiveNormalSpeed * _hillWalkSlowdownMultiplier;
+                private _freshSprintPace = _flatSprintPace * _slopeSpeedMultiplier * _weightSpeedMult;
+                private _paceFloorRatio = missionNamespace getVariable ["GAIT_ss_minSprintWalkRatio", 1.06];
+                private _freshWalkMargin = missionNamespace getVariable ["GAIT_ss_freshSprintWalkMargin", 0.20];
+                // Default estimate until matching walk and sprint clip references exist.
+                private _walkToSprint = 0.28;
+                private _pacePair = [_walkPace, _freshSprintPace];
+                private _targetSpeed = _walkPace;
+                private _ordinaryReleaseTarget = _walkPace;
 
                 if (_slopeJogOverride) then {
                     private _familyJog = [player] call GAIT_fnc_slopeWeaponFamily;
                     private _directionJog = [_movementInput select 0, _movementInput select 1] call GAIT_fnc_slopeDirection;
                     private _jogFlatCoefficient = _normalSpeed * 1.06;
                     private _jogResolved = [_normalSpeed, _jogFlatCoefficient,
-                        _hillWalkSlowdownMultiplier, _hillWalkSlowdownMultiplier,
+                        _hillWalkSlowdownMultiplier, _hillWalkSlowdownMultiplier * _downhillJogMultiplier,
                         _weightSpeedMult, 1.06,
                         missionNamespace getVariable ["GAIT_locomotionPaceProfiles", []],
                         _familyJog, _directionJog, "jog"] call GAIT_fnc_locomotionPaceTargets;
@@ -1614,10 +1603,6 @@ GAIT_fnc_setTunnelVisionFX = {
                     missionNamespace setVariable ["GAIT_slopeJogCalibrated", false];
                 };
 
-                missionNamespace setVariable ["GAIT_walkPaceTarget", _pacePair select 0];
-                missionNamespace setVariable ["GAIT_sprintPaceTarget", _pacePair select 1];
-                missionNamespace setVariable ["GAIT_loadPaceMultiplier", _weightSpeedMult];
-
                 if (_isAceCarrying && {!isNull _carriedObject}) then {
                     // Carry animations remain owned by ACE; no slope-state remap.
                     _targetSpeed = (if (_isSprinting) then {
@@ -1625,56 +1610,60 @@ GAIT_fnc_setTunnelVisionFX = {
                     } else {_carryWalkSpeed * _hillWalkSlowdownMultiplier}) * _weightSpeedMult;
                 };
 
-                // Optional measured-clip interface. No unverified speed
-                // profiles ship; absent calibration is exactly the legacy pair.
-                // Steady targets are resolved BEFORE the unchanged brace/ramp.
                 missionNamespace setVariable ["GAIT_paceCalibrated", false];
                 missionNamespace setVariable ["GAIT_sprintReferenceCalibrated", false];
                 missionNamespace setVariable ["GAIT_walkTargetMS", -1];
                 missionNamespace setVariable ["GAIT_sprintTargetMS", -1];
                 missionNamespace setVariable ["GAIT_downhillGravityTargetKmh", 0];
-                if (_isSprinting && {_sprintBraceEndTime <= time} && {_gaitStanceOk} && {!_isAceCarrying} && {_slopeHandlingEnabled} && {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]}) then {
-                    private _family = [player] call GAIT_fnc_slopeWeaponFamily;
-                    private _direction = [_movementInput select 0, _movementInput select 1] call GAIT_fnc_slopeDirection;
-                    private _resolved = [_normalSpeed, _flatSprintPace, _hillWalkSlowdownMultiplier, _slopeSpeedMultiplier, _weightSpeedMult, _paceFloorRatio,
-                        missionNamespace getVariable ["GAIT_locomotionPaceProfiles", []], _family, _direction, "sprint"] call GAIT_fnc_locomotionPaceTargets;
-                    // A complete manual profile is optional. The automatic
-                    // passive sampler may also supply the exact current sprint
-                    // clip reference after stable same-context travel.
-                    private _sprintClip = [_family, _direction, true] call GAIT_fnc_slopeStateName;
-                    private _passiveSprintReference = [player, _sprintClip,
-                        missionNamespace getVariable ["GAIT_smoothedSlopeDegrees", _slopeDegrees]]
-                        call GAIT_fnc_lookupUnitPaceReference;
-                    private _movingReference = [_resolved, _passiveSprintReference]
-                        call GAIT_fnc_resolveMovingPaceReference;
-                    private _sprintReferenceCalibrated = _movingReference > 0.1;
-                    missionNamespace setVariable ["GAIT_sprintReferenceCalibrated", _sprintReferenceCalibrated];
-
-                    // Once any safe exact-clip reference exists, steep downhill
-                    // momentum can use its physical gravity target. The reference
-                    // is historical; current velocity never feeds this target.
-                    private _downhillTargetKmh = [_slopeDegrees, _gearLbs, _downhillMomentum]
-                        call GAIT_fnc_downhillGravityTargetKmh;
-                    if (_sprintReferenceCalibrated && {_downhillTargetKmh > 0} &&
-                        {_direction in ["Df", "Dfl", "Dfr"]} && {(_resolved select 1) > 0}) then {
-                        private _gravityTargetMS = _downhillTargetKmh / 3.6;
-                        private _currentTargetMS = (_resolved select 1) * _movingReference;
-                        if (_gravityTargetMS > _currentTargetMS) then {
-                            _resolved set [1, (_gravityTargetMS / _movingReference) min 100];
-                            _resolved set [3, _gravityTargetMS];
+                if (_isSprinting && {!_isAceCarrying}) then {
+                    private _walkReference = -1;
+                    private _movingReference = -1;
+                    if (_gaitStanceOk && {_slopeHandlingEnabled} && {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]}) then {
+                        private _family = [player] call GAIT_fnc_slopeWeaponFamily;
+                        private _direction = [_movementInput select 0, _movementInput select 1] call GAIT_fnc_slopeDirection;
+                        private _references = [missionNamespace getVariable ["GAIT_locomotionPaceProfiles", []],
+                            _family, _direction, "sprint"] call GAIT_fnc_locomotionPaceReferences;
+                        if (_references isEqualTo []) then {
+                            private _sprintClip = [_family, _direction, true] call GAIT_fnc_slopeStateName;
+                            _movingReference = [player, _sprintClip, _slopeDegrees] call GAIT_fnc_lookupUnitPaceReference;
+                            if (_movingReference > 0.1) then {
+                                private _walkClip = "AmovPercMwlk" + _family + _direction;
+                                _walkReference = [player, _walkClip, _slopeDegrees] call GAIT_fnc_lookupUnitPaceReference;
+                            };
                         } else {
-                            if ((_resolved select 3) < 0) then {_resolved set [3, _currentTargetMS];};
+                            _references params ["_manualWalk", "_manualSprint"];
+                            _walkReference = _manualWalk;
+                            _movingReference = _manualSprint;
+                        };
+
+                        if (_downhillMovementContext && {_downhillTravel} &&
+                            {_sustainedBonus > 0} &&
+                            {_movingReference > 0.1} && {_direction in ["Df", "Dfl", "Dfr"]}) then {
+                            private _downhillTargetKmh = [_slopeDegrees, _gearLbs, _downhillMomentum,
+                                8 max _downhillBoostStartDegrees, 35, _sustainedBonus]
+                                call GAIT_fnc_downhillGravityTargetKmh;
+                            _freshSprintPace = _freshSprintPace max (((_downhillTargetKmh / 3.6) / _movingReference) min 100);
+                            missionNamespace setVariable ["GAIT_downhillGravityTargetKmh", _downhillTargetKmh];
                         };
                     };
-                    missionNamespace setVariable ["GAIT_downhillGravityTargetKmh", _downhillTargetKmh];
-                    _pacePair = _resolved select [0, 2];
-                    _targetSpeed = _pacePair select 1;
-                    missionNamespace setVariable ["GAIT_walkPaceTarget", _pacePair select 0];
-                    missionNamespace setVariable ["GAIT_sprintPaceTarget", _pacePair select 1];
-                    missionNamespace setVariable ["GAIT_walkTargetMS", _resolved select 2];
-                    missionNamespace setVariable ["GAIT_sprintTargetMS", _resolved select 3];
-                    missionNamespace setVariable ["GAIT_paceCalibrated", _resolved select 4];
+
+                    private _walkAndSprintCalibrated = _walkReference > 0 && {_movingReference > 0};
+                    if (_walkAndSprintCalibrated) then {
+                        _walkToSprint = _walkReference / _movingReference;
+                        missionNamespace setVariable ["GAIT_walkTargetMS", _walkPace * _walkReference];
+                    };
+                    _targetSpeed = [_freshSprintPace, _walkPace, _walkToSprint, _reserveRatio,
+                        _paceFloorRatio, _freshWalkMargin, _gearLbs] call GAIT_fnc_sprintReservePace;
+                    if (_movingReference > 0) then {
+                        missionNamespace setVariable ["GAIT_sprintTargetMS", _targetSpeed * _movingReference];
+                    };
+                    missionNamespace setVariable ["GAIT_paceCalibrated", _walkAndSprintCalibrated];
+                    missionNamespace setVariable ["GAIT_sprintReferenceCalibrated", _movingReference > 0];
+                    _pacePair set [1, _targetSpeed];
                 };
+                missionNamespace setVariable ["GAIT_walkPaceTarget", _pacePair select 0];
+                missionNamespace setVariable ["GAIT_sprintPaceTarget", _pacePair select 1];
+                missionNamespace setVariable ["GAIT_loadPaceMultiplier", _weightSpeedMult];
 
                 // Publish a fresh ordinary target for the next raw release.
                 // Inventory/grade changes cannot restart an existing finite plan.
@@ -1718,14 +1707,20 @@ GAIT_fnc_setTunnelVisionFX = {
                             if (_walkStartBraceActive) then {_targetSpeed * _walkStartBraceFactor} else {_targetSpeed}
                         }
                     };
-                    // A modest load effect applies only while building sprint.
-                    // Braces, uphill braking and ordinary movement keep their rates.
-                    if (!_isAceCarrying && {_isSprinting} && {!_uphillBrakeActive} && {_sprintBraceEndTime <= time} && {_rampTarget > _currentSpeed}) then {
-                        // Upward sprint acceleration intentionally takes longer
-                        // than ordinary coefficient changes. Preserve all release,
-                        // brake and jog timing; only the run-up to sprint target
-                        // uses this 0.70 rate scale (~40% longer to ~95% target).
-                        _ramp = [_ramp, _accelerationScale] call GAIT_fnc_sprintAccelerationRamp;
+                    if (!_isAceCarrying && {_isSprinting} && {!_uphillBrakeActive} && {_sprintBraceEndTime <= time}) then {
+                        private _speedIncreasing = _rampTarget > _currentSpeed;
+                        if (_speedIncreasing) then {
+                            _ramp = [_ramp, _accelerationScale] call GAIT_fnc_sprintAccelerationRamp;
+                        };
+                        if (_slopeHandlingEnabled && {_onGroundNow}) then {
+                            _ramp = [_ramp, _slopeDegrees, _speedIncreasing, _uphillStartDegrees,
+                                _downhillBoostStartDegrees, _uphillSlowdownEnabled, _downhillBoostEnabled]
+                                call GAIT_fnc_slopeSprintRamp;
+                        };
+                        if (!_speedIncreasing && {_reserveRatio < 0.45}) then {
+                            _ramp = [_ramp, 1 + (1 - ((_reserveRatio / 0.45) max 0 min 1))]
+                                call GAIT_fnc_scaleInertiaRamp;
+                        };
                     };
                     _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
                     // Honor walk/injury locks and avoid carrying a sprint boost sideways.
@@ -1799,7 +1794,7 @@ GAIT_fnc_setTunnelVisionFX = {
                     _lastDebugHudTime = time;
                     private _debugFamily = [player] call GAIT_fnc_slopeWeaponFamily;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha19<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Family: %11 | Active: %12 | Walk / sprint target: %13 / %14<br/>Foundation: %15 | Sprint ref: %16 | Full profile: %17</t>",
+                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha20<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Family: %11 | Active: %12 | Walk / sprint target: %13 / %14<br/>Foundation: %15 | Sprint ref: %16 | Full profile: %17<br/>Carried load: %18 lb</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,
@@ -1812,7 +1807,8 @@ GAIT_fnc_setTunnelVisionFX = {
                         (_pacePair select 0) toFixed 2, (_pacePair select 1) toFixed 2,
                         missionNamespace getVariable ["GAIT_locomotionPhase", "native"],
                         missionNamespace getVariable ["GAIT_sprintReferenceCalibrated", false],
-                        missionNamespace getVariable ["GAIT_paceCalibrated", false]
+                        missionNamespace getVariable ["GAIT_paceCalibrated", false],
+                        _gearLbs toFixed 1
                     ];
                 };
             } else {

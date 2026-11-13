@@ -10,21 +10,20 @@ GAIT_fnc_continuousLoadMultiplier = {
     params [
         ["_gearLbs", 0, [0]],
         ["_thresholds", [35, 55, 75], [[]]],
-        ["_tierMultipliers", [1.08, 1.05, 1.025, 1], [[]]],
+        ["_paceAnchors", [1.08, 1.02, 0.97, 0.92], [[]]],
         ["_extraHeavyPer50Lb", 0.18, [0]]
     ];
     _gearLbs = _gearLbs max 0;
     private _light = (_thresholds param [0, 35, [0]]) max 1;
     private _medium = (_thresholds param [1, 55, [0]]) max (_light + 1);
     private _heavy = (_thresholds param [2, 75, [0]]) max (_medium + 1);
-    private _m0 = (_tierMultipliers param [0, 1.08, [0]]) max 0.01;
-    private _m1 = ((_tierMultipliers param [1, 1.05, [0]]) max 0.01) min _m0;
-    private _m2 = ((_tierMultipliers param [2, 1.025, [0]]) max 0.01) min _m1;
-    private _m3 = ((_tierMultipliers param [3, 1, [0]]) max 0.01) min _m2;
+    private _m0 = (_paceAnchors param [0, 1.08, [0]]) max 0.01;
+    private _m1 = ((_paceAnchors param [1, 1.02, [0]]) max 0.01) min _m0;
+    private _m2 = ((_paceAnchors param [2, 0.97, [0]]) max 0.01) min _m1;
+    private _m3 = ((_paceAnchors param [3, 0.92, [0]]) max 0.01) min _m2;
 
-    // Interpolate all four existing gear multipliers instead of stepping on
-    // tier boundaries. The heavy baseline is reached at the heavy threshold;
-    // it is not a cap on the weight penalty. Extra kit keeps reducing speed.
+    // The settings define points on the curve. Every change in carried weight
+    // between them contributes to pace, including above the last point.
     if (_gearLbs <= _light) exitWith {
         _m0 + ((_m1 - _m0) * (_gearLbs / _light))
     };
@@ -52,10 +51,33 @@ GAIT_fnc_uphillPaceMultiplier = {
     (1 - (_referencePenalty max 0 min 0.99)) ^ _severity
 };
 
+GAIT_fnc_uphillSprintPaceMultiplier = {
+    params ["_gradeDegrees", "_startDegrees", "_referenceDegrees", "_referencePenalty", "_gearLbs"];
+    private _mass = _gearLbs max 0;
+    private _loadScale = 0.70 + (0.60 * (_mass / (_mass + 75)));
+    [_gradeDegrees, _startDegrees, _referenceDegrees, _referencePenalty * _loadScale]
+        call GAIT_fnc_uphillPaceMultiplier
+};
+
+// Scale the regular coefficient response without altering bracing or release
+// timing. In particular, a rising hill should slow a moving sprint promptly.
+GAIT_fnc_slopeSprintRamp = {
+    params ["_baseRamp", "_gradeDegrees", "_speedRising", "_uphillStart", "_downhillStart", "_uphillEnabled", "_downhillEnabled"];
+    private _rateScale = 1;
+    if (_uphillEnabled && {_gradeDegrees > _uphillStart}) then {
+        private _hill = sqrt (((_gradeDegrees - _uphillStart) / 25) min 1);
+        _rateScale = 1 + (_hill * ([2.4, 0.65] select _speedRising));
+    };
+    if (_downhillEnabled && {_speedRising} && {_gradeDegrees < -_downhillStart}) then {
+        private _hill = sqrt (((-_gradeDegrees - _downhillStart) / 15) min 1);
+        _rateScale = 1 + (2.2 * _hill);
+    };
+    1 - ((1 - (_baseRamp max 0.001 min 1)) ^ _rateScale)
+};
+
 // The final grade curve above remains the steady-state target. This helper
 // controls how much of that penalty has been earned through continued uphill
-// sprinting. Shallow grades build slowly; steep grades converge much faster.
-// Returning to flat/downhill recovers smoothly instead of snapping.
+// sprinting. The initial change is prompt, and steeper grades converge faster.
 // Duration values mean approximately 95% of the remaining change.
 GAIT_fnc_stepUphillPaceExposure = {
     params [
@@ -65,8 +87,8 @@ GAIT_fnc_stepUphillPaceExposure = {
         ["_dt", 0.05, [0]],
         ["_startDegrees", 5, [0]],
         ["_referenceDegrees", 35, [0]],
-        ["_shallowBuildSeconds", 2.6, [0]],
-        ["_steepBuildSeconds", 0.65, [0]],
+        ["_shallowBuildSeconds", 1.25, [0]],
+        ["_steepBuildSeconds", 0.40, [0]],
         ["_recoverySeconds", 0.85, [0]]
     ];
     _current = (_current max 0) min 1;

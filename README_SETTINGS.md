@@ -1,12 +1,12 @@
-# GAIT 1.8.0-alpha19 settings reference
+# GAIT 1.8.0-alpha20 settings reference
 
-This reference is generated from the 122 current CBA registrations. Defaults below are registration defaults; presets and mission/server overrides can change effective values. Select Custom to keep individual tuning instead of having a preset reapply its values.
+This reference covers the 121 current CBA registrations. The table shows registration defaults. Presets and mission or server overrides can change effective values. Select Custom to keep individual tuning.
 
 ## Current cleanup and compatibility behavior
 
 Removed the inactive release sustain timer, redundant downhill onset cap, and three switches that allowed lifecycle cleanup to be disabled. Cleanup on player replacement, spectator/control changes and unconsciousness is now unconditional. The duplicate Full/Hybrid movement choice is one Movement and effects choice; saved legacy numeric values 0 and 1 still select movement and effects.
 
-For a custom old downhill onset cap, set the remaining Downhill boost starts control to the smaller of your previous onset and cap. Defaults are unchanged. The release curve slider now exposes its effective 1–3 range; HUD interval starts at the existing 0.05-second minimum.
+The Downhill boost starts control now defaults to 0.5°. Exhausted sprint uses the minimum sprint-to-walk ratio below. The release curve slider exposes its effective 1–3 range and HUD interval starts at 0.05 seconds.
 
 Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of the tinnitus switch. Removing that PBO restores ACE’s original heartbeat gain. There is no sway control. Automatic pace calibration has no extra user settings. Stable same-clip measurements may automatically calibrate sprint physical targets; complete manual pace profiles remain optional.
 
@@ -36,13 +36,12 @@ Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of t
 | --- | --- | --- | --- |
 | Ordinary movement coefficient (`GAIT_ss_normalSpeed`) | 0.86 | 0.5–1.5 | Base animation coefficient for non-sprint movement before gear and slope modifiers. 1.00 is the active clip at its native playback rate, not a fixed speed in km/h. Default: 0.86. |
 | Fresh sprint coefficient (`GAIT_ss_sprintFullSpeed`) | 1.28 | 0.7–2 | Base sprint animation coefficient at full reserve, before gear, slope and minimum pace-ratio modifiers. Not a speed in km/h. Default: 1.28. |
-| Exhausted sprint coefficient (`GAIT_ss_sprintExhaustedSpeed`) | 0.89 | 0.4–1.5 | Base sprint animation coefficient at empty reserve, before gear, slope and minimum pace-ratio modifiers. Default: 0.89. |
 | Fallback sprint reserve (`GAIT_ss_sprintReserveMax`) | 25 | 1–120 | Seconds of full sprint in the GAIT reserve model when ACE reserve reading is disabled, unavailable or not initialized. Default: 25 seconds. |
 | Fallback reserve recovery (`GAIT_ss_sprintRecoverTime`) | 10 | 1–60 | Seconds to recover the GAIT fallback reserve. Does not change ACE recovery. Default: 10 seconds. |
-| Speed ramp smoothness (`GAIT_ss_speedLerp`) | 0.05 | 0.01–1 | Base smoothing rate for movement speed changes. Upward sprint acceleration uses 70% of this rate, making the default sprint build roughly 4.1 seconds to ~95% target instead of ~2.9 seconds; braking and release timing are unchanged. Default: 0.05. |
+| Speed ramp smoothness (`GAIT_ss_speedLerp`) | 0.05 | 0.01–1 | Base smoothing rate for movement speed changes. Flat sprint acceleration uses 70% of this rate and reaches about 95% of target in 4.1 seconds before the carried-load adjustment. Hills have their own entry response. |
 | W-release zero-momentum delay (`GAIT_ss_wReleaseZeroMomentumDelay`) | 0.5 | 0–20 | Seconds after releasing forward movement before the next sprint start is treated as zero momentum. Lower values make brace return sooner. Default: 0.50. |
 | Smooth sprint release (`GAIT_ss_shiftReleaseRunTaperEnabled`) | true | on / off | Release sprint while keeping forward movement held to decelerate from current motion. Uses measured jog pace when a valid reference exists. Stop, direction changes and medical restrictions cancel promptly. Default: enabled. |
-| Sprint release duration scale (`GAIT_ss_shiftReleaseRunTaperDuration`) | 0.85 | 0.05–4 | Sets the ceiling for the Shift-release ramp: value x gear factor, bounded to 0.35–1.20 seconds. The measured speed difference uses 75–100% of that window, beginning at the exact current running pace before easing to jog. Default 0.85 gives a ceiling near 0.77–0.98 seconds across the default weight tiers. |
+| Sprint release duration scale (`GAIT_ss_shiftReleaseRunTaperDuration`) | 0.85 | 0.05–4 | Sets the ceiling for the Shift-release ramp using carried mass, bounded to 0.35–1.20 seconds. The measured speed difference uses 75–100% of that window and begins at the current running pace before easing to jog. Default 0.85 gives a ceiling near 0.77–0.98 seconds. |
 | Sprint release curve (`GAIT_ss_shiftReleaseRunTaperCurve`) | 1.45 | 1–3 | Shapes the finite slowdown. Higher values lose pace sooner. Effective range: 1-3. Does not add a hold or extend the deadline. Default: 1.45. |
 | Unarmed sprint normalizer (`GAIT_ss_unarmedSprintNormalizer`) | 0.725 | 0.3–1.2 | Multiplier applied when sprinting with no weapon out so holstering does not create an unrealistic speed boost. Default: 0.725. |
 ### Carry
@@ -56,25 +55,25 @@ Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of t
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Load-to-pound divisor (`GAIT_ss_loadAbsPerLb`) | 10 | 1–25 | Conversion used for display-style gear weight. Gear pounds = loadAbs divided by this value. Default: 10. |
-| Light kit max weight (`GAIT_ss_lightWeightMax`) | 35 | 0–100 | Upper weight for the light-kit speed/brace tier. Default: 35 lb. |
-| Medium kit max weight (`GAIT_ss_mediumWeightMax`) | 55 | 0–150 | Upper weight for the medium-kit speed/brace tier. Default: 55 lb. |
-| Moderate kit max weight (`GAIT_ss_moderateWeightMax`) | 75 | 0–200 | Upper weight for the moderate-kit speed/brace tier. Above this uses heavy baseline. Default: 75 lb. |
+| Load-to-pound divisor (`GAIT_ss_loadAbsPerLb`) | 10 | 1–25 | Converts live carried inventory mass to the pounds used by the load curves. GAIT divides Arma's loadAbs value by this setting. |
+| First mass anchor (`GAIT_ss_lightWeightMax`) | 35 | 0–100 | First loaded pace and brace tuning point. |
+| Second mass anchor (`GAIT_ss_mediumWeightMax`) | 55 | 0–150 | Middle loaded pace and brace tuning point. |
+| Third mass anchor (`GAIT_ss_moderateWeightMax`) | 75 | 0–200 | Heavy pace and brace tuning point. The additional heavy-kit penalty applies above this mass. |
 | Zero-load speed multiplier (`GAIT_ss_lightSpeedBonus`) | 1.08 | 0.5–1.5 | Continuous speed curve at zero carried load. Default: 1.08. |
-| Light threshold speed multiplier (`GAIT_ss_mediumSpeedBonus`) | 1.05 | 0.5–1.5 | Continuous speed curve at the light weight threshold. Default: 1.05. |
-| Medium threshold speed multiplier (`GAIT_ss_moderateSpeedBonus`) | 1.025 | 0.5–1.5 | Continuous speed curve at the medium weight threshold. Default: 1.025. |
-| Heavy threshold speed multiplier (`GAIT_ss_heavySpeedBonus`) | 1 | 0.5–1.5 | Continuous speed curve at the heavy weight threshold; extra weight reduces pace further. Default: 1.00. |
-| Light kit brace relief (`GAIT_ss_lightBraceRelief`) | 0.55 | 0–1 | Small reduction of the shared brace dip for light kits. Applied at 20% strength so every tier keeps a brace. 0 = full dip; 1 = 20% relief. Default: 0.55. |
-| Medium kit brace relief (`GAIT_ss_mediumBraceRelief`) | 0.35 | 0–1 | Small reduction of the shared brace dip for medium kits, applied at 20% strength. Default: 0.35. |
-| Moderate kit brace relief (`GAIT_ss_moderateBraceRelief`) | 0.18 | 0–1 | Small reduction of the shared brace dip for moderate kits, applied at 20% strength. Default: 0.18. |
-| Heavy kit brace relief (`GAIT_ss_heavyBraceRelief`) | 0 | 0–1 | Small reduction of the shared brace dip for heavy kits, applied at 20% strength. Default: 0.00. |
+| First-anchor speed multiplier (`GAIT_ss_mediumSpeedBonus`) | 1.02 | 0.5–1.5 | Continuous speed curve at the first load point. |
+| Second-anchor speed multiplier (`GAIT_ss_moderateSpeedBonus`) | 0.97 | 0.5–1.5 | Continuous speed curve at the middle load point. |
+| Third-anchor speed multiplier (`GAIT_ss_heavySpeedBonus`) | 0.92 | 0.5–1.5 | Continuous speed curve at the heavy load point. Additional mass reduces pace further. |
+| Zero-load brace relief (`GAIT_ss_lightBraceRelief`) | 0.55 | 0–1 | First-step brace relief at the light end of the mass curve. The setting is applied at 20% strength. |
+| First-anchor brace relief (`GAIT_ss_mediumBraceRelief`) | 0.35 | 0–1 | First-step brace relief at the medium point of the mass curve, applied at 20% strength. |
+| Second-anchor brace relief (`GAIT_ss_moderateBraceRelief`) | 0.18 | 0–1 | First-step brace relief at the moderate point of the mass curve, applied at 20% strength. |
+| Third-anchor brace relief (`GAIT_ss_heavyBraceRelief`) | 0 | 0–1 | First-step brace relief at the heavy end of the mass curve, applied at 20% strength. |
 ### Brace
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
 | Enable start brace step (`GAIT_ss_sprintStartBraceEnabled`) | true | on / off | Enables the small weight-scaled first step when beginning ordinary forward movement from rest and the stronger sprint-start brace. |
-| Sprint brace duration (`GAIT_ss_sprintStartBraceDuration`) | 0.15 | 0–1 | How long the sprint-start brace lasts. The smaller walk-start step uses a fixed short tier curve: light 0.28 s, medium 0.32 s, moderate 0.36 s, heavy 0.40 s. |
-| Sprint brace speed (`GAIT_ss_sprintStartBraceSpeed`) | 0.42 | 0.1–1.2 | Animation speed target during the sprint-start brace. The walk-start step automatically uses a shallower 14%–26% initial pace reduction by kit tier. |
+| Sprint brace duration (`GAIT_ss_sprintStartBraceDuration`) | 0.15 | 0–1 | How long the sprint-start brace lasts. The walk-start step ranges continuously from 0.28 to 0.40 seconds with carried mass. |
+| Sprint brace speed (`GAIT_ss_sprintStartBraceSpeed`) | 0.42 | 0.1–1.2 | Animation speed target during the sprint-start brace. The walk-start step has a 14%–26% initial pace reduction that scales with carried mass. |
 | Sprint brace snap (`GAIT_ss_sprintStartBraceLerp`) | 0.575 | 0.01–1 | How abruptly speed moves into the sprint-start brace. The walk-start step uses a deterministic smooth finite recovery instead. |
 | Brace settle time (`GAIT_ss_braceRequiredWalkTime`) | 2 | 0–10 | Non-sprint settle interval used by normal brace readiness and momentum recovery. A true stop can independently rearm the brace; a moving sprint retap is protected. Default: 2 seconds. |
 | Recent sprint grace (`GAIT_ss_braceRecentSprintCooldown`) | 3 | 0–10 | Recent-sprint interval used by normal brace readiness and retained momentum. A real stop can still rearm brace before it expires. Default: 3 seconds. |
@@ -114,12 +113,12 @@ Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of t
 | Enable slope handling (`GAIT_ss_slopeHandlingEnabled`) | true | on / off | Enables GAIT terrain-aware movement. Ordinary forward movement on any real slope uses a custom Mrun jog instead of the engine slope-walk state; uphill sprinting slows progressively and downhill sprinting accelerates with sustained descent momentum. ACE medical movement locks still take priority. |
 | Slope sample distance (`GAIT_ss_slopeSampleDistance`) | 2 | 0.5–6 | Meters ahead and behind the player used to measure the terrain slope in the current movement direction. Higher values smooth noisy terrain; lower values react faster. Default: 2.0. |
 | Smooth slope transitions (`GAIT_ss_slopeTransitionSmoothingEnabled`) | true | on / off | Smooths slope angle and slope-speed target changes so moving between different incline angles ramps speed up/down instead of snapping. Default: enabled. |
-| Slope angle rise rate (`GAIT_ss_slopeAngleRiseRateDegPerSecond`) | 22 | 2–120 | Maximum degrees per second the effective slope may increase when entering steeper terrain. Lower is smoother/heavier. Default: 22 deg/sec. |
+| Slope angle rise rate (`GAIT_ss_slopeAngleRiseRateDegPerSecond`) | 35 | 2–120 | Maximum degrees per second the effective slope may increase when entering steeper terrain. Lower values delay the grade response. |
 | Slope angle fall rate (`GAIT_ss_slopeAngleFallRateDegPerSecond`) | 30 | 2–160 | Maximum degrees per second the effective slope may relax when terrain becomes flatter. Higher recovers faster. Default: 30 deg/sec. |
 | Enable uphill slowdown (`GAIT_ss_uphillSlowdownEnabled`) | true | on / off | When sprinting uphill, GAIT reduces sprint speed as the slope gets steeper. Sprinting remains possible; it just gets slower. |
-| Uphill slowdown starts (`GAIT_ss_uphillStartDegrees`) | 5 | 0–45 | Incline angle in degrees where uphill sprint slowdown begins. A higher value makes shallow hills feel closer to flat ground. Default: 5 degrees. |
+| Uphill slowdown starts (`GAIT_ss_uphillStartDegrees`) | 2 | 0–45 | Incline angle in degrees where uphill sprint slowdown begins. A higher value makes shallow hills feel closer to flat ground. |
 | Uphill reference angle (`GAIT_ss_uphillMaxDegrees`) | 35 | 5–80 | Angle where the reference penalty is reached. Pace continues decreasing above this angle without a walking cutoff. Default: 35 degrees. |
-| Uphill penalty at reference angle (`GAIT_ss_uphillMaxPenalty`) | 0.4 | 0–0.95 | Sprint pace reduction at the reference angle. 0.40 means 40% slower there. The continuous curve extends to steeper angles; a walk-relative target floor preserves sprint advantage. Default: 0.40. |
+| Uphill penalty at reference angle (`GAIT_ss_uphillMaxPenalty`) | 0.4 | 0–0.95 | Sprint pace reduction at the reference angle and load. Lighter kits lose less pace and heavier kits lose more. The curve continues to steeper angles, subject to the walk-relative sprint floor. |
 | Vegetation drag (`GAIT_ss_vegetationDragEnabled`) | true | on / off | Dense bushes bleed movement speed while passing through them. Default: enabled. |
 | Vegetation drag max (`GAIT_ss_vegetationDragMax`) | 0.18 | 0–0.75 | Maximum movement speed reduction in dense brush. 0.18 means up to 18% slower. Default: 0.18. |
 | Vegetation drag radius (`GAIT_ss_vegetationDragRadius`) | 2.5 | 0.5–6 | Bush proximity radius in meters considered for drag. Default: 2.5 m. |
@@ -132,12 +131,12 @@ Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of t
 | Uphill drain starts (`GAIT_ss_uphillFatigueDrainStartDegrees`) | 10 | 0–45 | Incline angle where additional uphill fatigue drain begins. Default: 10 degrees. |
 | Uphill drain max angle (`GAIT_ss_uphillFatigueDrainMaxDegrees`) | 35 | 5–80 | Incline angle where additional uphill fatigue drain reaches full strength. Default: 35 degrees. |
 | Uphill max drain multiplier (`GAIT_ss_uphillFatigueDrainMaxMultiplier`) | 1.75 | 1–4 | Maximum multiplier applied to sprint stamina drain on steep uphill terrain. 1.75 means 75% faster drain. Default: 1.75. |
-| Enable downhill acceleration (`GAIT_ss_downhillBoostEnabled`) | true | on / off | Builds downhill momentum only while actually descending. Steeper grades accelerate harder instead of tapering the bonus. Default: enabled. |
-| Downhill bonus starts (`GAIT_ss_downhillBoostStartDegrees`) | 4 | 0–30 | Decline angle where the downhill speed bonus starts. This is the single onset control. Default: 4 degrees. |
+| Enable downhill acceleration (`GAIT_ss_downhillBoostEnabled`) | true | on / off | Applies an early speed gain on descent and builds additional momentum during continued downhill travel. Jogging receives a smaller gain than sprinting. |
+| Downhill bonus starts (`GAIT_ss_downhillBoostStartDegrees`) | 0.5 | 0–30 | Decline angle where the downhill speed bonus starts. |
 | Downhill base boost angle (`GAIT_ss_downhillBoostMaxDegrees`) | 18 | 5–60 | Decline angle where the configured base bonus reaches full strength. Steeper grades continue adding gravity amplification. Default: 18 degrees. |
-| Downhill base speed boost (`GAIT_ss_downhillMaxBoost`) | 0.06 | 0–0.35 | Base downhill bonus at full momentum, added to the sustained bonus below. Steep grades can amplify the configured component up to 3x before the final cap, with stronger retention under heavy kit. Default: 0.06. |
-| Sustained downhill bonus (`GAIT_ss_downhillSustainedExtraBoost`) | 0.12 | 0–0.25 | Additional bonus earned by actual downhill sprint travel. Base+sustained boost is amplified on steep grades, with final additive acceleration capped at 65%. Default: 0.12. |
-| Downhill momentum build time (`GAIT_ss_downhillMomentumBuildSeconds`) | 2.5 | 0.5–8 | Baseline seconds of actual downhill sprint travel to build 95% momentum. Steeper descents shorten this by up to 55%; flat sprinting does not preload downhill momentum. Default: 2.5 seconds. |
+| Downhill entry speed boost (`GAIT_ss_downhillMaxBoost`) | 0.10 | 0–0.35 | Early downhill speed gain. It scales with grade and carried mass. |
+| Sustained downhill bonus (`GAIT_ss_downhillSustainedExtraBoost`) | 0.18 | 0–0.25 | Additional speed gain earned during downhill sprint travel. Heavy kit gains more as momentum builds. |
+| Downhill momentum build time (`GAIT_ss_downhillMomentumBuildSeconds`) | 2.5 | 0.5–8 | Baseline seconds of actual downhill sprint travel to build 95% momentum. Steeper descents build momentum faster. |
 | Enable steep downhill trips (`GAIT_ss_downhillTripEnabled`) | true | on / off | Allows a chance to stumble/ragdoll during fast grounded travel down a steep hill, including sprint deceleration. This does not apply damage by itself. Default: enabled. |
 | Trip risk starts above decline (`GAIT_ss_downhillTripThresholdDegrees`) | 28 | 5–70 | Downhill angle in degrees where trip risk begins during eligible travel above the actual speed minimum. The decline must be steeper than this value. Default: 28 degrees. |
 | Trip max-risk decline (`GAIT_ss_downhillTripMaxDegrees`) | 45 | 10–80 | Downhill angle where the slope component reaches its configured maximum, before speed and weight scaling. Default: 45 degrees. |
@@ -178,7 +177,7 @@ Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of t
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Minimum sprint / walk target ratio (`GAIT_ss_minSprintWalkRatio`) | 1.2 | 1.05–1.5 | Conservative coefficient target floor relative to walking at the same grade and load. 1.20 preserves at least a 20% coefficient advantage after acceleration. Actual clip speeds must be verified in-game. Does not override injury, collision or special actions. |
+| Exhausted sprint / walk pace ratio (`GAIT_ss_minSprintWalkRatio`) | 1.06 | 1.05–1.5 | Target pace at empty reserve for heavily loaded sprinting, relative to walking at the same grade and load. Light kits receive up to 0.06 extra. Accuracy depends on the clip reference. |
 ### Weight
 
 | Control / variable | Default | Allowed values | Implemented behavior |
@@ -189,4 +188,4 @@ Heartbeat gain is fixed at 10% by the optional heartbeat PBO, independently of t
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
 | Dedicated standing sprint animations (`GAIT_ss_slopeLocomotionEnabled`) | true | on / off | Uses scoped native sprint clips for forward/diagonal standing movement and run clips for lateral/reverse movement, with one blended entry/exit. No terrain angle cutoff. Disabling uses native animation selection and disables the calibrated release handoff. |
-| Fresh reserve pace margin (`GAIT_ss_freshSprintWalkMargin`) | 0.2 | 0.01–0.75 | Extra sprint/walk coefficient ratio at full reserve, fading continuously with fatigue. Keeps reserve affecting speed when the walk-relative floor is active. Default 0.20 adds 20 percentage points to the minimum ratio when fresh. |
+| Fresh reserve pace margin (`GAIT_ss_freshSprintWalkMargin`) | 0.2 | 0.01–0.75 | Additional minimum sprint-to-walk pace ratio above the low-reserve taper. It fades as the last 45% of reserve is consumed. |

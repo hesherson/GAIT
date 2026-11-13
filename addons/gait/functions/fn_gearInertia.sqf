@@ -1,12 +1,19 @@
 /*
-    Alpha7 gives heavy launch a further 2% rate boost; lighter ordering is preserved.
-    Load changes acceleration, never sprint permission or steady pace.
+    Live carried mass controls acceleration and release inertia.
     A released sprint has one short forward-only taper, with no hold and no
     secondary exponential tail. The separate uphill brake has priority.
 
     Returns [accelerationScale, decelerationScale, coastScale,
-             launchDurationScale, originalTierBraceRelief].
+             launchDurationScale, braceRelief].
 */
+GAIT_fnc_gearWeightAnchors = {
+    params ["_thresholds"];
+    private _first = (_thresholds param [0, 35, [0]]) max 1;
+    private _second = (_thresholds param [1, 55, [0]]) max (_first + 1);
+    private _third = (_thresholds param [2, 75, [0]]) max (_second + 1);
+    [0, _first, _second, _third]
+};
+
 GAIT_fnc_gearInertia = {
     params [
         ["_gearLbs", 0, [0]],
@@ -14,12 +21,10 @@ GAIT_fnc_gearInertia = {
         ["_thresholds", [35, 55, 75], [[]]]
     ];
     if ((count _braceRelief) < 4) then {_braceRelief = [0.55, 0.35, 0.18, 0];};
-    if ((count _thresholds) < 3) then {_thresholds = [35, 55, 75];};
-    private _lightMax = (_thresholds param [0, 35, [0]]) max 1;
-    private _mediumMax = (_thresholds param [1, 55, [0]]) max (_lightMax + 1);
-    private _moderateMax = (_thresholds param [2, 75, [0]]) max (_mediumMax + 1);
-    private _landmarks = [0, _lightMax, _mediumMax, _moderateMax, _moderateMax + 25, _moderateMax + 50];
-    private _acceleration = [1.06, 1.04, 1.02, 1.02, 1.02, 1.02];
+    private _landmarks = [_thresholds] call GAIT_fnc_gearWeightAnchors;
+    private _heavyAnchor = _landmarks select 3;
+    _landmarks append [_heavyAnchor + 25, _heavyAnchor + 50];
+    private _acceleration = [1.12, 1.02, 0.93, 0.84, 0.77, 0.72];
     private _coast = [0.90, 0.95, 1, 1.05, 1.10, 1.15];
     private _load = _gearLbs max 0 min (_landmarks select 5);
     private _segment = 0;
@@ -29,13 +34,9 @@ GAIT_fnc_gearInertia = {
     private _fraction = (_load - (_landmarks select _segment)) / ((_landmarks select (_segment + 1)) - (_landmarks select _segment));
     private _accelerationScale = (_acceleration select _segment) + (((_acceleration select (_segment + 1)) - (_acceleration select _segment)) * _fraction);
     private _coastScale = (_coast select _segment) + (((_coast select (_segment + 1)) - (_coast select _segment)) * _fraction);
-    private _tier = 3;
-    if (_gearLbs <= _lightMax) then {_tier = 0;} else {
-        if (_gearLbs <= _mediumMax) then {_tier = 1;} else {
-            if (_gearLbs <= _moderateMax) then {_tier = 2;};
-        };
-    };
-    [_accelerationScale, 1, _coastScale, 1, (_braceRelief param [_tier, 0, [0]]) max 0 min 1]
+    private _reliefFrom = (_braceRelief param [_segment min 3, 0, [0]]) max 0 min 1;
+    private _reliefTo = (_braceRelief param [(_segment + 1) min 3, 0, [0]]) max 0 min 1;
+    [_accelerationScale, 1, _coastScale, 1, _reliefFrom + ((_reliefTo - _reliefFrom) * _fraction)]
 };
 
 GAIT_fnc_scaleInertiaRamp = {
@@ -47,7 +48,7 @@ GAIT_fnc_scaleInertiaRamp = {
 
 // Sprint acceleration alone uses a slower convergence than general movement.
 // 0.70 makes default 0.05 smoothing reach ~95% in about 4.1 s instead of
-// ~2.9 s, before the small load-tier rate adjustment.
+// ~2.9 s, before the continuous load adjustment.
 GAIT_fnc_sprintAccelerationRamp = {
     params [
         ["_baseLerp", 0.05, [0]],

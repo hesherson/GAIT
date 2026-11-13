@@ -108,7 +108,7 @@ private _overRef = [50,false,35] call GAIT_fnc_uphillLaunchBraceFactor;
 [_overRef > 1 && {_overRef <= 1.25}, "very steep uphill launch stays bounded"] call _assert;
 
 // Ordinary movement from a true stop gets a separate shallow, finite step.
-// Tier boundaries are inclusive and heavier kits are both deeper and longer.
+// Heavier kits are both deeper and longer.
 private _walkProfiles = [];
 {
     private _profile = [_x, [35,55,75]] call GAIT_fnc_walkStartBraceProfile;
@@ -122,10 +122,11 @@ for "_i" from 0 to 2 do {
 };
 [((_walkProfiles select 0) select 1) < 0.90, "lightest walk brace remains noticeable"] call _assert;
 [((_walkProfiles select 3) select 1) >= 0.70, "heaviest walk brace stays bounded and non-annoying"] call _assert;
-[(([35,[35,55,75]] call GAIT_fnc_walkStartBraceProfile) select 3) isEqualTo 0, "light boundary is inclusive"] call _assert;
-[(([35.001,[35,55,75]] call GAIT_fnc_walkStartBraceProfile) select 3) isEqualTo 1, "medium begins above light boundary"] call _assert;
-[(([55.001,[35,55,75]] call GAIT_fnc_walkStartBraceProfile) select 3) isEqualTo 2, "moderate begins above medium boundary"] call _assert;
-[(([75.001,[35,55,75]] call GAIT_fnc_walkStartBraceProfile) select 3) isEqualTo 3, "heavy begins above moderate boundary"] call _assert;
+{
+    private _before = [_x - 0.001] call GAIT_fnc_walkStartBraceProfile;
+    private _after = [_x + 0.001] call GAIT_fnc_walkStartBraceProfile;
+    [abs ((_before select 1) - (_after select 1)) < 0.00001, "walk step is continuous at each anchor"] call _assert;
+} forEach [35,55,75];
 
 {
     private _plan = [10, _x, [35,55,75]] call GAIT_fnc_walkStartBracePlan;
@@ -134,7 +135,7 @@ for "_i" from 0 to 2 do {
     private _low = _profile select 1;
     private _hold = _profile select 2;
     private _first = [_plan, 10] call GAIT_fnc_walkStartBraceSample;
-    [abs ((_first select 0) - _low) < 0.00001 && {_first select 1}, "walk brace begins at its tier first-step factor"] call _assert;
+    [abs ((_first select 0) - _low) < 0.00001 && {_first select 1}, "walk brace begins at its load-scaled first-step factor"] call _assert;
     private _held = [_plan, 10 + (_duration * (_hold * 0.5))] call GAIT_fnc_walkStartBraceSample;
     [abs ((_held select 0) - _low) < 0.00001, "walk brace keeps a brief planted first step"] call _assert;
     private _mid = [_plan, 10 + (_duration * ((_hold + 1) * 0.5))] call GAIT_fnc_walkStartBraceSample;

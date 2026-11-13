@@ -14,7 +14,9 @@ class PaceIntegration(unittest.TestCase):
     def test_target_and_writer_connections(self):
         release=(F/'fn_releaseMomentum.sqf').read_text();writer=(F/'fn_nativeController.sqf').read_text();main=(F/'fn_initSprintSystem.sqf').read_text()
         self.assertIn('GAIT_fnc_lookupUnitPaceReference',main)
-        self.assertIn('GAIT_fnc_resolveMovingPaceReference',main)
+        self.assertIn('call GAIT_fnc_locomotionPaceReferences',main)
+        self.assertIn('_walkReference / _movingReference',main)
+        self.assertIn('call GAIT_fnc_sprintReservePace',main)
         self.assertIn('GAIT_sprintReferenceCalibrated',main)
         self.assertIn('GAIT_fnc_downhillGravityTargetKmh',main)
         self.assertIn('[_unit, _animation, _family, _direction, _speed, _applied, _ordinary] call GAIT_fnc_releasePaceMatch;',release)

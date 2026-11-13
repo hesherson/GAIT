@@ -36,15 +36,15 @@ private _secondStart = [_secondRelease select 1,0.8,0,0.3,1.45] call GAIT_fnc_fo
 {
     _x params ["_weight", "_relief"];
     private _response = [_weight] call GAIT_fnc_gearInertia;
-    [abs ((_response select 4) - _relief) < _epsilon, format ["original brace relief at %1 lb", _weight]] call _assert;
+    [abs ((_response select 4) - _relief) < _epsilon, format ["interpolated brace relief at %1 lb", _weight]] call _assert;
     [(_response select 3) isEqualTo 1, "original launch duration unchanged"] call _assert;
     [(_response select 1) isEqualTo 1, "no added load deceleration filter"] call _assert;
-} forEach [[0,0.55],[35,0.55],[35.001,0.35],[55,0.35],[55.001,0.18],[75,0.18],[75.001,0],[125,0],[2000,0]];
+} forEach [[0,0.55],[17.5,0.45],[35,0.35],[45,0.265],[55,0.18],[65,0.09],[75,0],[125,0],[2000,0]];
 {
     _x params ["_weight", "_relief"];
     private _custom = [_weight,[0.6,0.4,0.2,0.1],[20,40,90]] call GAIT_fnc_gearInertia;
-    [abs ((_custom select 4) - _relief) < _epsilon,"custom tiers preserve inclusive original boundaries"] call _assert;
-} forEach [[20,0.6],[20.001,0.4],[40,0.4],[40.001,0.2],[90,0.2],[90.001,0.1]];
+    [abs ((_custom select 4) - _relief) < _epsilon,"custom brace anchors interpolate"] call _assert;
+} forEach [[20,0.4],[30,0.3],[40,0.2],[65,0.15],[90,0.1],[91,0.1]];
 private _invalid = [80,[8,-1],[75,35,0]] call GAIT_fnc_gearInertia;
 [count _invalid isEqualTo 5 && {(_invalid select 4) >= 0} && {(_invalid select 4) <= 1},"invalid settings remain bounded"] call _assert;
 private _lastAcceleration = 2;
@@ -53,12 +53,12 @@ private _maximum = [125] call GAIT_fnc_gearInertia;
 for "_weight" from 0 to 200 do {
     private _response = [_weight] call GAIT_fnc_gearInertia;
     private _acceleration = _response select 0;
-    [_acceleration >= 1 && {_acceleration <= 1.06001},"heavy gains a small 2% acceleration boost with bounded lighter rates"] call _assert;
+    [_acceleration >= 0.71999 && {_acceleration <= 1.12001},"load acceleration stays bounded"] call _assert;
     [_acceleration <= (_lastAcceleration + _epsilon),"heavier gear does not accelerate faster"] call _assert;
     _lastAcceleration = _acceleration;
     private _window = [1,0.85,_response select 2] call GAIT_fnc_gearCoastWindow;
     [(_window select 0) isEqualTo 0,"saved sustain does not delay slowdown"] call _assert;
-    [(_window select 1) >= (0.765 - _epsilon) && {(_window select 1) <= (0.978 + _epsilon)},"default release uses the slower tier-scaled window for all loads"] call _assert;
+    [(_window select 1) >= (0.765 - _epsilon) && {(_window select 1) <= (0.978 + _epsilon)},"default release scales continuously with mass"] call _assert;
     [(_window select 1) >= (_lastDuration - _epsilon),"heavier release is slightly longer"] call _assert;
     _lastDuration = _window select 1;
 };
@@ -73,7 +73,7 @@ for "_weight" from 0 to 200 do {
 private _light = [15] call GAIT_fnc_gearInertia;
 private _medium = [55] call GAIT_fnc_gearInertia;
 private _heavy = [100] call GAIT_fnc_gearInertia;
-[(_heavy select 0) isEqualTo 1.02 && {(_maximum select 0) isEqualTo 1.02},"heavy and extreme loads use only a 2% faster acceleration rate"] call _assert;
+[abs ((_heavy select 0) - 0.77) < _epsilon && {abs ((_maximum select 0) - 0.72) < _epsilon},"heavy and extreme loads accelerate more slowly"] call _assert;
 private _accelerated = [];
 {
     private _ramp = [0.05,_x select 0] call GAIT_fnc_scaleInertiaRamp;
@@ -82,7 +82,7 @@ private _accelerated = [];
     [_speed > 0.65 && {_speed < 1.3},"all loads continue building toward sprint"] call _assert;
     _accelerated pushBack _speed;
 } forEach [_light,_medium,_heavy];
-[(_accelerated select 0) > (_accelerated select 1) && {(_accelerated select 1) >= (_accelerated select 2)},"load preserves modest buildup differences"] call _assert;
+[(_accelerated select 0) > (_accelerated select 1) && {(_accelerated select 1) >= (_accelerated select 2)},"load preserves meaningful buildup differences"] call _assert;
 private _frames = [];
 private _heavyRamp = [0.05,_heavy select 0] call GAIT_fnc_scaleInertiaRamp;
 {
@@ -171,4 +171,4 @@ private _sprint95 = _sprintSteps * 0.05;
 [_sprint95 > 4.0 && {_sprint95 < 4.4}, "default sprint acceleration stretches to about 4.1 seconds to 95 percent"] call _assert;
 [_sprint95 > (_generic95 * 1.35), "sprint acceleration is materially slower than generic movement"] call _assert;
 
-diag_log "GAIT TEST PASS: original sprint brace relief; modest acceleration; slower finite forward and diagonal release; no hold or tail; late tick completion; stop/retap cancellation; uphill priority";
+diag_log "GAIT TEST PASS: continuous sprint brace relief; load-scaled acceleration; slower finite forward and diagonal release; no hold or tail; late tick completion; stop/retap cancellation; uphill priority";

@@ -95,4 +95,24 @@ private _lowPistolProfile = [["SlowWpst", "Df", 1.4, 2.8, 5.6]];
 [[0, 6] call GAIT_fnc_paceCoefficientToMS isEqualTo 0, "zero coefficient remains zero; no launch floor"] call _assert;
 [[-0.1, 6] call GAIT_fnc_paceCoefficientToMS isEqualTo -1, "negative coefficient is unknown"] call _assert;
 [["1", 6] call GAIT_fnc_paceMSToCoefficient isEqualTo -1, "nonnumeric speed is unknown"] call _assert;
+// A 1.5 m/s walk clip and 6 m/s sprint clip need different coefficients.
+private _walk = 0.8;
+private _clipRatio = 1.5 / 6;
+private _lightFloor = [1.3, _walk, _clipRatio, 0, 1.06, 0.2, 0] call GAIT_fnc_sprintReservePace;
+private _heavyFloor = [1.3, _walk, _clipRatio, 0, 1.06, 0.2, 100] call GAIT_fnc_sprintReservePace;
+[_lightFloor * 6, _walk * 1.5 * 1.12, "empty light sprint targets 12% over walking"] call _near;
+[_heavyFloor * 6, _walk * 1.5 * 1.06, "empty heavy sprint targets 6% over walking"] call _near;
+private _emptyDescent = [2, _walk, _clipRatio, 0, 1.06, 0.2, 100] call GAIT_fnc_sprintReservePace;
+[_emptyDescent, _heavyFloor, "even a calibrated downhill boost fades at empty reserve"] call _near;
+private _fresh = [2, _walk, _clipRatio, 0.45, 1.06, 0.2, 100] call GAIT_fnc_sprintReservePace;
+[_fresh, 2, "full downhill target remains available above the taper"] call _near;
+private _previous = _heavyFloor;
+for "_percent" from 1 to 45 do {
+    private _target = [2, _walk, _clipRatio, _percent / 100, 1.06, 0.2, 100] call GAIT_fnc_sprintReservePace;
+    [_target > _previous, "sprint target changes continuously through low reserve"] call _assert;
+    _previous = _target;
+};
+private _nearEmpty = [2, _walk, _clipRatio, 0.01, 1.06, 0.2, 100] call GAIT_fnc_sprintReservePace;
+[_nearEmpty < (_heavyFloor * 1.02), "last reserve ticks approach walking without a cliff"] call _assert;
+
 diag_log format ["GAIT TEST PASS: physical pace adapter; %1 exact legacy fallback cases, %2 conversion roundtrips, physical floor, partial profiles and invalid calibration rejection", _fallbackChecks, _roundTrips];

@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha19: build and validation
+# GAIT 1.8.0-alpha20 build and validation
 
 GAIT is developed from the Git checkout at `F:\GAIT` on branch `dev/gait-foundation-1.8.0`. Arma 3 2.18+, CBA_A3 and ACE3 are required. Close Arma before rebuilding the local mod.
 
@@ -48,7 +48,7 @@ python .\tests\pbo_prefix_layout.py
 python .\tests\alpha19_invariants.py
 ```
 
-The historical `tests\feature_preservation.py` harness remains an alpha11/RC4 byte-preservation contract. It is not a current alpha19 gate and its historical hashes must not be regenerated to silence later reviewed changes.
+The historical `tests\feature_preservation.py` harness remains an alpha11/RC4 byte-preservation contract. Current builds use the source checks above.
 
 ## SQF-VM regression suite
 
@@ -69,7 +69,7 @@ Use `README_TEST_BUILD.md` for current acceptance cases. The debug HUD identifie
 For a read-only capture, copy `tests/foundation_capture.sqf` into the test mission and run:
 
 ```sqf
-[90, "alpha19 audit hardening"] execVM "foundation_capture.sqf";
+[90, "alpha20 terrain and load"] execVM "foundation_capture.sqf";
 ```
 
 The current source repository does not contain a prebuilt `ready_to_load/GAIT` package or a root `VERIFY_READY.ps1`. Build output is `.hemttout\build`; the supported verifier is `tools\verify_build.ps1`.

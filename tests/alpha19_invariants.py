@@ -1,4 +1,4 @@
-"""Current GAIT alpha19 source invariants.
+"""Current GAIT locomotion source invariants.
 
 This is intentionally not a replacement for the historical RC4/alpha11 byte
 preservation harness. It guards the current architecture and user-visible
@@ -24,15 +24,15 @@ def executable(text):
     return text
 
 
-class Alpha19Invariants(unittest.TestCase):
+class LocomotionInvariants(unittest.TestCase):
     def test_version_identity(self):
         project = (ROOT / ".hemtt/project.toml").read_text()
         config = (ROOT / "addons/gait/config.cpp").read_text()
         mod = (ROOT / "mod.cpp").read_text()
-        self.assertIn("build = 19", project)
-        self.assertIn('versionStr = "1.8.0-alpha19";', config)
-        self.assertIn("versionAr[] = {1,8,0,19};", config)
-        self.assertIn('tooltip = "GAIT 1.8.0-alpha19";', mod)
+        self.assertIn("build = 20", project)
+        self.assertIn('versionStr = "1.8.0-alpha20";', config)
+        self.assertIn("versionAr[] = {1,8,0,20};", config)
+        self.assertIn('tooltip = "GAIT 1.8.0-alpha20";', mod)
 
     def test_graph_pose_and_no_walk_contract(self):
         text = GRAPH.read_text()
@@ -86,10 +86,13 @@ class Alpha19Invariants(unittest.TestCase):
         self.assertIn("GAIT_fnc_uphillLaunchBraceFactor", main)
         self.assertIn("GAIT_fnc_downhillGravityTargetKmh", main)
         self.assertIn("GAIT_fnc_lookupUnitPaceReference", main)
-        self.assertIn("GAIT_fnc_resolveMovingPaceReference", main)
+        self.assertIn("GAIT_fnc_locomotionPaceReferences", main)
         self.assertIn("GAIT_sprintReferenceCalibrated", main)
-        self.assertIn("min 0.65", downhill)
-        self.assertIn("24 + ((10 - (2 * _weightSeverity))", downhill)
+        self.assertIn("min _maximumPace", downhill)
+        gravity = downhill.split("GAIT_fnc_downhillGravityTargetKmh = {", 1)[1].split("\n};", 1)[0]
+        self.assertIn("_gearLbs", gravity)
+        self.assertIn("_momentum", gravity)
+        self.assertNotRegex(executable(gravity), r"\bvelocity\b")
 
     def test_locomotion_has_no_velocity_injection_or_animation_watchdog(self):
         for name in ("fn_slopeLocomotion.sqf", "fn_nativeController.sqf",

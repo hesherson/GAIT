@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha19: audited locomotion foundation and lifecycle hardening
+// GAIT 1.8.0-alpha20: continuous load, terrain and sprint reserve
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha19";
-        versionAr[] = {1,8,0,19};
+        versionStr = "1.8.0-alpha20";
+        versionAr[] = {1,8,0,20};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

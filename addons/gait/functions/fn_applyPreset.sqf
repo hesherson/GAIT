@@ -42,12 +42,11 @@ private _set = {
     _x call _set;
 } forEach [
     ["GAIT_ss_slopeLocomotionEnabled", true],
-    ["GAIT_ss_minSprintWalkRatio", 1.20],
+    ["GAIT_ss_minSprintWalkRatio", 1.06],
     ["GAIT_ss_freshSprintWalkMargin", 0.20],
     ["GAIT_ss_extraHeavyPenaltyPer50Lb", 0.18],
     ["GAIT_ss_normalSpeed", 0.86],
     ["GAIT_ss_sprintFullSpeed", 1.28],
-    ["GAIT_ss_sprintExhaustedSpeed", 0.89],
     ["GAIT_ss_speedLerp", 0.05],
     ["GAIT_ss_masterTripFrequency", 1.00],
     ["GAIT_ss_masterFxIntensity", 1.00],
@@ -67,9 +66,9 @@ private _set = {
     ["GAIT_ss_braceRequiredWalkTime", 2.0],
     ["GAIT_ss_braceRecentSprintCooldown", 3.0],
     ["GAIT_ss_lightSpeedBonus", 1.08],
-    ["GAIT_ss_mediumSpeedBonus", 1.05],
-    ["GAIT_ss_moderateSpeedBonus", 1.025],
-    ["GAIT_ss_heavySpeedBonus", 1.00],
+    ["GAIT_ss_mediumSpeedBonus", 1.02],
+    ["GAIT_ss_moderateSpeedBonus", 0.97],
+    ["GAIT_ss_heavySpeedBonus", 0.92],
     ["GAIT_ss_lightBraceRelief", 0.55],
     ["GAIT_ss_mediumBraceRelief", 0.35],
     ["GAIT_ss_moderateBraceRelief", 0.18],
@@ -80,7 +79,7 @@ private _set = {
     ["GAIT_ss_slopeHandlingEnabled", true],
     ["GAIT_ss_slopeSampleDistance", 2.0],
     ["GAIT_ss_uphillSlowdownEnabled", true],
-    ["GAIT_ss_uphillStartDegrees", 5.0],
+    ["GAIT_ss_uphillStartDegrees", 2.0],
     ["GAIT_ss_uphillMaxDegrees", 35.0],
     ["GAIT_ss_uphillMaxPenalty", 0.40],
     ["GAIT_ss_vegetationDragEnabled", true],
@@ -96,9 +95,10 @@ private _set = {
     ["GAIT_ss_uphillFatigueDrainMaxDegrees", 35.0],
     ["GAIT_ss_uphillFatigueDrainMaxMultiplier", 1.75],
     ["GAIT_ss_downhillBoostEnabled", true],
-    ["GAIT_ss_downhillBoostStartDegrees", 4.0],
+    ["GAIT_ss_downhillBoostStartDegrees", 0.5],
     ["GAIT_ss_downhillBoostMaxDegrees", 18.0],
-    ["GAIT_ss_downhillMaxBoost", 0.06],
+    ["GAIT_ss_downhillMaxBoost", 0.10],
+    ["GAIT_ss_downhillSustainedExtraBoost", 0.18],
     ["GAIT_ss_downhillTripEnabled", true],
     ["GAIT_ss_downhillTripThresholdDegrees", 28.0],
     ["GAIT_ss_downhillTripMaxChancePerSecond", 0.10],
@@ -129,7 +129,6 @@ switch (_preset) do {
         { _x call _set; } forEach [
             ["GAIT_ss_normalSpeed", 0.84],
             ["GAIT_ss_sprintFullSpeed", 1.18],
-            ["GAIT_ss_sprintExhaustedSpeed", 0.80],
             ["GAIT_ss_speedLerp", 0.035],
             ["GAIT_ss_wReleaseZeroMomentumDelay", 0.35],
             ["GAIT_ss_sprintStartBraceDuration", 0.22],
@@ -149,7 +148,6 @@ switch (_preset) do {
         { _x call _set; } forEach [
             ["GAIT_ss_normalSpeed", 1.00],
             ["GAIT_ss_sprintFullSpeed", 1.45],
-            ["GAIT_ss_sprintExhaustedSpeed", 1.05],
             ["GAIT_ss_speedLerp", 0.12],
             ["GAIT_ss_wReleaseZeroMomentumDelay", 0.75],
             ["GAIT_ss_sprintStartBraceDuration", 0.08],
@@ -170,7 +168,6 @@ switch (_preset) do {
         { _x call _set; } forEach [
             ["GAIT_ss_normalSpeed", 0.88],
             ["GAIT_ss_sprintFullSpeed", 1.25],
-            ["GAIT_ss_sprintExhaustedSpeed", 0.88],
             ["GAIT_ss_tunnelMaxStrength", 1.25],
             ["GAIT_ss_tinnitusMaxVolume", 0.65],
             ["GAIT_ss_hearingMinVolume", 0.15]
@@ -181,7 +178,6 @@ switch (_preset) do {
         { _x call _set; } forEach [
             ["GAIT_ss_normalSpeed", 0.92],
             ["GAIT_ss_sprintFullSpeed", 1.35],
-            ["GAIT_ss_sprintExhaustedSpeed", 0.95],
             ["GAIT_ss_lightSpeedBonus", 1.12],
             ["GAIT_ss_mediumSpeedBonus", 1.07],
             ["GAIT_ss_moderateSpeedBonus", 1.03],
@@ -198,7 +194,6 @@ switch (_preset) do {
         { _x call _set; } forEach [
             ["GAIT_ss_normalSpeed", 0.82],
             ["GAIT_ss_sprintFullSpeed", 1.16],
-            ["GAIT_ss_sprintExhaustedSpeed", 0.76],
             ["GAIT_ss_speedLerp", 0.035],
             ["GAIT_ss_wReleaseZeroMomentumDelay", 0.25],
             ["GAIT_ss_sprintStartBraceDuration", 0.25],

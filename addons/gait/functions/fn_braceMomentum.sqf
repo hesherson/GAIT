@@ -86,36 +86,24 @@ GAIT_fnc_uphillLaunchBraceFactor = {
 };
 
 // Small ordinary-movement step from a true stop. This is deliberately much
-// shallower than the sprint brace. Weight classes use the configured tier
-// thresholds, while the curve itself is fixed so the settings surface stays
-// compact. Return: [duration, lowPaceFactor, holdFraction, tier].
+// shallower than the sprint brace. Interpolate the curve at the current mass.
+// Return: [duration, lowPaceFactor, holdFraction, anchorPosition].
 GAIT_fnc_walkStartBraceProfile = {
     params [
         ["_gearLbs", 0, [0]],
         ["_thresholds", [35, 55, 75], [[]]]
     ];
-    if ((count _thresholds) < 3) then {_thresholds = [35, 55, 75];};
-    private _lightMax = (_thresholds param [0, 35, [0]]) max 1;
-    private _mediumMax = (_thresholds param [1, 55, [0]]) max (_lightMax + 1);
-    private _moderateMax = (_thresholds param [2, 75, [0]]) max (_mediumMax + 1);
-    private _tier = 3;
-    if (_gearLbs <= _lightMax) then {_tier = 0;} else {
-        if (_gearLbs <= _mediumMax) then {_tier = 1;} else {
-            if (_gearLbs <= _moderateMax) then {_tier = 2;};
-        };
-    };
-    private _profile = +([
-        [0.28, 0.86, 0.20],
-        [0.32, 0.82, 0.20],
-        [0.36, 0.78, 0.22],
-        [0.40, 0.74, 0.24]
-    ] select _tier);
-    _profile pushBack _tier;
-    _profile
+    private _anchors = [_thresholds] call GAIT_fnc_gearWeightAnchors;
+    private _anchorPosition =
+        ((_gearLbs / (_anchors select 1)) max 0 min 1) +
+        (((_gearLbs - (_anchors select 1)) / ((_anchors select 2) - (_anchors select 1))) max 0 min 1) +
+        (((_gearLbs - (_anchors select 2)) / ((_anchors select 3) - (_anchors select 2))) max 0 min 1);
+    [0.28 + (0.04 * _anchorPosition), 0.86 - (0.04 * _anchorPosition),
+        0.20 + (0.02 * ((_anchorPosition - 1) max 0)), _anchorPosition]
 };
 
 // Plan is an immutable snapshot so changing inventory mid-step cannot restart
-// or deepen the step. [startTime, duration, lowPaceFactor, holdFraction, tier].
+// or deepen the step. [startTime, duration, lowPaceFactor, holdFraction, anchorPosition].
 GAIT_fnc_walkStartBracePlan = {
     params [
         ["_startTime", 0, [0]],

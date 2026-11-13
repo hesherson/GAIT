@@ -1,22 +1,30 @@
-# GAIT 1.8.0-alpha19 movement speed reference
+# GAIT 1.8.0-alpha20 movement speed reference
 
 This document describes the current target model. Animation-speed coefficients are not interchangeable with km/h because weapon/pose families have different root motion. GAIT therefore distinguishes coefficient fallback behavior from calibrated physical targets.
 
 ## Flat sprint and load
 
-Balanced defaults use an armed fresh sprint coefficient of **1.28** before slope and load scaling. The continuous load multiplier interpolates through the existing gear landmarks:
+Balanced uses an armed fresh sprint coefficient of **1.28** before slope and load scaling. GAIT reads live carried inventory mass from `loadAbs` and uses these tuning points.
 
-- 0 lb: 1.08
-- 35 lb: 1.05
-- 55 lb: 1.025
-- 75 lb: 1.00
-- above 75 lb: continues decreasing as `1 / (1 + 0.18 * extraLb / 50)`
+| Approximate carried weight | Flat pace multiplier |
+| --- | --- |
+| 0 lb | 1.08 |
+| 35 lb | 1.02 |
+| 55 lb | 0.97 |
+| 75 lb | 0.92 |
+| Above 75 lb | `0.92 / (1 + 0.18 * extraLb / 50)` |
 
-The walk/sprint floor is evaluated after grade and load effects so a steady sprint target remains above the corresponding ordinary movement target.
+Mass between these points changes speed proportionally. First-step brace relief, acceleration, and release timing also respond continuously to load.
+
+## Stamina and minimum sprint pace
+
+Below 45% remaining sprint reserve, the sprint target tapers toward a pace just above walking with the same load and grade. At empty reserve the Balanced target ranges from 1.06 times walking pace at 100 lb and above to 1.12 times walking pace unloaded. The taper also reduces the downhill gain as reserve runs out.
+
+Matching walk and sprint clip references let GAIT calculate the target in m/s. When those references are unavailable, it estimates walking root motion at 28% of sprint root motion. Actual fallback speed depends on the active animation.
 
 ## Sprint acceleration
 
-General speed smoothing still defaults to `GAIT_ss_speedLerp = 0.05`. **Upward sprint acceleration alone** uses 70% of that rate before the small gear-inertia adjustment.
+General speed smoothing defaults to `GAIT_ss_speedLerp = 0.05`. On flat ground sprint acceleration uses 70% of that rate before the carried-load adjustment.
 
 At default tuning this is approximately:
 
@@ -27,25 +35,25 @@ Brace, uphill braking, Shift-release taper and ordinary movement keep their own 
 
 ## Uphill
 
-Uphill steady sprint pace begins reducing at the configured onset (default 5°) and reaches the configured reference penalty at 35°. The curve continues beyond 35° rather than imposing a walking cutoff.
+Uphill sprint pace starts dropping at the configured onset, 2° by default. At 35° the configured reference penalty applies to a 75 lb kit. Lighter kits get a smaller penalty and heavier kits get a larger one. The curve continues beyond 35°.
 
-The penalty is also exposed progressively through time: shallow inclines build slowly, while steep inclines converge much faster. A zero-momentum uphill sprint start adds the separate exponential brace burden. Retained sprint momentum bypasses that launch burden.
+Entering a climb applies the penalty with its own faster ramp. A zero-momentum uphill sprint start also uses the uphill brace.
 
 ## Ordinary movement on slopes
 
-Standing W-only slope movement uses a custom **Mrun jog** family rather than a custom Mwlk state. There are no custom Mwlk states in the generated graph.
+Standing W-only slope movement uses the custom **Mrun jog** family. Downhill jogging receives 35% of the sprint bonus at the same momentum and builds toward 45% of maximum descent momentum at a slower rate.
 
-Without a complete physical walk/jog profile, the fallback target is coefficient-space: the jog target uses a 1.06 minimum ratio over the ordinary slope target. That is intentionally only a small coefficient margin; it is not an unsupported claim that every animation family is physically exactly 6% faster in km/h.
+Without a complete physical walk/jog profile, the fallback jog target uses a minimum coefficient of 1.06 times the ordinary slope target. Actual speed depends on the clip.
 
 ## Downhill acceleration
 
-Downhill momentum is earned only by actual descending sprint travel. Flat sprinting does not preload it.
+The directional downhill bonus begins at 0.5° by default. The base boost takes effect on entry, then sustained descending sprint travel builds a second boost. Mild grades give an early pull and a gradual buildup. Steeper grades build the bonus faster, and heavier kits gain more as they descend.
 
-The coefficient-space downhill bonus starts at the configured decline onset (default 4°), reaches the configured base angle response around 18°, and continues increasing on steeper grades rather than tapering. Steep grades transition toward lighter gravity-specific load attenuation, can amplify the configured base+sustained component up to 3x, and cap the final additive coefficient bonus at 65%.
+The configured base angle response reaches full strength at 18°. Steeper descents increase the boost further. The fallback target caps at 150% to 165% of unloaded flat sprint pace depending on carried mass. Continued downhill travel can make a heavily loaded sprint overtake a light kit on a long enough descent.
 
-A separate calibrated physical target begins beyond an 8° decline and reaches full grade severity at 35°. At full downhill momentum it approaches **34 km/h** below the heavy-weight band and **32 km/h** at 150 lb and above, with continuous interpolation between those load points.
+A separate calibrated physical target grows with downhill momentum beyond an 8° decline and reaches full grade severity at 35°. At full momentum and grade severity, the minimum calibrated target is 34 km/h unloaded and about 37.6 km/h with a 150 lb load.
 
-The physical target is only converted into an animation coefficient when GAIT has a safe reference for the exact current sprint clip/context. A complete manual `GAIT_locomotionPaceProfiles` entry can provide that reference, but alpha19 also reuses automatic passive session calibration. Passive references are scoped to clip/config, character, weapon, surface and ±2° grade, expire after ten minutes, and are collected only during stable, unobstructed, grounded movement without brace/release/vegetation contamination.
+GAIT converts the physical target into an animation coefficient using a matching sprint clip reference. A complete manual `GAIT_locomotionPaceProfiles` entry or automatic session calibration can supply it. GAIT collects passive references during stable, unobstructed, grounded movement and matches them by clip, configuration, character, weapon, surface and grade within ±2°. References expire after ten minutes.
 
 Until a valid physical reference exists, the coefficient-space downhill model remains active. Current live velocity is never divided back into the target, so collision or wall contact cannot create a feedback accelerator.
 

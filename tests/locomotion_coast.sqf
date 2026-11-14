@@ -5,11 +5,8 @@ private _assert = {
     params ["_condition", "_label"];
     if (!_condition) then {throw format ["FAIL: %1", _label];};
 };
-// Stop, re-press and strafing do not wait for the prior graph exit to finish.
-// The target is updated by the actual service before returning, so holding
-// the same direction cannot issue a second request on subsequent frames.
+// A pending stop can still yield to a fresh movement input.
 private _stopTarget = "AmovPercMstpSrasWrflDnon_GAITStop";
-private _jogBridge = "AmovPercMrunSrasWrflDf_GAITRelease";
 [[true,true,true,true,true] call GAIT_fnc_nativeStopDecision,"fresh owned native jogging stop gets short blend"] call _assert;
 for "_gate" from 0 to 4 do {
     private _gates = [true,true,true,true,true];
@@ -34,24 +31,64 @@ for "_gate" from 0 to 4 do {
     ["AmovPercMrunSrasWrflDf","Df",false],["AmovPercMrunSrasWrflDf","Dnon",true],
     ["AmovPercMrunSrasWrflDl","Dr",true],["AmovPercMrunSrasWrflDr","Dr",false],["","Df",false]
 ];
-// A settled native bridge owns ordinary direction. A newly changed key can
-// replace the destination once while sprint still owns the outgoing state.
+
+// Exercise the live native fallback and input history with only the engine
+// safety and final handoff mocked. Once native is selected, later keypresses
+// belong to its action map, with no new body request from this controller.
+private _originalAnimation = GAIT_fnc_readLocomotionAnimation;
+private _originalFamily = GAIT_fnc_slopeWeaponFamily;
+private _originalSafety = GAIT_fnc_nativeLocomotionHandoffSafe;
+private _originalFinish = GAIT_fnc_finishMovingLocomotionRelease;
+private _observed = "AmovPercMevaSrasWrflDf";
+private _safe = true;
+private _targets = [];
+GAIT_fnc_modeAllowsMovement = {true};
+GAIT_fnc_readLocomotionAnimation = {_observed};
+GAIT_fnc_slopeWeaponFamily = {"SrasWrfl"};
+GAIT_fnc_nativeLocomotionHandoffSafe = {_safe};
+GAIT_fnc_finishMovingLocomotionRelease = {
+    params ["_unit", "_family", "_direction", "_walk"];
+    _observed = [_family, _direction, _walk] call GAIT_fnc_nativeOrdinaryMoveName;
+    _targets pushBack _observed;
+    [_unit] call GAIT_fnc_clearSlopeLocomotionState;
+    _unit setVariable ["GAIT_nativeReleaseOwnsDirection", true];
+    true
+};
 {
-    [!([_jogBridge, _x, false] call GAIT_fnc_locomotionExitRedirect), "native bridge lets the engine own direction"] call _assert;
-} forEach ["Df", "Dfl", "Dfr", "Dl", "Dr", "Db"];
-{
-    _x params ["_direction", "_walk", "_pending", "_edge", "_redirected", "_expected"];
-    [([_jogBridge, _direction, _walk, _pending, _edge, _redirected] call GAIT_fnc_pendingJogReleaseDirectionRedirect) isEqualTo _expected,
-        "only a fresh direction change can replace a pending sprint-to-jog destination"] call _assert;
+    _x params ["_input", "_walk", "_sprint", "_contextSafe", "_target", "_label", ["_phase", "native"]];
+    _observed = _sprint;
+    _safe = _contextSafe;
+    _targets = [];
+    player setVariable ["GAIT_locomotionPhase", _phase];
+    player setVariable ["GAIT_turboInputHeld", true];
+    player setVariable ["GAIT_forwardInputHeld", true];
+    [player, _input] call GAIT_fnc_observeLocomotionInput;
+    private _issued = [player, _input, _walk] call GAIT_fnc_releaseNativeSprint;
+    [(_issued isEqualTo (_target isNotEqualTo "")) &&
+        {_targets isEqualTo ([[], [_target]] select _issued)}, _label] call _assert;
+    [player, [0.707,-0.707,false]] call GAIT_fnc_observeLocomotionInput;
+    [!([player, [0.707,-0.707,false], _walk] call GAIT_fnc_releaseNativeSprint),
+        "the next frame's diagonal belongs to native actions"] call _assert;
 } forEach [
-    ["Dfl",false,true,true,false,true], ["Dfr",false,true,true,false,true],
-    ["Dl",false,true,true,false,true], ["Dr",false,true,true,false,true],
-    ["Df",false,true,true,false,false], ["Dnon",false,true,true,false,false],
-    ["Dfr",false,false,true,false,false], ["Dfr",false,true,false,false,false],
-    ["Dfr",false,true,true,true,false], ["Dfr",true,true,true,false,false]
+    [[1,0,false],true,"AmovPercMevaSrasWrflDf",true,"AmovPercMwlkSrasWrflDf","walk-selected W hands off to native walk"],
+    [[1,0,false],false,"AmovPercMsprSrasWrflDf",true,"AmovPercMrunSrasWrflDf","native sprint uses a forward jog on Shift-up"],
+    [[1,0,false],true,"AmovPercMsprSrasWrflDf",true,"AmovPercMwlkSrasWrflDf","a native sprint observed during GAIT entry is released immediately","entering"],
+    [[1,0,false],false,"AmovPercMevaSrasWrflDf_AmovPercMrunSrasWrflDf",true,"AmovPercMrunSrasWrflDf","a native sprint-to-jog transition is already eligible for immediate release"],
+    [[0,1,false],true,"AmovPercMevaSrasWrflDf",true,"AmovPercMwlkSrasWrflDr","pure lateral walk starts on release"],
+    [[0,1,false],false,"AmovPercMevaSrasWrflDf",true,"AmovPercMrunSrasWrflDr","pure lateral jog starts on release"],
+    [[1,0,false],false,"AmovPercMevaSrasWrflDf",false,"","unsafe medical or gesture context keeps its animation"],
+    [[1,0,false],false,"AmovPercMevaSrasWrflDf_AmovPknlMrunSrasWrflDf",true,"","stance transitions cannot be overwritten"]
 ];
-[[_jogBridge, "Dnon", false] call GAIT_fnc_locomotionExitRedirect, "a stop can interrupt a queued jog bridge"] call _assert;
-[[_jogBridge, "Df", true] call GAIT_fnc_locomotionExitRedirect, "deliberate walk can interrupt a queued jog bridge"] call _assert;
+GAIT_fnc_readLocomotionAnimation = _originalAnimation;
+GAIT_fnc_slopeWeaponFamily = _originalFamily;
+GAIT_fnc_nativeLocomotionHandoffSafe = _originalSafety;
+GAIT_fnc_finishMovingLocomotionRelease = _originalFinish;
+{
+    [_x call GAIT_fnc_ownsNativeReleaseDirection, "side, backward and forward input stay native for this movement segment"] call _assert;
+} forEach [[true,[0,-1,false]], [true,[-1,0,false]], [true,[1,0,false]]];
+[!([true,[0,0,false]] call GAIT_fnc_ownsNativeReleaseDirection), "a stop ends native direction ownership"] call _assert;
+[!([true,[1,0,true]] call GAIT_fnc_ownsNativeReleaseDirection), "a new sprint can take ownership again"] call _assert;
+[!([false,[1,0,false]] call GAIT_fnc_ownsNativeReleaseDirection), "ordinary slope jog can still acquire without a prior sprint release"] call _assert;
 // This pure policy handles Turbo intent irrespective of the speed ramp.
 {
     _x params ["_args", "_expected", "_label"];

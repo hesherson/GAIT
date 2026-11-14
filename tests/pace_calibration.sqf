@@ -31,4 +31,12 @@ for "_i" from 0 to 5 do {
     _changed set [_i,"changed"];
     [([_cache,_changed,0,11] call GAIT_fnc_lookupPaceReference) < 0,"clip/config/character/weapon/surface changes cannot reuse reference"] call _assert;
 };
+private _tacticalReference = [12 / 3.6, "SameRtm", 0.634570, "samertm", 0.528808] call GAIT_fnc_sameClipPaceReference;
+[abs (_tacticalReference - (10 / 3.6)) < 0.0001, "ACE tactical reference can use shared root motion at its own playback rate"] call _assert;
+[([4, "a", -1, "a", -2] call GAIT_fnc_sameClipPaceReference) isEqualTo 2,
+    "duration-based playback conversion compares the inverse duration ratio"] call _assert;
+{
+    [(_x call GAIT_fnc_sameClipPaceReference) isEqualTo -1, "missing reference, unrelated RTM or invalid speed cannot supply a comparison"] call _assert;
+} forEach [[-1, "a", 1, "a", 1], [3, "a", 1, "b", 1], [3, "", 1, "", 1], [3, "a", 0, "a", 1],
+    [3, "a", 1, "a", 0], [3, "a", 1, "a", -1]];
 diag_log "GAIT TEST PASS: passive pace reference stability, validity, scope and moving pace resolution.";

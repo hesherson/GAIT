@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha26 movement speed reference
+# GAIT 1.8.0-alpha27 movement speed reference
 
 This document describes the current target model. Animation-speed coefficients are not interchangeable with km/h because weapon/pose families have different root motion. GAIT therefore distinguishes coefficient fallback behavior from calibrated physical targets.
 
@@ -18,9 +18,9 @@ Mass between these points changes jog pace proportionally. Ordinary forward jog 
 
 ## Stamina and minimum sprint pace
 
-The burst settles into normal sprint pace until **50% reserve**. The target then eases toward **75% unloaded, 70% at 50 lb, and 65% at 100 lb or more** of normal sprint pace. The taper starts gently and GAIT smooths pace across ACE updates.
+The burst settles into normal sprint pace until **50% reserve**. The target then eases toward its empty-reserve pace. The default base fraction ranges from **75% unloaded to 65% at 100 lb or more**. The target also stays **5–8% above matching combat pace**, including at zero reserve. That floor uses measured clip speeds when available, estimates the ratio until then, and takes priority if a custom downhill cap would place sprint below combat pace.
 
-Only moving sprints drain the reserve. Stationary rest restores it, and walking or jogging holds it steady. With a supported ACE loop, GAIT applies these rules to the anaerobic reserve before ACE draws the stamina bar. Sprint reserve cost rises gradually through 70 lb and increases more sharply above 120 lb.
+Holding forward sprint in an eligible grounded state spends reserve according to sprint duration, kit weight and grade. Pace can slow while exertion continues to empty the bar. Reserve drains more quickly later in the effort. Stationary rest restores it, and walking or jogging holds it steady. Sprint reserve cost rises gradually through 70 lb and increases more sharply above 120 lb.
 
 | Carried weight | GAIT flat-ground drain multiplier at default settings |
 | --- | --- |
@@ -30,7 +30,9 @@ Only moving sprints drain the reserve. Stationary rest restores it, and walking 
 | 120 lb | 1.19× |
 | 150 lb | 1.50× |
 
-On a climb, the additional GAIT grade cost ranges from 1.00× at 10° to 1.75× at 35°. With ACE active, the table and grade multiplier apply to the native work sample after GAIT softens its cargo contribution to the anaerobic bar. Performance Factor, Load Factor, Terrain Gradient Factor, Recovery Factor, animation and medical duty are part of the ACE calculation. ACE's native downhill work uses a smaller grade term than uphill work. The separate GAIT reserve gives moderate descents up to 15% relief, which fades on steep descents. Actual ACE bar drain depends on the player and conditions.
+On a climb, grade multiplies the load cost. The default grade multiplier rises from **1.00× at 4°** to **2.10× at 35°**. Moderate descents give up to 15% relief, which fades on steep descents. With default settings, a fully rested sprint takes about 40 seconds to empty unloaded on level ground and about 35 seconds with 110 lb. During a steady 25° climb with 110 lb, the model takes about 20 seconds.
+
+A supported ACE fatigue loop shows this exertion on its stamina bar. ACE Performance Factor scales capacity, Load Factor and Terrain Gradient Factor scale the respective costs, and Recovery Factor controls native recovery at rest. ACE still calculates aerobic fatigue, acidosis, muscle damage, medical duty and feedback through its own physiology. An unsupported ACE loop leaves its own bar behavior in place and GAIT uses its internal reserve for pace.
 
 On a climb, sprint also targets at least 8% above the faster of the same-grade, same-load walk and jog. Matching animation references make this a physical pace comparison. Without them, GAIT uses conservative walk-to-sprint and jog-to-sprint clip ratios.
 
@@ -67,7 +69,7 @@ With a matching animation pace reference, the default downhill targets also have
 
 ## Release continuity
 
-On Shift release, Arma handles walking, jogging and direction through its native action map. If the forward release is still queued, the first new direction input redirects that transition to its matching native bridge. The same speed coefficient eases toward the current jog target during forward, diagonal, lateral and backward movement. Stopping or selecting walk yields the coefficient immediately. A change of animation can naturally change ground speed as its stride changes.
+On Shift release during a standing sprint, GAIT hands off once to the native walk or jog in the current direction at the current stride phase. Arma handles subsequent movement and strafing. The speed coefficient eases toward the current jog target across directions. Stopping or selecting walk yields the coefficient immediately.
 
 ## Weapon/pose families
 

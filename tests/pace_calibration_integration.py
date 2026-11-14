@@ -23,6 +23,8 @@ class PaceIntegration(unittest.TestCase):
         for connection in ('GAIT_fnc_lookupUnitPaceReference',
                            'call GAIT_fnc_locomotionPaceReferences',
                            'call GAIT_fnc_uphillSprintFloor',
+                           'call GAIT_fnc_combatRelativeSprintFloor',
+                           'call GAIT_fnc_combatPaceReference',
                            'call GAIT_fnc_sprintReservePace',
                            'GAIT_sprintReferenceCalibrated'):
             self.assertIn(connection, main)

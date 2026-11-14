@@ -54,12 +54,12 @@ def literal(hook, name):
 def instrument(source):
     hook = HOOK.read_text()
     matches = []
-    for name in ("work", "before", "after"):
+    for name in ("before", "after"):
         pattern = literal(hook, name)
         assert pattern.endswith("/g")
         matches.append(list(re.finditer(pattern[:-2], source)))
-    work, before, after = matches
-    if any(len(found) != 1 for found in matches) or not work[0].start() < before[0].start() < after[0].start():
+    before, after = matches
+    if len(before) != 1 or len(after) != 1 or before[0].start() >= after[0].start():
         return source
     start, end = before[0].start(), after[0].start()
     return source[:start] + literal(hook, "capture") + source[start:end] + literal(hook, "filter") + source[end:]
@@ -92,14 +92,16 @@ class AceSprintReserveHook(unittest.TestCase):
         self.assertLess(result.index(filter_at), result.index("anReservePercentage"))
         self.assertLess(result.index(filter_at), result.index("fnc_handleEffects"))
         self.assertLess(result.index(filter_at), result.index("fnc_handleStaminaBar"))
-        self.assertIn("ACE_player, _anPower / ace_advanced_fatigue_anWattsPerATP, _fwdAngle,", filter_at)
-        self.assertIn("[_currentWork, _gearMass, _terrainGradient * ace_advanced_fatigue_terrainGradientFactor * 0.1,", filter_at)
-        self.assertIn("_terrainFactor, _currentSpeed, ace_advanced_fatigue_anWattsPerATP]", filter_at)
+        self.assertIn("ACE_player]", filter_at)
+        for native_work in ("_anPower", "_currentWork", "_currentSpeed", "_fwdAngle"):
+            self.assertNotIn(native_work, filter_at)
+
+    def test_native_metabolic_work_changes_keep_the_reserve_hook(self):
+        changed_work = LOOP.replace("* 0.1", "* 0.2")
+        self.assertNotEqual(instrument(changed_work), changed_work)
 
     def test_unknown_or_ambiguous_loop_keeps_stock_behavior(self):
         self.assertEqual(instrument(LOOP.replace("2300", "2400")), LOOP.replace("2300", "2400"))
-        changed_work = LOOP.replace("* 0.1", "* 0.2")
-        self.assertEqual(instrument(changed_work), changed_work)
         self.assertEqual(instrument(LOOP * 2), LOOP * 2)
         reversed_loop = "\n".join(reversed(LOOP.splitlines()))
         self.assertEqual(instrument(reversed_loop), reversed_loop)

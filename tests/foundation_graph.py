@@ -49,7 +49,6 @@ class FoundationGraph(unittest.TestCase):
         cls.states = {name: (base, body) for name, base, body in blocks
                       if name.endswith("_GAIT") or name.endswith("_GAITSprint")}
         cls.stops = {name: (base, body) for name, base, body in blocks if name.endswith("_GAITStop")}
-        cls.releases = {name: (base, body) for name, base, body in blocks if name.endswith("_GAITRelease")}
         cls.actions = {name: (base, body) for name, base, body in blocks if name.startswith("GAIT_Slope")}
 
     def test_real_native_clip_parents_and_controller_markers(self):
@@ -134,28 +133,6 @@ class FoundationGraph(unittest.TestCase):
                 self.assertIn(name, dict(edges(body, "InterpolateTo")))
                 self.assertIn(name, dict(edges(body, "InterpolateFrom")))
 
-    def test_release_bridges_use_native_gaits_with_direct_direction_routes(self):
-        self.assertEqual(len(self.releases), 40)
-        for family, (_, _, _, native_actions) in FAMILIES.items():
-            native_jogs = {f"AmovPercMrun{family}{direction}" for direction in DIRECTIONS}
-            bridges = {jog + "_GAITRelease" for jog in native_jogs}
-            native_stop = f"AmovPercMstp{family}Dnon_GAITStop"
-            sprint_entries = {f"AmovPercMeva{family}{direction}_GAIT" for direction in FORWARD}
-            for native_jog in native_jogs:
-                target = native_jog + "_GAITRelease"
-                parent, body = self.releases[target]
-                self.assertEqual(parent, native_jog)
-                self.assertEqual(properties(body)["actions"], native_actions)
-                self.assertRegex(body, r"\binterpolationSpeed\s*=\s*8;")
-                self.assertRegex(body, r"\bGAIT_releaseBridge\s*=\s*1;")
-                self.assertNotRegex(body, r"\b(?:speed|file|GAIT_slopeState|GAIT_slopeFamily)\s*=")
-                incoming = dict(edges(body, "InterpolateFrom"))
-                outgoing = dict(edges(body, "InterpolateTo"))
-                self.assertTrue(sprint_entries <= incoming.keys())
-                self.assertTrue(native_jogs | sprint_entries | {native_stop} | (bridges - {target}) <= outgoing.keys())
-                for source in sprint_entries:
-                    self.assertIn(target, dict(edges(self.states[source][1], "InterpolateTo")))
-
     def test_idle_recovery_and_direction_reversals_have_direct_edges(self):
         for family in FAMILIES:
             members = {name for name, (_, body) in self.states.items() if properties(body)["GAIT_slopeFamily"] == family}
@@ -173,11 +150,21 @@ class FoundationGraph(unittest.TestCase):
                     if target.endswith("_GAIT") or target.endswith("_GAITSprint"):
                         self.assertIn(target, self.states)
 
-    def test_live_handoffs_request_graph_without_switch_reset_or_walk_stage(self):
+    def test_only_moving_release_switches_to_a_native_action_map(self):
         source = (CONFIG.parent / "functions/fn_slopeLocomotion.sqf").read_text()
         code = re.sub(r"/\*.*?\*/|//[^\n]*", "", source, flags=re.S)
-        self.assertNotRegex(code, r"\bswitchMove\b")
         self.assertEqual(len(re.findall(r"\bplayMoveNow\b", code)), 1)
+        self.assertEqual(len(re.findall(r"\bswitchMove\b", code)), 1)
+        switcher = code.split("GAIT_fnc_switchNativeLocomotion = {", 1)[1].split("};", 1)[0]
+        self.assertIn('call GAIT_fnc_readPaceMoveInfo', switcher)
+        self.assertRegex(switcher, r"\bswitchMove\s*\[_target,\s*\(_progress[^\]]+,\s*1,\s*false\]")
+        finish = code.split("GAIT_fnc_finishMovingLocomotionRelease = {", 1)[1].split("\n};", 1)[0]
+        self.assertIn('call GAIT_fnc_nativeOrdinaryMoveName', finish)
+        self.assertIn('isClass', finish)
+        self.assertLess(finish.index('call GAIT_fnc_clearSlopeLocomotionState'),
+                        finish.index('call GAIT_fnc_switchNativeLocomotion'))
+        self.assertEqual(code.count('call GAIT_fnc_switchNativeLocomotion'), 1)
+        self.assertNotIn("_GAITRelease", self.text)
         self.assertNotIn("GAIT_fnc_braceLocomotionDecision", code)
         self.assertNotIn("GAIT_slopeBraceStage", code)
         self.assertNotRegex(self.text, r"class AmovPercMwlk\w+_GAIT(?:Sprint)?")

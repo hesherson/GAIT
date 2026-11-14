@@ -51,7 +51,7 @@ GAIT_fnc_observePaceCalibration = {
     if (_clip isEqualTo "") exitWith {_unit setVariable ["GAIT_paceObservation", []];};
     private _base = (_clip splitString "_") select 0;
     private _ordinary = (_base select [0,8]) isEqualTo "amovperc" &&
-        {(_base select [8,4]) in ["mrun", "mwlk", "mtac", "meva"]} &&
+        {(_base select [8,4]) in ["mrun", "mwlk", "mtac", "meva", "mspr"]} &&
         {(_base select [12,8]) in ["sraswrfl", "slowwrfl", "sraswpst", "slowwpst", "snonwnon"]} &&
         {(_base select [20]) in ["df", "dfl", "dfr"]};
     private _info = [_unit] call GAIT_fnc_readPaceMoveInfo;
@@ -128,6 +128,40 @@ GAIT_fnc_lookupUnitPaceReference = {
     private _key = [_unit, toLower _clip] call GAIT_fnc_paceReferenceKey;
     private _cache = _unit getVariable ["GAIT_paceMeasurements", []];
     [_cache, _key, _grade, diag_tickTime] call GAIT_fnc_lookupPaceReference
+};
+
+GAIT_fnc_sameClipPaceReference = {
+    params ["_reference", "_sourceFile", "_sourceRate", "_targetFile", "_targetRate"];
+    if (_reference <= 0 || {_sourceFile isEqualTo ""} ||
+        {toLower _sourceFile isNotEqualTo toLower _targetFile} ||
+        {abs _sourceRate <= 0.001} || {abs _targetRate <= 0.001} ||
+        {(_sourceRate < 0) isNotEqualTo (_targetRate < 0)}) exitWith {-1};
+    // Negative config values specify clip durations in seconds.
+    private _ratio = [_targetRate / _sourceRate, _sourceRate / _targetRate] select (_sourceRate < 0);
+    _reference * _ratio
+};
+
+GAIT_fnc_combatPaceReference = {
+    params ["_unit", "_family", "_direction", "_grade", "_jogClip", "_jogReference"];
+    private _base = "AmovPercMtac" + _family + _direction;
+    private _clips = [_base];
+    if (_family isEqualTo "SlowWrfl") then {_clips pushBack (_base + "_ver2");};
+    private _states = configFile >> "CfgMovesMaleSdr" >> "States";
+    private _jog = _states >> _jogClip;
+    private _reference = -1;
+    {
+        private _tactical = _states >> _x;
+        if (isClass _tactical) then {
+            private _observed = [_unit, _x, _grade] call GAIT_fnc_lookupUnitPaceReference;
+            if (_observed <= 0 && {_jogReference > 0}) then {
+                // ACE lowered tactical jog can use the ordinary jog RTM at a different rate.
+                _observed = [_jogReference, getText (_jog >> "file"), getNumber (_jog >> "speed"),
+                    getText (_tactical >> "file"), getNumber (_tactical >> "speed")] call GAIT_fnc_sameClipPaceReference;
+            };
+            _reference = _reference max _observed;
+        };
+    } forEach _clips;
+    _reference
 };
 
 // Prefer a complete externally supplied profile when present. Otherwise a

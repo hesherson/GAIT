@@ -1,23 +1,22 @@
-// Both reserve models distinguish a moving sprint, an actual rest and a hold.
+// Sprint drain follows allowed effort. Velocity only distinguishes rest from a coast.
 GAIT_fnc_sprintReserveActivity = {
-    params ["_input", "_speed", "_animation", "_canSprint", "_isGrounded"];
+    params ["_input", "_speed", "_canSprint", "_isGrounded"];
     if (!_isGrounded) exitWith {"hold"};
-    private _moving = _speed > 0.15;
     private _forward = _input select 0;
-    if (_canSprint && {_moving} && {_input select 2} && {_forward > 0.05} &&
-        {((toLower _animation) select [8, 4]) in ["meva", "mspr"]}) exitWith {"sprint"};
-    if (!_moving && {abs _forward <= 0.05} && {abs (_input select 1) <= 0.05}) exitWith {"rest"};
+    if (_canSprint && {_input select 2} && {_forward > 0.05}) exitWith {"sprint"};
+    if (_speed <= 0.15 && {abs _forward <= 0.05} && {abs (_input select 1) <= 0.05}) exitWith {"rest"};
     "hold"
 };
 
 GAIT_fnc_sprintReserveDrainRate = {
-    params ["_gearLbs", "_gradeMultiplier"];
+    params ["_gearLbs", "_gradeMultiplier", ["_loadFactor", 1], ["_terrainFactor", 1]];
     private _mass = _gearLbs max 0;
     private _moderateLoad = ((_mass - 60) / 60) max 0 min 1;
     private _extraHeavyLoad = (_mass - 120) max 0;
-    private _loadMultiplier = 1 + (0.0005 * _mass) + (0.13 * _moderateLoad ^ 2) +
+    private _loadCost = (0.0005 * _mass) + (0.13 * _moderateLoad ^ 2) +
         (0.26 * _extraHeavyLoad / 60) + (0.00825 * _extraHeavyLoad ^ 2 / (_extraHeavyLoad + 15));
-    _loadMultiplier * _gradeMultiplier
+    private _gradeInfluence = (_terrainFactor max 0) min ([1, 5] select (_gradeMultiplier >= 1));
+    (1 + (_loadCost * (_loadFactor max 0 min 5))) * (1 + ((_gradeMultiplier - 1) * _gradeInfluence))
 };
 
 GAIT_fnc_sprintReserveGradeMultiplier = {
@@ -35,96 +34,100 @@ GAIT_fnc_sprintReserveGradeMultiplier = {
     1 + (((_maximum max 1 min 4) - 1) * _severity)
 };
 
+// The spent fraction at weighted time t is 0.75t + 0.25t². Invert the
+// current fraction before adding this interval so varying frame rates and
+// grade/load changes consume the same reserve for the same total effort.
+GAIT_fnc_spendSprintReserve = {
+    params ["_reserve", "_maximum", "_effortFraction"];
+    if (_reserve <= 0 || {_effortFraction <= 0}) exitWith {_reserve max 0};
+    private _spent = (1 - (_reserve / _maximum)) max 0 min 1;
+    private _elapsed = 2 * (sqrt (0.5625 + _spent) - 0.75);
+    private _progress = (_elapsed + _effortFraction) min 1;
+    private _remaining = 1 - ((0.75 * _progress) + (0.25 * _progress ^ 2));
+    // Exact empty at the budget, within FLOAT precision over many samples.
+    if (_remaining < 0.000001) exitWith {0};
+    _maximum * _remaining
+};
+
 GAIT_fnc_stepFallbackSprintReserve = {
     params ["_reserve", "_activity", "_dt", "_maximum", "_recoverTime", "_drainRate"];
     switch (_activity) do {
-        case "sprint": {(_reserve - (_dt * _drainRate)) max 0};
+        case "sprint": {[_reserve, _maximum, _dt * _drainRate / _maximum] call GAIT_fnc_spendSprintReserve};
         case "rest": {(_reserve + ((_maximum / _recoverTime) * _dt)) min _maximum};
         default {_reserve};
     }
 };
 
-GAIT_fnc_aceSprintReserveDelta = {
-    params ["_before", "_after", "_debit", "_activity", "_drainRate", ["_adjustedDebit", -1, [0]]];
-    switch (_activity) do {
-        case "sprint": {
-            // ACE floors the raw debit before recovery. Undo that floor to
-            // keep a debit proportional all the way down to an empty bar.
-            private _tickRecovery = (_after - ((_before - _debit) max 0)) max 0;
-            if (_adjustedDebit < 0) then {_adjustedDebit = _debit;};
-            private _spent = 0.65 * _drainRate * ((_adjustedDebit - _tickRecovery) max 0);
-            (_before - _spent) max 0
-        };
-        case "rest": {_before max _after};
-        default {_before};
-    }
+// ACE defines player VO2Max as 35 + 20 * Performance Factor (0..10).
+// Forty seconds at the default factor of one, scaled by the resolved unit value.
+GAIT_fnc_aceSprintCapacitySeconds = {
+    params ["_vo2Max"];
+    40 * ((_vo2Max max 35 min 235) / 55)
 };
 
-GAIT_fnc_aceSprintReserveAdjustedDebit = {
-    params ["_debit", "_workInputs"];
-    _workInputs params ["_work", "_gearKg", "_gradient", "_terrainFactor", "_speed", "_wattsPerATP"];
-    if (_debit <= 0 || {_gearKg <= 0} || {_wattsPerATP <= 0}) exitWith {_debit};
+GAIT_fnc_aceSprintReserveDelta = {
+    params ["_before", "_after", "_exertion", "_restSeconds", "_sampleSeconds", "_capacitySeconds"];
+    private _maximum = 2300;
+    private _remaining = [_before, _maximum, _exertion / _capacitySeconds] call GAIT_fnc_spendSprintReserve;
+    if (_sampleSeconds <= 0 || {_restSeconds <= 0}) exitWith {_remaining};
+    // Native gain already includes ACE Recovery Factor and its aerobic state.
+    private _recovery = ((_after - _before) max 0) * ((_restSeconds / _sampleSeconds) min 1);
+    (_remaining + _recovery) min _maximum
+};
 
-    // ACE 3.21.2's additive workload terms, before its common efficiency and
-    // duty multipliers. Retain 15% of ACE's effective load in the displayed
-    // reserve debit so moderate rucks do not pay the full native penalty on
-    // top of GAIT's mass curve. ACE still uses the real work for physiology.
-    private _running = _speed > 2;
-    private _baseline = [73.5, 147] select _running;
-    private _loadTerm = [2, 4] select _running;
-    private _strideTerm = [1.15, 0.9] select _running;
-    private _paceTerm = _terrainFactor * ((_strideTerm * _speed ^ 2) + (0.66 * _speed * _gradient));
-    private _workScale = {
-        params ["_massKg"];
-        _baseline + ((70 + _massKg) * (_loadTerm * (_massKg / 70) ^ 2 + _paceTerm))
+GAIT_fnc_clearAceSprintEffort = {
+    missionNamespace setVariable ["GAIT_pendingAceSprintEffort", [objNull, 0, 0, 0]];
+};
+
+// Accumulate between ACE's one-second samples so brief sprints are charged
+// for the time actually spent in them, even if Shift is already up at publication.
+GAIT_fnc_accumulateAceSprintEffort = {
+    params ["_unit", "_activity", "_dt", "_degrees"];
+    if (_dt <= 0) exitWith {};
+    private _exertion = 0;
+    if (_activity isEqualTo "sprint") then {
+        private _mass = _unit getVariable "ace_movement_totalLoad";
+        if (isNil "_mass") then {_mass = loadAbs _unit;};
+        private _gearLbs = _mass / ((missionNamespace getVariable ["GAIT_ss_loadAbsPerLb", 10]) max 0.01);
+        private _grade = [_degrees,
+            missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainEnabled", true],
+            missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainStartDegrees", 4],
+            missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainMaxDegrees", 35],
+            missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainMaxMultiplier", 2.10]]
+            call GAIT_fnc_sprintReserveGradeMultiplier;
+        private _drain = [_gearLbs, _grade,
+            missionNamespace getVariable ["ace_advanced_fatigue_loadFactor", 1],
+            missionNamespace getVariable ["ace_advanced_fatigue_terrainGradientFactor", 1]]
+            call GAIT_fnc_sprintReserveDrainRate;
+        _exertion = _dt * _drain;
     };
-    private _stockWork = [_gearKg] call _workScale;
-    private _reserveWork = [0.15 * _gearKg] call _workScale;
-    private _cargoDebit = _work * (1 - (_reserveWork / _stockWork)) / _wattsPerATP;
-    (_debit - _cargoDebit) max 0
+    isNil {
+        private _pending = missionNamespace getVariable ["GAIT_pendingAceSprintEffort", [_unit, 0, 0, 0]];
+        _pending params ["_owner", "_pastExertion", "_restSeconds", "_sampleSeconds"];
+        if (_owner isNotEqualTo _unit) then {
+            _pastExertion = 0;
+            _restSeconds = 0;
+            _sampleSeconds = 0;
+        };
+        missionNamespace setVariable ["GAIT_pendingAceSprintEffort", [_unit, _pastExertion + _exertion,
+            _restSeconds + ([0, _dt] select (_activity isEqualTo "rest")), _sampleSeconds + _dt]];
+    };
 };
 
 GAIT_fnc_filterAceSprintReserve = {
-    params ["_before", "_after", "_unit", "_debit", "_degrees", "_workInputs"];
+    params ["_before", "_after", "_unit"];
+    private _pending = [];
+    isNil {
+        _pending = missionNamespace getVariable ["GAIT_pendingAceSprintEffort", [objNull, 0, 0, 0]];
+        if ((_pending select 0) isEqualTo _unit) then {[] call GAIT_fnc_clearAceSprintEffort;};
+    };
     if (!(call GAIT_fnc_modeAllowsMovement) || {!(call GAIT_fnc_aceAdvancedFatigueActive)} ||
         {!(missionNamespace getVariable ["GAIT_ss_useAceReserveModel", true])} ||
         {!([_unit] call GAIT_fnc_fatigueMovementContextEligible)}) exitWith {_after};
 
-    // Sample live intent into the ACE tick rather than trusting the last
-    // scheduled GAIT update when the player has just let go of Shift.
-    private _canSprint = isSprintAllowed _unit && {!isForcedWalk _unit} &&
-        {(_unit getVariable ["ace_common_effect_blockSprint", 0]) <= 0} &&
-        {(_unit getVariable ["ace_common_effect_forceWalk", 0]) <= 0};
-    private _velocity = velocity _unit;
-    private _horizontalSpeed = vectorMagnitude [_velocity select 0, _velocity select 1, 0];
-    private _activity = [call GAIT_fnc_getMovementInput, _horizontalSpeed,
-        animationState _unit, _canSprint, isTouchingGround _unit] call GAIT_fnc_sprintReserveActivity;
-    if (_activity isNotEqualTo "sprint") exitWith {
-        [_before, _after, _debit, _activity, 1] call GAIT_fnc_aceSprintReserveDelta
-    };
-
-    // Use the same total inventory load that ACE just rated, including
-    // delegated load providers such as ACE Movement when available.
-    private _loadAbs = _unit getVariable ["ace_movement_totalLoad", loadAbs _unit];
-    private _gearLbs = _loadAbs / ((missionNamespace getVariable ["GAIT_ss_loadAbsPerLb", 10]) max 0.01);
-    // Values above 1 still increase native work, without stacking the ACE
-    // slider a second time onto GAIT's own mass and ascent multipliers.
-    private _loadInfluence = (missionNamespace getVariable ["ace_advanced_fatigue_loadFactor", 1]) max 0 min 1;
-    private _terrainInfluence = (missionNamespace getVariable ["ace_advanced_fatigue_terrainGradientFactor", 1]) max 0 min 1;
-    private _gradeMultiplier = 1;
-    if (_degrees > 0 && {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]}) then {
-        // ACE already reduces the native downhill gradient. Add the GAIT
-        // climb cost using the live grade from this same ACE work sample.
-        _gradeMultiplier = [_degrees,
-            missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainEnabled", true],
-            missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainStartDegrees", 10],
-            missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainMaxDegrees", 35],
-            missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainMaxMultiplier", 1.75]]
-            call GAIT_fnc_sprintReserveGradeMultiplier;
-    };
-    private _massMultiplier = [_gearLbs, 1] call GAIT_fnc_sprintReserveDrainRate;
-    private _drainRate = (1 + ((_massMultiplier - 1) * _loadInfluence)) *
-        (1 + ((_gradeMultiplier - 1) * _terrainInfluence));
-    private _adjustedDebit = [_debit, _workInputs] call GAIT_fnc_aceSprintReserveAdjustedDebit;
-    [_before, _after, _debit, _activity, _drainRate, _adjustedDebit] call GAIT_fnc_aceSprintReserveDelta
+    _pending params ["_owner", "_exertion", "_restSeconds", "_sampleSeconds"];
+    if (_owner isNotEqualTo _unit) exitWith {_before};
+    private _capacity = [missionNamespace getVariable ["ace_advanced_fatigue_VO2Max", 55]]
+        call GAIT_fnc_aceSprintCapacitySeconds;
+    [_before, _after, _exertion, _restSeconds, _sampleSeconds, _capacity] call GAIT_fnc_aceSprintReserveDelta
 };

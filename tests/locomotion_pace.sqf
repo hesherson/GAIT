@@ -213,4 +213,19 @@ private _walkDominates = [0.9, 0.2, _walkRef, _jogRef, _sprintRef] call GAIT_fnc
     "ordinary jog floor also respects measured walk pace"] call _near;
 [[1, -1, -1, -1] call GAIT_fnc_ordinaryJogFloor, 0.78,
     "uncalibrated jog uses an estimate without changing native walk"] call _near;
+
+{
+    _x params ["_mass", "_margin"];
+    private _combatPace = 0.91;
+    private _combatReference = 3.6;
+    private _sprintReference = 4.2;
+    private _minimum = [_combatPace, _combatReference, _sprintReference, 1, _mass] call GAIT_fnc_combatRelativeSprintFloor;
+    [_minimum * _sprintReference, _combatPace * _combatReference * _margin, "measured combat pace sets a load-aware sprint floor"] call _near;
+    {
+        private _target = [_fullSprint, _fullSprint, _x, _mass, _minimum, 0.50] call GAIT_fnc_sprintReservePace;
+        [_target * _sprintReference > _combatPace * _combatReference, "sprint stays faster than combat at every low reserve"] call _assert;
+    } forEach [0, 0.01, 0.25, 0.50];
+    private _unarmedFallback = [1, -1, -1, 0.725, _mass] call GAIT_fnc_combatRelativeSprintFloor;
+    [_unarmedFallback, 0.74 * 0.725 * _margin, "uncalibrated floor uses the sprint clip scale independently of configured sprint speed"] call _near;
+} forEach [[0, 1.08], [50, 1.07], [100, 1.06], [150, 1.05], [200, 1.05]];
 diag_log format ["GAIT TEST PASS: physical pace adapter; %1 exact legacy fallback cases, %2 conversion roundtrips, physical floor, partial profiles and invalid calibration rejection", _fallbackChecks, _roundTrips];

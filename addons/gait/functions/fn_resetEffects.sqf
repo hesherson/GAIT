@@ -10,6 +10,9 @@ params [
 
 if (!hasInterface) exitWith {};
 
+if (!isNil "GAIT_fnc_clearAceSprintEffort") then {
+    [] call GAIT_fnc_clearAceSprintEffort;
+};
 
 if (!isNil "GAIT_fnc_releaseNativeStaminaOwnership") then {
     [] call GAIT_fnc_releaseNativeStaminaOwnership;

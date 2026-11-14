@@ -175,7 +175,6 @@ if ((["AmovPercMevaSrasWrflDf_GAIT_AmovPercMwlkSlowWrflDf_ver2", "SrasWrfl"]
     ["entering", "AmovPercMrunSrasWrflDr", "AmovPercMrunSrasWrflDr_GAITSprint", true],
     ["active", "AmovPercMrunSrasWrflDl", "AmovPercMrunSrasWrflDl_GAIT", false],
     ["active", "AmovPercMrunSrasWpstDl", "AmovPercMevaSrasWrflDf_GAIT", false],
-    ["active", "AmovPercMrunSrasWrflDl_GAITRelease", "AmovPercMevaSrasWrflDf_GAIT", false],
     ["blocked", "AmovPercMrunSrasWrflDl", "AmovPercMevaSrasWrflDf_GAIT", false]
 ];
 

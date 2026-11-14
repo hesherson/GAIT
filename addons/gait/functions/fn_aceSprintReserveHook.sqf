@@ -1,28 +1,24 @@
 /*
     ACE retains its installed fatigue loop, effects and stamina bar.
     Capture the anaerobic reserve before ACE debits it, then let GAIT filter
-    its net change immediately before ACE publishes percentages and feedback.
+    exertion and rest immediately before ACE publishes percentages and feedback.
     Prevent ACE's own fatigue locks from interrupting GAIT land movement.
 */
 private _originalPath = "\z\ace\addons\advanced_fatigue\functions\fnc_mainLoop.sqf";
 private _loop = uiNamespace getVariable "GAIT_aceSprintReserveLoop";
 if (isNil "_loop") then {
     private _source = preprocessFileLineNumbers _originalPath;
-    private _work = '\b_currentWork\s*=\s*\[\s*_gearMass\s*,\s*_terrainGradient\s*\*\s*ace_advanced_fatigue_terrainGradientFactor\s*\*\s*0\.1\s*,\s*_terrainFactor\s*,\s*_currentSpeed\s*\]\s*call\s+ace_advanced_fatigue_fnc_getMetabolicCosts\s*;/g';
     private _before = '\bace_advanced_fatigue_anReserve\s*=\s*0\s+max\s*\(\s*ace_advanced_fatigue_anReserve\s*-\s*_anPower\s*/\s*ace_advanced_fatigue_anWattsPerATP\s*\)\s*;/g';
     private _after = '\bace_advanced_fatigue_anReservePercentage\s*=\s*ace_advanced_fatigue_anReserve\s*/\s*2300\s*;/g';
-    private _workMatches = _source regexFind [_work];
     private _beforeMatches = _source regexFind [_before];
     private _afterMatches = _source regexFind [_after];
-    private _supported = (count _workMatches) isEqualTo 1 && {(count _beforeMatches) isEqualTo 1} &&
-        {(count _afterMatches) isEqualTo 1} &&
-        {((_workMatches select 0 select 0) select 1) < ((_beforeMatches select 0 select 0) select 1)} &&
+    private _supported = (count _beforeMatches) isEqualTo 1 && {(count _afterMatches) isEqualTo 1} &&
         {((_beforeMatches select 0 select 0) select 1) < ((_afterMatches select 0 select 0) select 1)};
     if (_supported) then {
         private _beforeOffset = (_beforeMatches select 0 select 0) select 1;
         private _afterOffset = (_afterMatches select 0 select 0) select 1;
         private _capture = 'private _gaitReserveBefore = ace_advanced_fatigue_anReserve; ';
-        private _filter = 'ace_advanced_fatigue_anReserve = [_gaitReserveBefore, ace_advanced_fatigue_anReserve, ACE_player, _anPower / ace_advanced_fatigue_anWattsPerATP, _fwdAngle, [_currentWork, _gearMass, _terrainGradient * ace_advanced_fatigue_terrainGradientFactor * 0.1, _terrainFactor, _currentSpeed, ace_advanced_fatigue_anWattsPerATP]] call (missionNamespace getVariable ["GAIT_fnc_filterAceSprintReserve", {_this select 1}]); ';
+        private _filter = 'ace_advanced_fatigue_anReserve = [_gaitReserveBefore, ace_advanced_fatigue_anReserve, ACE_player] call (missionNamespace getVariable ["GAIT_fnc_filterAceSprintReserve", {_this select 1}]); ';
         _source = (_source select [0, _beforeOffset]) + _capture +
             (_source select [_beforeOffset, _afterOffset - _beforeOffset]) + _filter + (_source select [_afterOffset]);
     } else {

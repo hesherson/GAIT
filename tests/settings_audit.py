@@ -55,6 +55,8 @@ class SettingsAudit(unittest.TestCase):
         self.assertEqual(rows['GAIT_ss_flatSprintPeak']['default'],1.14)
         self.assertEqual(rows['GAIT_ss_sprintReserveMax']['default'],40)
         self.assertEqual(rows['GAIT_ss_aceHeartbeatVolume']['default'],10)
+        self.assertEqual(rows['GAIT_ss_uphillFatigueDrainStartDegrees']['default'],4)
+        self.assertEqual(rows['GAIT_ss_uphillFatigueDrainMaxMultiplier']['default'],2.10)
         self.assertEqual(rows['GAIT_ss_downhillSprintCapKmh']['default'],30)
         self.assertEqual(rows['GAIT_ss_downhillJogCapKmh']['default'],18)
         self.assertEqual(rows['GAIT_ss_downhillSustainedExtraBoost']['default'],0.14)

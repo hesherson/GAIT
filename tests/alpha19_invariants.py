@@ -29,10 +29,10 @@ class LocomotionInvariants(unittest.TestCase):
         project = (ROOT / ".hemtt/project.toml").read_text()
         config = (ROOT / "addons/gait/config.cpp").read_text()
         mod = (ROOT / "mod.cpp").read_text()
-        self.assertIn("build = 26", project)
-        self.assertIn('versionStr = "1.8.0-alpha26";', config)
-        self.assertIn("versionAr[] = {1,8,0,26};", config)
-        self.assertIn('tooltip = "GAIT 1.8.0-alpha26";', mod)
+        self.assertIn("build = 27", project)
+        self.assertIn('versionStr = "1.8.0-alpha27";', config)
+        self.assertIn("versionAr[] = {1,8,0,27};", config)
+        self.assertIn('tooltip = "GAIT 1.8.0-alpha27";', mod)
 
     def test_graph_pose_and_no_walk_contract(self):
         text = GRAPH.read_text()
@@ -98,7 +98,8 @@ class LocomotionInvariants(unittest.TestCase):
                      "fn_braceMomentum.sqf", "fn_downhillPace.sqf"):
             code = executable(read(name))
             self.assertNotRegex(code, r"\bsetVelocity(?:ModelSpace)?\b", name)
-            self.assertNotRegex(code, r"\bswitchMove\b", name)
+            count_switch = len(re.findall(r"\bswitchMove\b", code))
+            self.assertEqual(count_switch, int(name == "fn_slopeLocomotion.sqf"), name)
         slope = executable(read("fn_slopeLocomotion.sqf"))
         self.assertEqual(len(re.findall(r"\bplayMoveNow\b", slope)), 1)
 

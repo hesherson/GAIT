@@ -155,11 +155,11 @@ GAIT_fnc_deadSprintStrength = {
 // then tapers toward the load-scaled floor.
 GAIT_fnc_sprintReservePace = {
     params ["_fresh", "_normalRun", "_reserve", ["_gearLbs", 0, [0]],
-        ["_uphillMinimum", 0, [0]], ["_exhaustedRunPace", 0.70, [0]],
+        ["_sprintMinimum", 0, [0]], ["_exhaustedRunPace", 0.70, [0]],
         ["_flatGround", false, [false]], ["_flatPeak", 1.14, [0]], ["_deadSprintStrength", 0, [0]]];
     private _loadFraction = (_gearLbs / 100) max 0 min 1;
     private _exhaustedRatio = ((_exhaustedRunPace + 0.05) - (0.10 * _loadFraction)) max 0 min 1;
-    private _floor = (_normalRun * _exhaustedRatio) max _uphillMinimum;
+    private _floor = (_normalRun * _exhaustedRatio) max _sprintMinimum;
     private _normalTarget = _fresh max _floor;
     if (_flatGround && {_reserve > 0.50} && {_deadSprintStrength > 0}) exitWith {
         private _mass = _gearLbs max 0;
@@ -185,6 +185,17 @@ GAIT_fnc_uphillSprintFloor = {
     private _walkOnSprintClip = _walk * _walkToSprint;
     // Ordinary jog already has a 6% floor over walking in the pace adapter.
     ((_walkOnSprintClip * 1.06) max (_jog * _jogToSprint)) * 1.08
+};
+
+GAIT_fnc_combatRelativeSprintFloor = {
+    params ["_combatCoefficient", "_combatReference", "_sprintReference", "_rawSprintScale", "_gearLbs"];
+    private _combatToSprint = 0.74 * _rawSprintScale;
+    if (_combatReference > 0 && {_sprintReference > 0}) then {
+        _combatToSprint = _combatReference / _sprintReference;
+    };
+    private _load = (_gearLbs / 150) max 0 min 1;
+    // Keep a small margin at every load, even when this floor sets the pace.
+    _combatCoefficient * _combatToSprint * (1.08 - (0.03 * _load))
 };
 
 GAIT_fnc_ordinaryJogFloor = {

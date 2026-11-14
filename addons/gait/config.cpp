@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha26: sprint endurance, sustained descent, and release direction
+// GAIT 1.8.0-alpha27: effort-based stamina, combat-relative sprint pace, and native release
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha26";
-        versionAr[] = {1,8,0,26};
+        versionStr = "1.8.0-alpha27";
+        versionAr[] = {1,8,0,27};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

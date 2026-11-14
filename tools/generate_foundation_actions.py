@@ -51,10 +51,6 @@ def stop_target(family):
     return native(family, "Dnon") + "_GAITStop"
 
 
-def release_target(family, direction):
-    return native(family, direction, False) + "_GAITRelease"
-
-
 def ordinary_states(family):
     """Existing entry/release endpoints, not destinations for held-sprint input.
 
@@ -126,10 +122,8 @@ def render():
  * captured native value 4 to 8. They shorten the outgoing run blend without
  * scaling its clip playback or adding forward movement. They do not belong
  * to the sprint family and accept new movement immediately through native
- * actions. Moving release targets use the native jog clips and native action
- * maps, with the same faster blend. Once reached, their selectors accept
- * direction changes directly. The controller may redirect a pending bridge
- * once if a new direction arrives while sprint is still observed.
+ * actions. Moving release changes directly to a native walk or jog state so
+ * its own direction selectors are active immediately.
  * Transition weights are graph costs, not fixed blend durations in seconds.
  *
  * Sources for native names/selectors and preserving explicit action exits:
@@ -187,11 +181,9 @@ class CfgMovesBasic
                 declarations.append(base)
                 lines.append(f"        class {base};")
         lines.append("")
-        release_targets = [release_target(family, direction) for direction in DIRECTIONS]
         native_states = ordinary_states(family)
         ordinary = native_states + [stop_target(family)]
         members = [custom(family, direction, sprinting) for direction, sprinting in state_specs]
-        sprint_members = [custom(family, direction, True) for direction in DIRECTIONS]
         for direction, sprinting in state_specs:
             name = custom(family, direction, sprinting)
             base = native(family, direction, sprinting)
@@ -213,7 +205,7 @@ class CfgMovesBasic
             append_edges(lines, "InterpolateFrom", ordinary)
             lines.append("            // Complete direct idle/direction routes preserve the slope family.")
             internal = [other for other in members if other != name]
-            append_edges(lines, "InterpolateTo", internal + ordinary + (release_targets if name in sprint_members else []))
+            append_edges(lines, "InterpolateTo", internal + ordinary)
             lines += ["        };", ""]
         # A separate native-pose endpoint confines the faster blend to stops.
         # Changing sprint interpolationSpeed would also change launch/retaps.
@@ -225,24 +217,9 @@ class CfgMovesBasic
             "            variantsPlayer[] = {};",
             "            variantsAI[] = {};",
         ]
-        append_edges(lines, "InterpolateFrom", members + native_states + release_targets)
+        append_edges(lines, "InterpolateFrom", members + native_states)
         append_edges(lines, "InterpolateTo", members + native_states)
         lines += ["        };", ""]
-        for direction, target in zip(DIRECTIONS, release_targets):
-            base = native(family, direction, False)
-            lines += [
-                f"        class {target}: {base}", "        {",
-                f'            actions = "{native_actions}";',
-                "            interpolationSpeed = 8;",
-                "            GAIT_releaseBridge = 1;",
-                "            equivalentTo = \"\";",
-                "            variantsPlayer[] = {};",
-                "            variantsAI[] = {};",
-            ]
-            append_edges(lines, "InterpolateFrom", sprint_members)
-            append_edges(lines, "InterpolateTo", sprint_members + native_states + [stop_target(family)] +
-                         [other for other in release_targets if other != target])
-            lines += ["        };", ""]
     lines += ["    };", "};", ""]
     return "\n".join(lines)
 
@@ -259,7 +236,7 @@ def main():
         print("Foundation graph generator matches the checked-in config.")
         return
     args.output.write_text(expected)
-    print(f"Wrote {args.output}: 85 locomotion states, 5 stop targets, 40 release targets, 15 action maps, 1065 mapped selectors.")
+    print(f"Wrote {args.output}: 85 locomotion states, 5 stop targets, 15 action maps, 1065 mapped selectors.")
 
 
 if __name__ == "__main__":

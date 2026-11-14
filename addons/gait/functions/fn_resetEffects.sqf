@@ -44,7 +44,6 @@ missionNamespace setVariable ["GAIT_uphillBrakeSeverity", 0];
 missionNamespace setVariable ["GAIT_uphillBrakeTarget", 0];
 missionNamespace setVariable ["GAIT_slopeJogOverride", false];
 missionNamespace setVariable ["GAIT_downhillMomentum", 0];
-missionNamespace setVariable ["GAIT_downhillGravityTargetKmh", 0];
 missionNamespace setVariable ["GAIT_walkStartBraceActive", false];
 missionNamespace setVariable ["GAIT_walkStartBraceFactor", 1];
 missionNamespace setVariable ["GAIT_walkStartBraceTier", -1];

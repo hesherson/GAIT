@@ -62,8 +62,11 @@ if !([[1,0,false],0.1,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
 if !([[1,0,false],-35,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
     _failures pushBack "Steep downhill ordinary movement did not request jog override";
 };
-if !([[1,0,false],0,false,true] call GAIT_fnc_ordinarySlopeJogIntent) then {
-    _failures pushBack "Native forced-walk threshold did not immediately request jog override";
+if ([[1,0,false],35,false,true] call GAIT_fnc_ordinarySlopeJogIntent) then {
+    _failures pushBack "Explicit native forceWalk was bypassed by slope jog";
+};
+if ([[1,0,false],35,false,false,true] call GAIT_fnc_ordinarySlopeJogIntent) then {
+    _failures pushBack "Deliberate walk toggle was bypassed by slope jog";
 };
 if ([[1,0,true],35,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
     _failures pushBack "Turbo movement was mistaken for ordinary slope jog";
@@ -74,6 +77,54 @@ if ([[1,0,false],35,true] call GAIT_fnc_ordinarySlopeJogIntent) then {
 if ([[0,1,false],35,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
     _failures pushBack "Pure lateral input incorrectly requested forward slope jog";
 };
+
+// The jog and sprint maps pin their own gaits. With W held, Turbo must switch
+// that map even though the movement direction has not changed.
+{
+    _x params ["_arguments", "_expected", "_label"];
+    if ((_arguments call GAIT_fnc_locomotionGaitIntent) isNotEqualTo _expected) then {
+        _failures pushBack _label;
+    };
+} forEach [
+    [["active", true, false, "AmovPercMrunSlowWpstDf_GAIT", ""], "sprint", "Held W plus Turbo did not select actual sprint"],
+    [["entering", true, false, "AmovPercMrunSlowWpstDf", "AmovPercMrunSlowWpstDf_GAIT"], "sprint", "Turbo did not replace pending jog entry"],
+    [["entering", true, false, "AmovPercMrunSlowWpstDf_GAIT", "AmovPercMevaSlowWpstDf_GAIT"], "", "Pending sprint was requested twice"],
+    [["active", true, false, "AmovPercMevaSlowWpstDf_GAIT", ""], "", "Active sprint clip was requested twice"],
+    [["active", true, false, "AmovPercMrunSlowWpstDl_GAITSprint", ""], "", "Sprint-owned lateral state was mistaken for ordinary jog"],
+    [["active", false, true, "AmovPercMevaSlowWpstDf_GAIT", ""], "", "Finite sprint release was cut off"],
+    [["active", false, false, "AmovPercMevaSlowWpstDf_GAIT", ""], "release", "Sprint stayed selected after Turbo release"],
+    [["active", false, false, "AmovPercMevaSlowWpstDf_GAIT_AmovPercMevaSlowWpstDfl_GAIT", ""], "release", "Sprint blend stayed selected after Turbo release"],
+    [["active", false, false, "AmovPercMrunSlowWpstDl_GAITSprint", ""], "release", "Lateral sprint-owned state did not hand back to native gait"],
+    [["native", true, false, "AmovPercMwlkSlowWpstDf", ""], "", "Native walk was mistaken for owned jog"]
+];
+if !(["entering", "AmovPercMrunSlowWpstDf_GAIT", "AmovPercMevaSlowWpstDf_GAIT"] call GAIT_fnc_locomotionEntryStillInJog) then {
+    _failures pushBack "Old custom jog incorrectly completed pending sprint entry";
+};
+if (["entering", "AmovPercMevaSlowWpstDf_GAIT", "AmovPercMevaSlowWpstDf_GAIT"] call GAIT_fnc_locomotionEntryStillInJog) then {
+    _failures pushBack "Observed custom sprint did not complete pending sprint entry";
+};
+
+// An uphill graph escape can be repaired once, only from a supported native
+// animation. Hard locks and unrelated movement keep their original authority.
+{
+    _x params ["_arguments", "_expected", "_label"];
+    if ((_arguments call GAIT_fnc_uphillSprintRecoveryDecision) isNotEqualTo _expected) then {
+        _failures pushBack _label;
+    };
+} forEach [
+    [["active", true, true, false, [1,0,true], 34, "AmovPercMwlkSlowWrflDf_ver2", "SlowWrfl"], true, "Steep uphill native walk did not recover sprint"],
+    [["blocked", true, true, false, [1,0,true], 34, "AmovPercMrunSlowWpstDf", "SlowWpst"], true, "A blocked uphill pistol sprint could not recover from native jog"],
+    [["active", true, true, false, [1,0,true], 34, "AmovPercMstpSrasWrflDnon", "SrasWrfl"], true, "A native idle escape could not recover uphill sprint"],
+    [["active", true, true, true, [1,0,true], 34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Held uphill sprint retried after consuming recovery"],
+    [["active", false, true, false, [1,0,true], 34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Locked uphill sprint retried"],
+    [["active", true, false, false, [1,0,true], 34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Ineligible uphill sprint retried"],
+    [["active", true, true, false, [1,0,true], 34, "AmovPercMlmpSlowWrflDf", "SlowWrfl"], false, "Injured locomotion was overwritten"],
+    [["active", true, true, false, [1,0,true], 34, "AmovPercMwlkSlowWrflDf_AmovPknlMrunSlowWrflDf", "SlowWrfl"], false, "An unrelated stance transition was overwritten"],
+    [["active", true, true, false, [1,0,true], 34, "AmovPercMwlkSrasWpstDf", "SlowWpst"], false, "Uphill recovery changed the weapon pose"],
+    [["active", true, true, false, [1,0,true], -34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Downhill walk triggered uphill recovery"],
+    [["active", true, true, false, [1,0,false], 34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Released Turbo triggered sprint recovery"],
+    [["active", true, true, false, [0,1,true], 34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Pure strafe triggered uphill sprint recovery"]
+];
 
 // Live W/A/D and idle changes retain one owned family. Policy `_requested`
 // here means graph ownership; sprint pace intentionally has its own forward gate.

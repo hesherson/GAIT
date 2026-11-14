@@ -85,6 +85,13 @@ GAIT_fnc_uphillLaunchBraceFactor = {
     (((exp (_curve * _severity)) - 1) / _denominator) max 0 min 1.25
 };
 
+// End the planted launch a little sooner without changing the duration
+// settings also used by the uphill sprint-release brake.
+GAIT_fnc_sprintLaunchBraceDuration = {
+    params ["_baseDuration", "_linearExtra", "_uphillExtra"];
+    0.92 * (_baseDuration + (_linearExtra max _uphillExtra))
+};
+
 // Small ordinary-movement step from a true stop. This is deliberately much
 // shallower than the sprint brace. Interpolate the curve at the current mass.
 // Return: [duration, lowPaceFactor, holdFraction, anchorPosition].
@@ -98,7 +105,7 @@ GAIT_fnc_walkStartBraceProfile = {
         ((_gearLbs / (_anchors select 1)) max 0 min 1) +
         (((_gearLbs - (_anchors select 1)) / ((_anchors select 2) - (_anchors select 1))) max 0 min 1) +
         (((_gearLbs - (_anchors select 2)) / ((_anchors select 3) - (_anchors select 2))) max 0 min 1);
-    [0.28 + (0.04 * _anchorPosition), 0.86 - (0.04 * _anchorPosition),
+    [0.26 + (0.04 * _anchorPosition), 0.87 - (0.04 * _anchorPosition),
         0.20 + (0.02 * ((_anchorPosition - 1) max 0)), _anchorPosition]
 };
 

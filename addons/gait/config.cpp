@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha20: continuous load, terrain and sprint reserve
+// GAIT 1.8.0-alpha21: continuous load, terrain and sprint reserve
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha20";
-        versionAr[] = {1,8,0,20};
+        versionStr = "1.8.0-alpha21";
+        versionAr[] = {1,8,0,21};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

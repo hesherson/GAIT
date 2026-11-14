@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha20 build and deployment
+# GAIT 1.8.0-alpha21 build and deployment
 
 Requires Arma 3 2.18+, CBA_A3, ACE3, Git, and HEMTT. Close Arma before deploying to a mod folder.
 

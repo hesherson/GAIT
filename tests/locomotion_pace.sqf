@@ -95,24 +95,42 @@ private _lowPistolProfile = [["SlowWpst", "Df", 1.4, 2.8, 5.6]];
 [[0, 6] call GAIT_fnc_paceCoefficientToMS isEqualTo 0, "zero coefficient remains zero; no launch floor"] call _assert;
 [[-0.1, 6] call GAIT_fnc_paceCoefficientToMS isEqualTo -1, "negative coefficient is unknown"] call _assert;
 [["1", 6] call GAIT_fnc_paceMSToCoefficient isEqualTo -1, "nonnumeric speed is unknown"] call _assert;
-// A 1.5 m/s walk clip and 6 m/s sprint clip need different coefficients.
-private _walk = 0.8;
-private _clipRatio = 1.5 / 6;
-private _lightFloor = [1.3, _walk, _clipRatio, 0, 1.06, 0.2, 0] call GAIT_fnc_sprintReservePace;
-private _heavyFloor = [1.3, _walk, _clipRatio, 0, 1.06, 0.2, 100] call GAIT_fnc_sprintReservePace;
-[_lightFloor * 6, _walk * 1.5 * 1.12, "empty light sprint targets 12% over walking"] call _near;
-[_heavyFloor * 6, _walk * 1.5 * 1.06, "empty heavy sprint targets 6% over walking"] call _near;
-private _emptyDescent = [2, _walk, _clipRatio, 0, 1.06, 0.2, 100] call GAIT_fnc_sprintReservePace;
-[_emptyDescent, _heavyFloor, "even a calibrated downhill boost fades at empty reserve"] call _near;
-private _fresh = [2, _walk, _clipRatio, 0.45, 1.06, 0.2, 100] call GAIT_fnc_sprintReservePace;
-[_fresh, 2, "full downhill target remains available above the taper"] call _near;
+// Every load retains the same fraction of its own unboosted run pace.
+private _lightRun = 1.30;
+private _heavyRun = 0.92;
+private _lightFloor = [1.45, _lightRun, 0] call GAIT_fnc_sprintReservePace;
+private _heavyFloor = [1.25, _heavyRun, 0] call GAIT_fnc_sprintReservePace;
+[_lightFloor, _lightRun * 0.85, "empty light sprint retains 85% of its run"] call _near;
+[_heavyFloor, _heavyRun * 0.85, "empty heavy sprint retains 85% of its run"] call _near;
+[_lightFloor > _heavyFloor, "heavy remains slower at the same reserve"] call _assert;
+[[2, _heavyRun, 0] call GAIT_fnc_sprintReservePace, _heavyFloor,
+    "downhill momentum does not raise the empty-reserve target"] call _near;
+[[1.25, _heavyRun, 0.45] call GAIT_fnc_sprintReservePace, 1.25,
+    "full target remains available above the taper"] call _near;
 private _previous = _heavyFloor;
 for "_percent" from 1 to 45 do {
-    private _target = [2, _walk, _clipRatio, _percent / 100, 1.06, 0.2, 100] call GAIT_fnc_sprintReservePace;
+    private _target = [1.25, _heavyRun, _percent / 100] call GAIT_fnc_sprintReservePace;
     [_target > _previous, "sprint target changes continuously through low reserve"] call _assert;
     _previous = _target;
 };
-private _nearEmpty = [2, _walk, _clipRatio, 0.01, 1.06, 0.2, 100] call GAIT_fnc_sprintReservePace;
-[_nearEmpty < (_heavyFloor * 1.02), "last reserve ticks approach walking without a cliff"] call _assert;
+private _nearEmpty = [1.25, _heavyRun, 0.01] call GAIT_fnc_sprintReservePace;
+[_nearEmpty < (_heavyFloor * 1.01), "last reserve ticks approach the run floor smoothly"] call _assert;
 
+// Steep grades can push a heavy sprint's candidate below its matching jog.
+private _uphillWalk = 0.48;
+private _uphillJog = 0.51;
+private _walkRef = 1.5;
+private _jogRef = 3.6;
+private _sprintRef = 5.8;
+private _uphillFloor = [_uphillWalk, _uphillJog, _walkRef, _jogRef, _sprintRef] call GAIT_fnc_uphillSprintFloor;
+[_uphillFloor * _sprintRef, _uphillJog * _jogRef * 1.08,
+    "calibrated uphill sprint exceeds the same-load jog"] call _near;
+private _fallbackFloor = [_uphillWalk, _uphillJog, -1, -1, -1] call GAIT_fnc_uphillSprintFloor;
+[_fallbackFloor, _uphillJog * 0.75 * 1.08, "fallback uphill floor uses jog root-motion estimate"] call _near;
+{
+    private _sprint = [0.14, 0.14, _x, 0.85, _uphillFloor] call GAIT_fnc_sprintReservePace;
+    [_sprint, _uphillFloor, "fresh and fatigued uphill sprint honor the pace floor"] call _near;
+} forEach [0, 0.2, 0.45, 1];
+private _walkDominates = [0.9, 0.2, _walkRef, _jogRef, _sprintRef] call GAIT_fnc_uphillSprintFloor;
+[_walkDominates * _sprintRef, 0.9 * _walkRef * 1.06 * 1.08, "uphill sprint also exceeds a jog held at its walk-relative floor"] call _near;
 diag_log format ["GAIT TEST PASS: physical pace adapter; %1 exact legacy fallback cases, %2 conversion roundtrips, physical floor, partial profiles and invalid calibration rejection", _fallbackChecks, _roundTrips];

@@ -107,6 +107,14 @@ private _d3 = (_launchFactors select 3) - (_launchFactors select 2);
 private _overRef = [50,false,35] call GAIT_fnc_uphillLaunchBraceFactor;
 [_overRef > 1 && {_overRef <= 1.25}, "very steep uphill launch stays bounded"] call _assert;
 
+{
+    _x params ["_base", "_linear", "_uphill"];
+    private _previousDuration = _base + (_linear max _uphill);
+    private _newDuration = [_base, _linear, _uphill] call GAIT_fnc_sprintLaunchBraceDuration;
+    [abs (_newDuration - (0.92 * _previousDuration)) < 0.00001,
+        "sprint launch ends slightly sooner while preserving the stronger grade contribution"] call _assert;
+} forEach [[0.15,0,0], [0.15,0.18,0.12], [0.15,0.18,0.54], [0,0,0]];
+
 // Ordinary movement from a true stop gets a separate shallow, finite step.
 // Heavier kits are both deeper and longer.
 private _walkProfiles = [];
@@ -122,6 +130,12 @@ for "_i" from 0 to 2 do {
 };
 [((_walkProfiles select 0) select 1) < 0.90, "lightest walk brace remains noticeable"] call _assert;
 [((_walkProfiles select 3) select 1) >= 0.70, "heaviest walk brace stays bounded and non-annoying"] call _assert;
+private _unloadedProfile = [0] call GAIT_fnc_walkStartBraceProfile;
+private _heavyProfile = [75] call GAIT_fnc_walkStartBraceProfile;
+[abs ((_unloadedProfile select 0) - 0.26) < 0.00001 && {abs ((_heavyProfile select 0) - 0.38) < 0.00001},
+    "ordinary brace steps off slightly sooner across the load range"] call _assert;
+[abs ((_unloadedProfile select 1) - 0.87) < 0.00001 && {abs ((_heavyProfile select 1) - 0.75) < 0.00001},
+    "ordinary brace starts from a slightly higher planted pace"] call _assert;
 {
     private _before = [_x - 0.001] call GAIT_fnc_walkStartBraceProfile;
     private _after = [_x + 0.001] call GAIT_fnc_walkStartBraceProfile;

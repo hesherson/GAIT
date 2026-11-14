@@ -129,16 +129,27 @@ GAIT_fnc_locomotionPaceTargets = {
     [_walkCoefficient, _movingCoefficient, _walkMS, _movingMS, true]
 };
 
-// Work in sprint-clip coefficients. Convert the walk reference first, so the
-// exhausted target approaches walking even when sprint root motion is faster.
-// The fresh target already contains the complete terrain and load effects.
+// The reserve floor is based on the same kit's normal run, without downhill
+// momentum. Uphill, keep the settled sprint above the same-grade walk and jog.
 GAIT_fnc_sprintReservePace = {
-    params ["_fresh", "_walk", "_walkToSprint", "_reserve", "_floorRatio", "_freshMargin", "_gearLbs"];
-    private _lightness = 1 - (((_gearLbs max 0) / 100) min 1);
-    private _walkOnSprintClip = _walk * _walkToSprint;
-    private _floor = _walkOnSprintClip * ((_floorRatio max 1.01) + (0.06 * _lightness));
-    private _freshTarget = _fresh max (_floor + (_walkOnSprintClip * (_freshMargin max 0)));
+    params ["_fresh", "_normalRun", "_reserve", ["_exhaustedRatio", 0.85, [0]], ["_uphillMinimum", 0, [0]]];
+    private _floor = (_normalRun * (_exhaustedRatio max 0 min 1)) max _uphillMinimum;
+    private _freshTarget = _fresh max _floor;
     private _remaining = (_reserve / 0.45) max 0 min 1;
     private _effort = _remaining * _remaining * (3 - (2 * _remaining));
     _floor + ((_freshTarget - _floor) * _effort)
+};
+
+GAIT_fnc_uphillSprintFloor = {
+    params ["_walk", "_jog", "_walkReference", "_jogReference", "_sprintReference"];
+    // Use conservative clip ratios until matching measurements are available.
+    private _walkToSprint = 0.30;
+    private _jogToSprint = 0.75;
+    if (_sprintReference > 0) then {
+        if (_walkReference > 0) then {_walkToSprint = _walkReference / _sprintReference;};
+        if (_jogReference > 0) then {_jogToSprint = _jogReference / _sprintReference;};
+    };
+    private _walkOnSprintClip = _walk * _walkToSprint;
+    // Ordinary jog already has a 6% floor over walking in the pace adapter.
+    ((_walkOnSprintClip * 1.06) max (_jog * _jogToSprint)) * 1.08
 };

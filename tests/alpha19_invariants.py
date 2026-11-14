@@ -29,10 +29,10 @@ class LocomotionInvariants(unittest.TestCase):
         project = (ROOT / ".hemtt/project.toml").read_text()
         config = (ROOT / "addons/gait/config.cpp").read_text()
         mod = (ROOT / "mod.cpp").read_text()
-        self.assertIn("build = 20", project)
-        self.assertIn('versionStr = "1.8.0-alpha20";', config)
-        self.assertIn("versionAr[] = {1,8,0,20};", config)
-        self.assertIn('tooltip = "GAIT 1.8.0-alpha20";', mod)
+        self.assertIn("build = 21", project)
+        self.assertIn('versionStr = "1.8.0-alpha21";', config)
+        self.assertIn("versionAr[] = {1,8,0,21};", config)
+        self.assertIn('tooltip = "GAIT 1.8.0-alpha21";', mod)
 
     def test_graph_pose_and_no_walk_contract(self):
         text = GRAPH.read_text()
@@ -84,15 +84,14 @@ class LocomotionInvariants(unittest.TestCase):
         downhill = read("fn_downhillPace.sqf")
         self.assertIn("GAIT_fnc_ordinarySlopeJogIntent", slope)
         self.assertIn("GAIT_fnc_uphillLaunchBraceFactor", main)
-        self.assertIn("GAIT_fnc_downhillGravityTargetKmh", main)
+        self.assertEqual(main.count("call GAIT_fnc_capDownhillPace"), 2)
+        self.assertIn("call GAIT_fnc_uphillSprintFloor", main)
+        self.assertIn("call GAIT_fnc_sprintLaunchBraceDuration", main)
         self.assertIn("GAIT_fnc_lookupUnitPaceReference", main)
         self.assertIn("GAIT_fnc_locomotionPaceReferences", main)
         self.assertIn("GAIT_sprintReferenceCalibrated", main)
         self.assertIn("min _maximumPace", downhill)
-        gravity = downhill.split("GAIT_fnc_downhillGravityTargetKmh = {", 1)[1].split("\n};", 1)[0]
-        self.assertIn("_gearLbs", gravity)
-        self.assertIn("_momentum", gravity)
-        self.assertNotRegex(executable(gravity), r"\bvelocity\b")
+        self.assertNotRegex(executable(downhill), r"\bvelocity\b")
 
     def test_locomotion_has_no_velocity_injection_or_animation_watchdog(self):
         for name in ("fn_slopeLocomotion.sqf", "fn_nativeController.sqf",

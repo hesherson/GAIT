@@ -25,7 +25,7 @@ def read_settings():
     return rows
 class SettingsAudit(unittest.TestCase):
     def test_registry_unique_and_valid(self):
-        rows=read_settings();self.assertEqual(len(rows),106);self.assertEqual(len({r['name'] for r in rows}),len(rows))
+        rows=read_settings();self.assertEqual(len(rows),107);self.assertEqual(len({r['name'] for r in rows}),len(rows))
         for r in rows:
             if r['kind']=='Slider':self.assertTrue(r['min']<=r['default']<=r['max'],r['name'])
             if r['kind']=='List':self.assertEqual(len(r['values']),len(r['labels']))
@@ -48,7 +48,10 @@ class SettingsAudit(unittest.TestCase):
         rows={r['name']:r for r in read_settings()}
         self.assertEqual((rows['GAIT_ss_shiftReleaseRunTaperCurve']['min'],rows['GAIT_ss_shiftReleaseRunTaperCurve']['max']),(1,3))
         self.assertEqual(rows['GAIT_ss_debugHudInterval']['min'],0.05)
-        self.assertEqual(rows['GAIT_ss_minSprintWalkRatio']['default'],1.06)
+        self.assertEqual(rows['GAIT_ss_exhaustedRunRatio']['default'],0.85)
+        self.assertEqual(rows['GAIT_ss_downhillSprintCapKmh']['default'],30)
+        self.assertEqual(rows['GAIT_ss_downhillJogCapKmh']['default'],18)
+        self.assertEqual(rows['GAIT_ss_downhillMomentumBuildSeconds']['default'],4.5)
         self.assertEqual(rows['GAIT_ss_compatibilityMode']['values'],[1,4])
         self.assertEqual(rows['GAIT_ss_compatibilityMode']['labels'],['Movement only','Disabled'])
         self.assertEqual(rows['GAIT_ss_compatibilityMode']['default'],1)

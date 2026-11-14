@@ -62,15 +62,11 @@ GAIT_fnc_uphillSprintPaceMultiplier = {
 // Scale the regular coefficient response without altering bracing or release
 // timing. In particular, a rising hill should slow a moving sprint promptly.
 GAIT_fnc_slopeSprintRamp = {
-    params ["_baseRamp", "_gradeDegrees", "_speedRising", "_uphillStart", "_downhillStart", "_uphillEnabled", "_downhillEnabled"];
+    params ["_baseRamp", "_gradeDegrees", "_speedRising", "_uphillStart", "_uphillEnabled"];
     private _rateScale = 1;
     if (_uphillEnabled && {_gradeDegrees > _uphillStart}) then {
         private _hill = sqrt (((_gradeDegrees - _uphillStart) / 25) min 1);
         _rateScale = 1 + (_hill * ([2.4, 0.65] select _speedRising));
-    };
-    if (_downhillEnabled && {_speedRising} && {_gradeDegrees < -_downhillStart}) then {
-        private _hill = sqrt (((-_gradeDegrees - _downhillStart) / 15) min 1);
-        _rateScale = 1 + (2.2 * _hill);
     };
     1 - ((1 - (_baseRamp max 0.001 min 1)) ^ _rateScale)
 };

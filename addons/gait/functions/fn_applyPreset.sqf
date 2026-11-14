@@ -42,8 +42,7 @@ private _set = {
     _x call _set;
 } forEach [
     ["GAIT_ss_slopeLocomotionEnabled", true],
-    ["GAIT_ss_minSprintWalkRatio", 1.06],
-    ["GAIT_ss_freshSprintWalkMargin", 0.20],
+    ["GAIT_ss_exhaustedRunRatio", 0.85],
     ["GAIT_ss_extraHeavyPenaltyPer50Lb", 0.18],
     ["GAIT_ss_normalSpeed", 0.86],
     ["GAIT_ss_sprintFullSpeed", 1.28],
@@ -54,7 +53,7 @@ private _set = {
     ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85],
     ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45],
     ["GAIT_ss_sprintStartBraceDuration", 0.15],
-    ["GAIT_ss_sprintStartBraceSpeed", 0.42],
+    ["GAIT_ss_sprintStartBraceSpeed", 0.44],
     ["GAIT_ss_sprintStartBraceLerp", 0.575],
     ["GAIT_ss_slopeStopBraceEnabled", true],
     ["GAIT_ss_slopeStopBraceStartDegrees", 15.0],
@@ -93,8 +92,11 @@ private _set = {
     ["GAIT_ss_downhillBoostEnabled", true],
     ["GAIT_ss_downhillBoostStartDegrees", 0.5],
     ["GAIT_ss_downhillBoostMaxDegrees", 18.0],
-    ["GAIT_ss_downhillMaxBoost", 0.10],
-    ["GAIT_ss_downhillSustainedExtraBoost", 0.18],
+    ["GAIT_ss_downhillMaxBoost", 0.03],
+    ["GAIT_ss_downhillSustainedExtraBoost", 0.10],
+    ["GAIT_ss_downhillMomentumBuildSeconds", 4.5],
+    ["GAIT_ss_downhillSprintCapKmh", 30],
+    ["GAIT_ss_downhillJogCapKmh", 18],
     ["GAIT_ss_downhillTripEnabled", true],
     ["GAIT_ss_downhillTripThresholdDegrees", 28.0],
     ["GAIT_ss_downhillTripMaxChancePerSecond", 0.10],
@@ -132,7 +134,7 @@ switch (_preset) do {
             ["GAIT_ss_moderateSpeedBonus", 1.00],
             ["GAIT_ss_heavySpeedBonus", 0.96],
             ["GAIT_ss_uphillMaxPenalty", 0.45],
-            ["GAIT_ss_downhillMaxBoost", 0.04]
+            ["GAIT_ss_downhillMaxBoost", 0.02]
         ];
     };
 
@@ -149,7 +151,7 @@ switch (_preset) do {
             ["GAIT_ss_moderateBraceRelief", 0.45],
             ["GAIT_ss_heavyBraceRelief", 0.25],
             ["GAIT_ss_uphillMaxPenalty", 0.22],
-            ["GAIT_ss_downhillMaxBoost", 0.12]
+            ["GAIT_ss_downhillMaxBoost", 0.06]
         ];
     };
 
@@ -172,7 +174,7 @@ switch (_preset) do {
             ["GAIT_ss_mediumBraceRelief", 0.50],
             ["GAIT_ss_moderateBraceRelief", 0.28],
             ["GAIT_ss_uphillMaxPenalty", 0.30],
-            ["GAIT_ss_downhillMaxBoost", 0.08]
+            ["GAIT_ss_downhillMaxBoost", 0.04]
         ];
     };
 
@@ -193,7 +195,7 @@ switch (_preset) do {
             ["GAIT_ss_moderateBraceRelief", 0.10],
             ["GAIT_ss_heavyBraceRelief", 0.00],
             ["GAIT_ss_uphillMaxPenalty", 0.50],
-            ["GAIT_ss_downhillMaxBoost", 0.03]
+            ["GAIT_ss_downhillMaxBoost", 0.02]
         ];
     };
 

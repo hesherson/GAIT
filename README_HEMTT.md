@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha27 build and deployment
+# GAIT 1.8.0-alpha28 build and deployment
 
 Requires Arma 3 2.18+, CBA_A3, ACE3 with Medical Feedback, Git, and HEMTT. Close Arma before building and deploying so the ACE and ACM startup hooks reload on launch.
 

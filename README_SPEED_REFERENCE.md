@@ -1,6 +1,6 @@
-# GAIT 1.8.0-alpha27 movement speed reference
+# GAIT 1.8.0-alpha28 movement speed reference
 
-This document describes the current target model. Animation-speed coefficients are not interchangeable with km/h because weapon/pose families have different root motion. GAIT therefore distinguishes coefficient fallback behavior from calibrated physical targets.
+Animation-speed coefficients scale the active clip. Physical targets use measured reference speeds because weapon poses use different strides.
 
 ## Flat sprint and load
 
@@ -30,7 +30,17 @@ Holding forward sprint in an eligible grounded state spends reserve according to
 | 120 lb | 1.19× |
 | 150 lb | 1.50× |
 
-On a climb, grade multiplies the load cost. The default grade multiplier rises from **1.00× at 4°** to **2.10× at 35°**. Moderate descents give up to 15% relief, which fades on steep descents. With default settings, a fully rested sprint takes about 40 seconds to empty unloaded on level ground and about 35 seconds with 110 lb. During a steady 25° climb with 110 lb, the model takes about 20 seconds.
+On a climb, grade multiplies the load cost. The default grade multiplier rises from **1.00× at 4°** to **2.10× at 35°**, with the cost increasing faster as the grade steepens. Downhill gravity assistance reduces effort by up to 20% between 13° and 18° of descent. Braking progressively removes that relief from 18° to 45°.
+
+| Route at default settings | Approximate full-to-empty sprint with 110 lb |
+| --- | --- |
+| Flat | 52 s |
+| 5° climb | 52 s |
+| 25° climb | 32 s |
+| 35° climb | 25 s |
+| 13–18° descent | 65 s |
+
+Unloaded flat sprint takes roughly 60 seconds. These are gameplay model timings for sustained effort.
 
 A supported ACE fatigue loop shows this exertion on its stamina bar. ACE Performance Factor scales capacity, Load Factor and Terrain Gradient Factor scale the respective costs, and Recovery Factor controls native recovery at rest. ACE still calculates aerobic fatigue, acidosis, muscle damage, medical duty and feedback through its own physiology. An unsupported ACE loop leaves its own bar behavior in place and GAIT uses its internal reserve for pace.
 
@@ -51,7 +61,7 @@ Sprint launch bracing ends 8% sooner. The ordinary first step is 20 ms shorter w
 
 Uphill sprint pace starts dropping at the configured onset, 2° by default. At 35° the configured reference penalty applies to all kits. The curve continues beyond 35°.
 
-Entering a climb applies the penalty with its own faster ramp. A zero-momentum uphill sprint start uses the uphill brace. Pressing Shift while jogging uphill requests the Meva sprint animation, including when W stays held. Medical and explicit movement locks take priority.
+Entering a climb applies the penalty with its own faster ramp. A zero-momentum uphill sprint start uses the uphill brace. Pressing Shift while jogging uphill requests the Meva sprint animation, including when W stays held. Brief terrain interruptions preserve the current sprint ownership and coefficient. The sprint action map keeps its own idle state if terrain briefly interrupts the stride. Medical and explicit movement locks take priority.
 
 ## Ordinary movement on slopes
 
@@ -69,7 +79,7 @@ With a matching animation pace reference, the default downhill targets also have
 
 ## Release continuity
 
-On Shift release during a standing sprint, GAIT hands off once to the native walk or jog in the current direction at the current stride phase. Arma handles subsequent movement and strafing. The speed coefficient eases toward the current jog target across directions. Stopping or selecting walk yields the coefficient immediately.
+On Shift release during a standing sprint, GAIT hands off once to the native walk or jog in the current direction. It blends the outgoing pose at the matching stride phase while Arma takes over subsequent movement and strafing. The speed coefficient eases toward the current jog target across directions. Stopping or selecting walk yields the coefficient immediately.
 
 ## Weapon/pose families
 

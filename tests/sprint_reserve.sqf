@@ -30,8 +30,9 @@ private _close = {
     _x params ["_grade", "_enabled", "_expected"];
     [[_grade, _enabled, 4, 35, 2.10] call GAIT_fnc_sprintReserveGradeMultiplier, _expected,
         format ["grade %1 degrees with uphill drain enabled %2", _grade, _enabled]] call _close;
-} forEach [[0,true,1], [10,true,1.21290], [20,true,1.56774], [25,true,1.74516], [35,true,2.10],
-    [70,true,2.10], [35,false,1], [-10,true,0.925], [-20,true,0.85], [-45,true,1]];
+} forEach [[0,true,1], [4,true,1], [5,true,1.006373], [10,true,1.093665], [20,true,1.407878],
+    [25,true,1.613309], [35,true,2.10], [70,true,2.10], [35,false,1], [-5,true,0.934001],
+    [-13,true,0.80], [-18,true,0.80], [-25,true,0.833359], [-40,true,0.981964], [-45,true,1]];
 
 private _uphill = [25, true, 4, 35, 2.10] call GAIT_fnc_sprintReserveGradeMultiplier;
 {
@@ -50,25 +51,36 @@ for "_load" from 0 to 200 do {
 private _normalCost = [150, _uphill, 1, 1] call GAIT_fnc_sprintReserveDrainRate;
 [([150, _uphill, 2, 1] call GAIT_fnc_sprintReserveDrainRate) > _normalCost, "ACE load factor above one increases drain"] call _assert;
 [([150, _uphill, 1, 2] call GAIT_fnc_sprintReserveDrainRate) > _normalCost, "ACE gradient factor above one increases climb drain"] call _assert;
-[[-20, true, 4, 35, 2.10] call GAIT_fnc_sprintReserveGradeMultiplier, 0.85, "descent relief remains bounded"] call _close;
-[[0, 0.85, 1, 5] call GAIT_fnc_sprintReserveDrainRate, 0.85, "high ACE gradient factor cannot flatten descent drain"] call _close;
+[[0, 0.80, 1, 0] call GAIT_fnc_sprintReserveDrainRate, 1, "ACE terrain factor zero disables downhill relief"] call _close;
+[[0, 0.80, 1, 5] call GAIT_fnc_sprintReserveDrainRate, 0.80, "high ACE gradient factor cannot flatten descent drain"] call _close;
 
 private _heavyRate = [110, 1] call GAIT_fnc_sprintReserveDrainRate;
-private _remaining = [40, "sprint", 15, 40, 10, _heavyRate] call GAIT_fnc_stepFallbackSprintReserve;
-[_remaining, 25.27137, "110 lb has a gradual onset to depletion"] call _close;
-private _jogged = [_remaining, "hold", 90, 40, 10, _heavyRate] call GAIT_fnc_stepFallbackSprintReserve;
+private _remaining = [60, "sprint", 15, 60, 10, _heavyRate] call GAIT_fnc_stepFallbackSprintReserve;
+[_remaining, 45.885943, "110 lb has a gradual onset to depletion"] call _close;
+private _jogged = [_remaining, "hold", 90, 60, 10, _heavyRate] call GAIT_fnc_stepFallbackSprintReserve;
 [_jogged isEqualTo _remaining, "jogging neither spends nor restores fallback reserve"] call _assert;
-[([_jogged, "rest", 10, 40, 10, _heavyRate] call GAIT_fnc_stepFallbackSprintReserve) isEqualTo 40,
+[([_jogged, "rest", 10, 60, 10, _heavyRate] call GAIT_fnc_stepFallbackSprintReserve) isEqualTo 60,
     "stationary recovery refills fallback reserve to its cap"] call _assert;
-[([40, "sprint", 40 / _heavyRate, 40, 10, _heavyRate] call GAIT_fnc_stepFallbackSprintReserve) isEqualTo 0,
-    "continuous fallback effort has an exact time to empty"] call _assert;
+
+{
+    _x params ["_mass", "_slope", "_expectedDuration"];
+    private _grade = [_slope, true, 4, 35, 2.10] call GAIT_fnc_sprintReserveGradeMultiplier;
+    private _rate = [_mass, _grade] call GAIT_fnc_sprintReserveDrainRate;
+    private _emptyAt = 60 / _rate;
+    [_emptyAt, _expectedDuration, format ["%1 lb on a %2 degree slope reaches empty after %3 s", _mass, _slope, _expectedDuration], 0.05] call _close;
+    private _almostEmpty = [60, "sprint", _emptyAt - 0.25, 60, 10, _rate] call GAIT_fnc_stepFallbackSprintReserve;
+    [_almostEmpty > 0 && {_almostEmpty < 1}, "sustained effort still drains just before empty"] call _assert;
+    private _empty = [_almostEmpty, "sprint", 0.25, 60, 10, _rate] call GAIT_fnc_stepFallbackSprintReserve;
+    [_empty isEqualTo 0, "continuous fallback effort exhausts its full budget"] call _assert;
+} forEach [[0, 0, 60], [110, 0, 52.39], [110, 5, 52.06], [110, 10, 47.90], [110, 25, 32.47],
+    [110, 35, 24.95], [110, -15, 65.49], [110, -35, 55.85], [110, -45, 52.39]];
 
 private _aceCapacity = [55] call GAIT_fnc_aceSprintCapacitySeconds;
-[_aceCapacity, 40, "ACE default performance factor gives a 40 second base budget"] call _close;
-[[35] call GAIT_fnc_aceSprintCapacitySeconds, 40 * 35 / 55, "ACE lowest Performance Factor still has finite capacity"] call _close;
-[[235] call GAIT_fnc_aceSprintCapacitySeconds, 40 * 235 / 55, "ACE highest Performance Factor still has finite capacity"] call _close;
+[_aceCapacity, 60, "ACE default performance factor gives a 60 second base budget"] call _close;
+[[35] call GAIT_fnc_aceSprintCapacitySeconds, 60 * 35 / 55, "ACE lowest Performance Factor still has finite capacity"] call _close;
+[[235] call GAIT_fnc_aceSprintCapacitySeconds, 60 * 235 / 55, "ACE highest Performance Factor still has finite capacity"] call _close;
 private _early = [2300, 2300, 1, 0, 1, _aceCapacity] call GAIT_fnc_aceSprintReserveDelta;
-private _half = [2300, 2300, 20, 0, 20, _aceCapacity] call GAIT_fnc_aceSprintReserveDelta;
+private _half = [2300, 2300, 30, 0, 30, _aceCapacity] call GAIT_fnc_aceSprintReserveDelta;
 private _later = [_half, _half, 1, 0, 1, _aceCapacity] call GAIT_fnc_aceSprintReserveDelta;
 [_half, 1293.75, "cumulative sprint cost is curved with time"] call _close;
 [_half - _later > 2300 - _early, "the same effort consumes more after sustained exertion"] call _assert;
@@ -95,7 +107,7 @@ private _later = [_half, _half, 1, 0, 1, _aceCapacity] call GAIT_fnc_aceSprintRe
         _reserve = [_reserve, _reserve, _step, 0, _step, _aceCapacity] call GAIT_fnc_aceSprintReserveDelta;
     };
     [_reserve, 0, "sustained effort empties the bar at the same time across update intervals", 0.05] call _close;
-} forEach [[0.05,400], [0.25,80], [1,20], [2,10]];
+} forEach [[0.05,600], [0.25,120], [1,30], [2,15]];
 
 private _weighted = [2300, 2300, 10 * _heavyRate + 8 * _heavyRate * _uphill, 0, 18, _aceCapacity] call GAIT_fnc_aceSprintReserveDelta;
 private _split = [2300, 2300, 10 * _heavyRate, 0, 10, _aceCapacity] call GAIT_fnc_aceSprintReserveDelta;
@@ -116,7 +128,7 @@ player setVariable ["ace_movement_totalLoad", 1100];
 [[2300, 2300, _otherUnit] call GAIT_fnc_filterAceSprintReserve, 2300,
     "a noncontrolled unit keeps its stock result"] call _close;
 private _expectedEffort = _heavyRate * (0.20 + (0.25 * _uphill));
-private _expectedReserve = [2300, 2300, _expectedEffort, 0, 1, 40] call GAIT_fnc_aceSprintReserveDelta;
+private _expectedReserve = [2300, 2300, _expectedEffort, 0, 1, _aceCapacity] call GAIT_fnc_aceSprintReserveDelta;
 [[2300, 2300, player] call GAIT_fnc_filterAceSprintReserve, _expectedReserve,
     "queued time at different grades charges the controlled player after release"] call _close;
 [[_expectedReserve, _expectedReserve, player] call GAIT_fnc_filterAceSprintReserve, _expectedReserve,

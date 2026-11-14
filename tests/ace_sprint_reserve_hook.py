@@ -73,10 +73,7 @@ def regex(name):
 
 def instrument_effects(source):
     pattern = regex("fatigueLock")
-    matches = pattern.findall(source)
-    if len(matches) != 4 or sum(name.lower() == "blocksprint" for name in matches) != 3:
-        return source
-    return pattern.sub("", source)
+    return pattern.sub("false", source)
 
 
 class AceSprintReserveHook(unittest.TestCase):
@@ -128,9 +125,11 @@ class AceSprintReserveHook(unittest.TestCase):
         self.assertIn('"ace_medical_fracture", true]', guarded)
         self.assertIn('_unit setAnimSpeedCoef 1', guarded)
         self.assertIn('"ace_advanced_fatigue_aimFatigue"', guarded)
-        self.assertEqual(instrument_effects(EFFECTS * 2), EFFECTS * 2)
-        ambiguous = EFFECTS.replace('"forceWalk", "ace_advanced_fatigue", true', '"blockSprint", "ace_advanced_fatigue", true')
-        self.assertEqual(instrument_effects(ambiguous), ambiguous)
+        self.assertEqual(instrument_effects(EFFECTS * 2), guarded * 2)
+        single_write = '[_unit, "blockSprint", "ace_advanced_fatigue", true] call ace_common_fnc_statusEffect_set;'
+        self.assertEqual(instrument_effects(single_write), 'false;')
+        unknown_writer = single_write.replace('ace_advanced_fatigue', 'custom_medical')
+        self.assertEqual(instrument_effects(unknown_writer), unknown_writer)
 
     def test_live_effects_are_used_and_cached_only_while_identical(self):
         hook = HOOK.read_text()

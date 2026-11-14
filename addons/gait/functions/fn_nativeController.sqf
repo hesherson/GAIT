@@ -198,6 +198,16 @@ GAIT_fnc_applyNativeMovement = {
         ["_nativeWalk", false, [false]]];
     if (_nativeWalk && {!_allowCarry}) exitWith {[_unit] call GAIT_fnc_releaseNativeWalkPace};
     if !([_unit, _allowCarry] call GAIT_fnc_nativeMovementEligible) exitWith {
+        // A terrain contact change between scheduled reads must not cancel a
+        // still-owned sprint, or reset the coefficient while the body settles.
+        private _locked = !([_unit] call GAIT_fnc_readLocomotionSprintAllowed) ||
+            {[_unit] call GAIT_fnc_readLocomotionForcedWalk} ||
+            {(_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0} ||
+            {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
+        if (_unit isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull]) &&
+            {[_unit, call GAIT_fnc_getMovementInput, _locked] call GAIT_fnc_uphillSprintContactPending}) exitWith {
+            missionNamespace getVariable ["GAIT_nativeLastPreVegetation", _coefficient]
+        };
         [] call GAIT_fnc_releaseNativeMovement;
         _coefficient
     };

@@ -59,7 +59,7 @@ GAIT_fnc_slopeStateName = {
     // Lateral/back sprint uses the same native Mrun clip as ordinary jogging,
     // but it MUST retain sprint-owned actions so the next A/D/W direction
     // change cannot fall into the jog map while Shift is still held.
-    if (_sprinting && {_direction in ["Dl", "Dbl", "Db", "Dbr", "Dr"]}) then {
+    if (_sprinting && {!(_direction in ["Df", "Dfl", "Dfr"])}) then {
         _suffix = "_GAITSprint";
     };
     "AmovPerc" + _pace + _family + _direction + _suffix
@@ -92,13 +92,13 @@ GAIT_fnc_requestLocomotionMove = {
     _unit playMoveNow _target;
 };
 
-// Draw3D applies the native clip immediately so its walk/run actions see the
-// very next directional input. Carry the gait phase and keep the current aim.
-// The speed coefficient belongs to the independent pace controller.
+// Start the native clip from the current stride phase and retain some of the
+// outgoing pose in the initial blend. The single switch activates the live
+// directional target without queuing an additional movement clip.
 GAIT_fnc_switchNativeLocomotion = {
     params ["_unit", "_target"];
     private _progress = ([_unit] call GAIT_fnc_readPaceMoveInfo) param [0, 0, [0]];
-    _unit switchMove [_target, (_progress max 0 min 1) mod 1, 1, false];
+    _unit switchMove [_target, (_progress max 0 min 1) mod 1, 0.55, false];
 };
 
 // A release can interrupt the exact entry blend or an internal direction
@@ -146,6 +146,7 @@ GAIT_fnc_clearLocomotionInputHistory = {
         "GAIT_turboReleasedThisFrame",
         "GAIT_turboInputHeld",
         "GAIT_uphillSprintRecoveryUsed",
+        "GAIT_uphillSprintInterrupted",
         "GAIT_slopeJogIntent",
         "GAIT_forwardInputHeld",
         "GAIT_releaseSinceFeatureTick",
@@ -186,8 +187,13 @@ GAIT_fnc_observeLocomotionInput = {
     if (_movingHeld) then {_unit setVariable ["GAIT_nativeStopPaceLease", []];};
     private _turbo = _input select 2;
     private _previousTurbo = _unit getVariable ["GAIT_turboInputHeld", false];
-    if ((!_turbo || {!_forwardHeld}) && {_unit getVariable ["GAIT_uphillSprintRecoveryUsed", false]}) then {
-        _unit setVariable ["GAIT_uphillSprintRecoveryUsed", false];
+    if (!_turbo || {!_forwardHeld}) then {
+        {
+            if (_unit getVariable [_x, false]) then {_unit setVariable [_x, false];};
+        } forEach ["GAIT_uphillSprintRecoveryUsed", "GAIT_uphillSprintInterrupted"];
+        if (_unit getVariable ["GAIT_uphillSprintGroundedAt", -1] >= 0) then {
+            _unit setVariable ["GAIT_uphillSprintGroundedAt", -1];
+        };
     };
     if (_forwardHeld && {!_previousForwardForPress}) then {
         private _velocity = velocity _unit;
@@ -333,7 +339,8 @@ GAIT_fnc_slopeFamilyAvailable = {
     if (_cached >= 0) exitWith {_cached isEqualTo 1};
     private _states = configFile >> "CfgMovesMaleSdr" >> "States";
     private _available = _family in ["SrasWrfl", "SlowWrfl", "SrasWpst", "SlowWpst", "SnonWnon"];
-    private _required = [[_family, "Dnon", false] call GAIT_fnc_slopeStateName];
+    private _required = [[_family, "Dnon", false] call GAIT_fnc_slopeStateName,
+        [_family, "Dnon", true] call GAIT_fnc_slopeStateName];
     {
         _required pushBack ([_family, _x, false] call GAIT_fnc_slopeStateName);
         _required pushBack ([_family, _x, true] call GAIT_fnc_slopeStateName);
@@ -408,20 +415,34 @@ GAIT_fnc_locomotionExitOwnsMoveBlend = {
         call GAIT_fnc_locomotionCompatibleMoveBlend
 };
 
-// Momentary contact loss on rough uphill terrain can occur inside the same
-// standing sprint clip. Keep its existing ownership briefly without issuing
-// a move or writing a new coefficient while airborne.
+// Recognize only exact standing locomotion in the same equipped pose family.
+// A terrain interruption may temporarily expose a native walk or blend.
+GAIT_fnc_isUphillSprintContinuation = {
+    params ["_animation", "_family"];
+    if (_family isEqualTo "") exitWith {false};
+    private _name = toLower _animation;
+    private _divider = _name find "_amov";
+    private _left = if (_divider < 0) then {_name} else {_name select [0, _divider]};
+    private _right = if (_divider < 0) then {_name} else {_name select [_divider + 1]};
+    private _familyKey = toLower _family;
+    // Reuse the exact state/suffix validator for each observed endpoint.
+    (_left select [12, 8]) isEqualTo _familyKey && {(_right select [12, 8]) isEqualTo _familyKey} &&
+        {[_left + "_" + _right, _left, _right] call GAIT_fnc_isStandingLocomotionBlend}
+};
+
+// Keep the current body and coefficient through a brief terrain interruption.
+// This grants no movement command and never extends itself from a native clip.
 GAIT_fnc_uphillSprintContactGrace = {
     params ["_phase", "_requested", "_safe", "_ordinary", "_input", "_now", "_lastGrounded"];
     (_phase in ["entering", "active"]) && {_requested} && {_safe} && {_ordinary} &&
         {_input select 2} && {(_input select 0) > 0.05} &&
-        {_lastGrounded >= 0} && {_now - _lastGrounded <= 0.15}
+        {_lastGrounded >= 0} && {_now - _lastGrounded <= 0.25}
 };
 
 GAIT_fnc_uphillSprintContactPending = {
     params ["_unit", "_input", "_locked"];
     private _lastGrounded = _unit getVariable ["GAIT_uphillSprintGroundedAt", -1];
-    if (_locked || {_lastGrounded < 0} || {isTouchingGround _unit} ||
+    if (_locked || {_lastGrounded < 0} ||
         {_unit isNotEqualTo (missionNamespace getVariable ["GAIT_slopeOwner", objNull])}) exitWith {false};
     private _safe = ([_unit] call GAIT_fnc_readLocomotionStance) isEqualTo "STAND" &&
         {[_unit] call GAIT_fnc_fatigueMovementContextEligible} &&
@@ -430,7 +451,8 @@ GAIT_fnc_uphillSprintContactPending = {
     private _gesture = toLower gestureState _unit;
     if ((["reload", "melee", "throw"] findIf {(_gesture find _x) >= 0}) >= 0) exitWith {false};
     private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
-    private _ordinary = ([_animation] call GAIT_fnc_slopeAnimationFamily) isNotEqualTo "";
+    private _ordinary = [_animation, _unit getVariable ["GAIT_slopeAttemptFamily", ""]]
+        call GAIT_fnc_isUphillSprintContinuation;
     [_unit getVariable ["GAIT_locomotionPhase", "native"], true, _safe, _ordinary,
         _input, diag_tickTime, _lastGrounded] call GAIT_fnc_uphillSprintContactGrace
 };
@@ -912,6 +934,13 @@ GAIT_fnc_locomotionEntryStillInJog = {
     _targetsSprint && {(["active", true, _animation, ""] call GAIT_fnc_locomotionGaitIntent) isEqualTo "sprint"}
 };
 
+GAIT_fnc_shouldRedirectLocomotionEntry = {
+    params ["_phase", "_directionChanged", "_turboPressed", "_gaitIntent", "_oldTarget"];
+    private _alreadyRequestedSprint = (["active", false, _oldTarget, ""] call GAIT_fnc_locomotionGaitIntent) isEqualTo "release";
+    (_phase in ["entering", "active"]) &&
+        {_directionChanged || {_gaitIntent isEqualTo "sprint" && {_turboPressed || {!_alreadyRequestedSprint}}}}
+};
+
 // Input changes outrank both pending entry and active acceleration. Held
 // direction or Turbo never replays a graph request.
 GAIT_fnc_redirectLocomotionEntryDirection = {
@@ -919,8 +948,9 @@ GAIT_fnc_redirectLocomotionEntryDirection = {
     if (isNull _unit || {(count _input) < 3}) exitWith {false};
     private _phase = _unit getVariable ["GAIT_locomotionPhase", "native"];
     private _oldTarget = _unit getVariable ["GAIT_slopeEntryTarget", ""];
-    if (!(_phase in ["entering", "active"]) ||
-        {!(_unit getVariable ["GAIT_directionChangedThisFrame", false]) && {_gaitIntent isNotEqualTo "sprint"}}) exitWith {false};
+    if !([_phase, _unit getVariable ["GAIT_directionChangedThisFrame", false],
+        _unit getVariable ["GAIT_turboPressedThisFrame", false], _gaitIntent, _oldTarget]
+        call GAIT_fnc_shouldRedirectLocomotionEntry) exitWith {false};
     private _moving = abs (_input select 0) > 0.05 || {abs (_input select 1) > 0.05};
     if (!_moving || {!isTouchingGround _unit} || {([_unit] call GAIT_fnc_readLocomotionStance) isNotEqualTo "STAND"} ||
         {!([_unit, false] call GAIT_fnc_nativeMovementEligible)}) exitWith {false};
@@ -929,7 +959,8 @@ GAIT_fnc_redirectLocomotionEntryDirection = {
     if (_family isEqualTo "" ||
         {currentWeapon _unit isNotEqualTo (_unit getVariable ["GAIT_slopeAttemptWeapon", currentWeapon _unit])}) exitWith {false};
     private _target = [_family, _direction, _input select 2] call GAIT_fnc_slopeStateName;
-    if (_phase isEqualTo "entering" && {(toLower _oldTarget) isEqualTo (toLower _target)}) exitWith {false};
+    if ((toLower _oldTarget) isEqualTo (toLower _target) &&
+        {_phase isEqualTo "entering" || {_gaitIntent isEqualTo "sprint"}}) exitWith {false};
     if (!isClass (configFile >> "CfgMovesMaleSdr" >> "States" >> _target)) exitWith {false};
 
     private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
@@ -966,6 +997,10 @@ GAIT_fnc_uphillSprintRecoveryDecision = {
     private _pace = _state select [8, 4];
     private _direction = _state select [20];
     if (_pace isEqualTo "mstp") exitWith {_direction isEqualTo "dnon"};
+    if (_pace isEqualTo "mrun" && {(_state find "_gait") >= 0}) exitWith {
+        ([_state, _family] call GAIT_fnc_isUphillSprintContinuation) &&
+            {(["active", true, _state, ""] call GAIT_fnc_locomotionGaitIntent) isEqualTo "sprint"}
+    };
     if !(_pace in ["mrun", "mwlk", "mtac"]) exitWith {false};
     private _directions = ["df", "dfl", "dfr", "dl", "dbr", "db", "dbl", "dr"];
     if (_pace in ["mwlk", "mtac"] && {_familyLower isEqualTo "slowwrfl"}) then {
@@ -1096,7 +1131,8 @@ GAIT_fnc_tickLocomotion = {
         {(_input select 0) > 0.05} && {!_turbo};
     private _nativeSlopeLock = !([_unit] call GAIT_fnc_readLocomotionSprintAllowed) || {_forcedWalk};
     private _locked = (_request select 2) || {_nativeSlopeLock} || {_aceSlopeLock};
-    private _requested = _enabled && {!_locked} && {!_nativeWalk} && {[
+    private _requested = _enabled && {!_locked} && {!_nativeWalk} &&
+        {!(_unit getVariable ["GAIT_uphillSprintInterrupted", false])} && {[
         _request select 1, _turbo, _moving, _ordinarySlopeJog
     ] call GAIT_fnc_locomotionIntent};
     private _eligible = ([_unit] call GAIT_fnc_readLocomotionStance) isEqualTo "STAND" && {[_unit, false] call GAIT_fnc_nativeMovementEligible};
@@ -1110,13 +1146,23 @@ GAIT_fnc_tickLocomotion = {
     };
     private _entryTarget = _unit getVariable ["GAIT_slopeEntryTarget", ""];
     private _rawGrade = missionNamespace getVariable ["GAIT_rawSlopeDegrees", 0];
-    if (_eligible) then {
-        private _uphillSprint = _requested && {_turbo} && {(_input select 0) > 0.05} &&
-            {_rawGrade > 18} && {_activeFamily isNotEqualTo ""} &&
-            {(["active", false, _animation, ""] call GAIT_fnc_locomotionGaitIntent) isEqualTo "release"};
-        _unit setVariable ["GAIT_uphillSprintGroundedAt", [-1, diag_tickTime] select _uphillSprint];
+    private _observed = toLower _animation;
+    private _uphillSprintMoving = _activeFamily isNotEqualTo "" &&
+        {(_observed select [8, 4]) isEqualTo "meva"} && {(_observed find "_amov") < 0};
+    if (_requested && {_eligible} && {_rawGrade > 18} && {_turbo} && {(_input select 0) > 0.05} &&
+        {_uphillSprintMoving}) then {
+        _unit setVariable ["GAIT_uphillSprintGroundedAt", diag_tickTime];
     };
-    if (!_eligible && {_requested} && {[_unit, _input, _locked] call GAIT_fnc_uphillSprintContactPending}) exitWith {};
+    if (_requested && {!_uphillSprintMoving || {!_eligible}} &&
+        {[_unit, _input, _locked] call GAIT_fnc_uphillSprintContactPending}) exitWith {};
+    if (_requested && {!_eligible} && {_unit getVariable ["GAIT_uphillSprintGroundedAt", -1] >= 0} &&
+        {(_input select 0) > 0.05} && {_turbo} &&
+        {[_animation, _unit getVariable ["GAIT_slopeAttemptFamily", ""]] call GAIT_fnc_isUphillSprintContinuation}) then {
+        // A sustained loss of footing gives the engine its body back. Do not
+        // clear and recreate the same graph repeatedly with the keys held.
+        _unit setVariable ["GAIT_uphillSprintInterrupted", true];
+        _requested = false;
+    };
     private _gaitIntent = "";
     if (_requested && {_phase in ["active", "entering"]}) then {
         _gaitIntent = [_phase, _turbo, _animation, _entryTarget]
@@ -1134,11 +1180,12 @@ GAIT_fnc_tickLocomotion = {
     // Live locks win before any input redirect, even if the scheduled request
     // was published before an injury or mission restriction took effect.
     if (_requested && {_eligible} && {[_unit, _input, _gaitIntent] call GAIT_fnc_redirectLocomotionEntryDirection}) exitWith {};
+    private _recoveryFamily = _unit getVariable ["GAIT_slopeAttemptFamily", ""];
     if (([_phase, _requested, _eligible, _unit getVariable ["GAIT_uphillSprintRecoveryUsed", false],
-        _input, _rawGrade, _animation, _family]
-        call GAIT_fnc_uphillSprintRecoveryDecision) && {[_family] call GAIT_fnc_slopeFamilyAvailable}) exitWith {
+        _input, _rawGrade, _animation, _recoveryFamily]
+        call GAIT_fnc_uphillSprintRecoveryDecision) && {[_recoveryFamily] call GAIT_fnc_slopeFamilyAvailable}) exitWith {
         _unit setVariable ["GAIT_uphillSprintRecoveryUsed", true];
-        [_unit, _family, _input, _animation] call GAIT_fnc_beginLocomotionEntry;
+        [_unit, _recoveryFamily, _input, _animation] call GAIT_fnc_beginLocomotionEntry;
     };
     private _expectedBlend = [_animation, _unit getVariable ["GAIT_slopeEntrySource", ""], _entryTarget]
         call GAIT_fnc_isLocomotionHandoffBlend;

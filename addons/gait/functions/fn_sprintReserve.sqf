@@ -22,31 +22,33 @@ GAIT_fnc_sprintReserveDrainRate = {
 GAIT_fnc_sprintReserveGradeMultiplier = {
     params ["_degrees", "_uphillEnabled", "_startDegrees", "_fullDegrees", "_maximum"];
     if (_degrees < 0) exitWith {
-        // Easy descents save effort. Steep downhill braking takes it back.
+        // Gravity assists on moderate descents. Braking and ground control
+        // gradually take that saving back on steeper slopes.
         private _descent = -_degrees;
-        private _relief = ((_descent / 20) min 1) * (((45 - _descent) / 25) max 0 min 1);
-        1 - (0.15 * _relief)
+        private _assist = (_descent / 13) min 1;
+        private _braking = ((_descent - 18) / 27) max 0 min 1;
+        private _relief = (_assist ^ 2 * (3 - 2 * _assist)) * (1 - (_braking ^ 2 * (3 - 2 * _braking)));
+        1 - (0.20 * _relief)
     };
     if (!_uphillEnabled) exitWith {1};
     private _start = _startDegrees max 0 min 60;
     private _full = (_fullDegrees max (_start + 0.1)) min 80;
     private _severity = ((_degrees - _start) / (_full - _start)) max 0 min 1;
-    1 + (((_maximum max 1 min 4) - 1) * _severity)
+    1 + (((_maximum max 1 min 4) - 1) * _severity ^ 1.5)
 };
 
-// The spent fraction at weighted time t is 0.75t + 0.25t². Invert the
-// current fraction before adding this interval so varying frame rates and
-// grade/load changes consume the same reserve for the same total effort.
+// The spent fraction at weighted time t is 0.75t + 0.25t². Derive its
+// current rate from the reserve and integrate the cost over this interval.
+// This preserves the curve across sample rates and grade/load changes.
 GAIT_fnc_spendSprintReserve = {
     params ["_reserve", "_maximum", "_effortFraction"];
     if (_reserve <= 0 || {_effortFraction <= 0}) exitWith {_reserve max 0};
     private _spent = (1 - (_reserve / _maximum)) max 0 min 1;
-    private _elapsed = 2 * (sqrt (0.5625 + _spent) - 0.75);
-    private _progress = (_elapsed + _effortFraction) min 1;
-    private _remaining = 1 - ((0.75 * _progress) + (0.25 * _progress ^ 2));
-    // Exact empty at the budget, within FLOAT precision over many samples.
-    if (_remaining < 0.000001) exitWith {0};
-    _maximum * _remaining
+    private _rate = sqrt (0.5625 + _spent);
+    private _cost = _maximum * (_effortFraction * (_rate + 0.25 * _effortFraction));
+    private _remaining = _reserve - _cost;
+    if (_remaining < 0.00001 * _maximum) exitWith {0};
+    _remaining
 };
 
 GAIT_fnc_stepFallbackSprintReserve = {
@@ -59,10 +61,10 @@ GAIT_fnc_stepFallbackSprintReserve = {
 };
 
 // ACE defines player VO2Max as 35 + 20 * Performance Factor (0..10).
-// Forty seconds at the default factor of one, scaled by the resolved unit value.
+// Sixty seconds at the default factor of one, scaled by the resolved unit value.
 GAIT_fnc_aceSprintCapacitySeconds = {
     params ["_vo2Max"];
-    40 * ((_vo2Max max 35 min 235) / 55)
+    60 * ((_vo2Max max 35 min 235) / 55)
 };
 
 GAIT_fnc_aceSprintReserveDelta = {

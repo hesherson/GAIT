@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha27 settings reference
+# GAIT 1.8.0-alpha28 settings reference
 
 This reference covers the 107 current CBA registrations. The table shows registration defaults. Presets and mission or server overrides can change effective values. Select Custom to keep individual tuning.
 
@@ -38,7 +38,7 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Sustained sprint coefficient (`GAIT_ss_sprintFullSpeed`) | 1.00 | 0.70–2 | Base sprint animation rate after the rested burst. 1.00 is the normal sprint clip speed before slope and animation adjustments. |
 | Flat dead sprint peak (`GAIT_ss_flatSprintPeak`) | 1.14 | 1–1.30 | Maximum multiplier over sustained sprint pace at a fully rested start on level ground. Carried mass reduces the bonus. |
 | Exhausted run pace midpoint (`GAIT_ss_exhaustedRunPace`) | 0.70 | 0.50–0.95 | Target fraction at empty reserve with a 50 lb kit. Defaults range from 0.75 unloaded to 0.65 at 100 lb or more before checking the combat and uphill jog minimums. |
-| Fallback sprint reserve (`GAIT_ss_sprintReserveMax`) | 40 | 1–120 | Seconds of sprinting on flat ground without a load when using GAIT's fallback reserve. |
+| Fallback sprint reserve (`GAIT_ss_sprintReserveMax`) | 60 | 1–120 | Seconds of sprinting on flat ground without a load when using GAIT's fallback reserve. |
 | Fallback reserve recovery (`GAIT_ss_sprintRecoverTime`) | 10 | 1–60 | Seconds at rest to recover the GAIT fallback reserve. |
 | Speed ramp smoothness (`GAIT_ss_speedLerp`) | 0.05 | 0.01–1 | Base smoothing rate for movement speed changes. Flat sprint acceleration uses 70% of this rate and reaches about 95% of target in 4.1 seconds before the carried-load adjustment. Hills have their own entry response. |
 | W-release zero-momentum delay (`GAIT_ss_wReleaseZeroMomentumDelay`) | 0.5 | 0–20 | Seconds after releasing forward movement before the next sprint start is treated as zero momentum. Lower values make brace return sooner. Default: 0.50. |
@@ -108,7 +108,7 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Hill jog reference angle (`GAIT_ss_hillWalkSlowdownMaxDegrees`) | 40 | 5–80 | Slope angle where jog reaches the reference penalty. Pace continues decreasing on steeper terrain. Default: 40 degrees. |
 | Uphill jog reference penalty (`GAIT_ss_hillWalkUphillMaxPenalty`) | 0.32 | 0–0.75 | Jog pace loss at the reference angle, adjusted for kit weight. Default: 0.32. |
 | Downhill jog max penalty (`GAIT_ss_hillWalkDownhillMaxPenalty`) | 0.08 | 0–0.35 | Small jog pace loss while descending before momentum builds. Default: 0.08. |
-| Increase uphill stamina drain (`GAIT_ss_uphillFatigueDrainEnabled`) | true | on / off | Increases sprint exertion uphill in both models. Slope and load multiply. |
+| Increase uphill stamina drain (`GAIT_ss_uphillFatigueDrainEnabled`) | true | on / off | Increases sprint exertion uphill in both models. Effort increases gradually on shallow slopes and faster as the incline steepens. Slope and load multiply. |
 | Uphill drain starts (`GAIT_ss_uphillFatigueDrainStartDegrees`) | 4 | 0–45 | Incline angle where additional uphill fatigue drain begins. |
 | Uphill drain max angle (`GAIT_ss_uphillFatigueDrainMaxDegrees`) | 35 | 5–80 | Incline angle where additional uphill fatigue drain reaches full strength. Default: 35 degrees. |
 | Uphill max drain multiplier (`GAIT_ss_uphillFatigueDrainMaxMultiplier`) | 2.10 | 1–4 | Maximum uphill multiplier on sprint exertion. 2.10 means 110% faster exertion. |
@@ -158,4 +158,4 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Dedicated standing sprint animations (`GAIT_ss_slopeLocomotionEnabled`) | true | on / off | Uses scoped native sprint clips for forward/diagonal standing movement and run clips for lateral/reverse movement, with one blended entry/exit. No terrain angle cutoff. Disabling uses native animation selection and disables the calibrated release handoff. |
+| Dedicated standing sprint animations (`GAIT_ss_slopeLocomotionEnabled`) | true | on / off | Uses dedicated standing sprint clips for forward and diagonal movement and run clips for lateral and reverse movement. Native walk and jog receive the blended release when GAIT movement is enabled. |

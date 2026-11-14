@@ -29,20 +29,20 @@ class LocomotionInvariants(unittest.TestCase):
         project = (ROOT / ".hemtt/project.toml").read_text()
         config = (ROOT / "addons/gait/config.cpp").read_text()
         mod = (ROOT / "mod.cpp").read_text()
-        self.assertIn("build = 27", project)
-        self.assertIn('versionStr = "1.8.0-alpha27";', config)
-        self.assertIn("versionAr[] = {1,8,0,27};", config)
-        self.assertIn('tooltip = "GAIT 1.8.0-alpha27";', mod)
+        self.assertIn("build = 28", project)
+        self.assertIn('versionStr = "1.8.0-alpha28";', config)
+        self.assertIn("versionAr[] = {1,8,0,28};", config)
+        self.assertIn('tooltip = "GAIT 1.8.0-alpha28";', mod)
 
     def test_graph_pose_and_no_walk_contract(self):
         text = GRAPH.read_text()
         states = re.findall(r"class AmovPerc(?:Mstp|Mrun|Meva)\w+_GAIT(?:Sprint)?:", text)
-        self.assertEqual(len(states), 85)
+        self.assertEqual(len(states), 90)
         self.assertEqual(len(re.findall(r"class AmovPercMstp\w+Dnon_GAITStop:", text)), 5)
         self.assertEqual(len(re.findall(r"class GAIT_Slope\w+Actions:", text)), 15)
         self.assertNotRegex(text, r"class AmovPercMwlk\w+_GAIT(?:Sprint)?:")
         for family in ("SrasWrfl", "SlowWrfl", "SrasWpst", "SlowWpst", "SnonWnon"):
-            self.assertEqual(len(re.findall(rf"class AmovPerc(?:Mstp|Mrun|Meva){family}\w+_GAIT(?:Sprint)?:", text)), 17)
+            self.assertEqual(len(re.findall(rf"class AmovPerc(?:Mstp|Mrun|Meva){family}\w+_GAIT(?:Sprint)?:", text)), 18)
         self.assertIn("class GAIT_SlopePistolLowActions: PistolLowStandActions", text)
 
     def test_direction_owns_input_not_speed_phase(self):

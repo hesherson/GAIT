@@ -25,12 +25,12 @@ private _seq = 0;
 ["START", [_label, missionNamespace getVariable ["GAIT_versionString", "unknown"], productVersion,
     "rows: tick,frame,phase,input,animation,gesture,engine,pace,brace,features,gearInertia,inputHistory,lockDiagnostics,feedback,trip",
     "engine: ground,stance,sprintAllowed,forcedWalk,ACEblock,ACEwalk,life,unconscious,staminaEnabled,stamina,fatigue",
-    "pace: coefficient,horizontalMS,grade,walkCoef,sprintCoef,calibrated,walkTargetMS,sprintTargetMS,loadAbs,lastPreVegetationCoefficient,currentWeapon,learnedReferences",
+    "pace: coefficient,horizontalMS,grade,walkCoef,sprintCoef,calibrated,walkTargetMS,sprintTargetMS,loadAbs,lastPreVegetationCoefficient,currentWeapon,learnedReferences,rawGrade",
     "brace: active,configuredDuration,activeDuration,activeCoefficient,factor,plannedCoefficient,momentumProtected,downhillMomentum,endTime",
     "features: GAITenabled,ACEAFenabled,movementEligible,reserveRatio,exitIssued,exitFailed",
     "gearInertia: loadLbs,responseProfile",
-    "inputHistory: forwardReleaseSerial,canceledBraceEnd,turboPressedThisFrame,entrySource,entryTarget,exitSource,exitTarget",
-    "lockDiagnostics: observation,sprintRequested,nativeStaminaOwned,staminaOwnerMatches,staminaPolicyEligible,ACEbridgeInstalled,clearACElocksEnabled,compatibilityMode,backpack,normalizedLoad",
+    "inputHistory: forwardReleaseSerial,canceledBraceEnd,turboPressedThisFrame,entrySource,entryTarget,exitSource,exitTarget,uphillLastGrounded,uphillRecoveryUsed,uphillInterrupted",
+    "lockDiagnostics: observation,sprintRequested,nativeStaminaOwned,staminaOwnerMatches,staminaPolicyEligible,ACEbridgeInstalled,clearACElocksEnabled,compatibilityMode,backpack,normalizedLoad,ACEreserveHook,ACEeffectsGuard,ACEreserve",
     "feedback: exhaustion,vignetteAlpha,vignetteHandle,ACEfatigueVisualOwned,pulseState",
     "trip: eligible,currentKmh,speedSeverity,speedMultiplier,chancePerSecond,sustainedGate,sprintSeconds,highSpeedSeconds,cooldownRemaining,immunityRemaining",
     "lock observations describe reported state; unassigned engine restrictions do not establish a stamina or load cause"]] call _emit;
@@ -60,7 +60,7 @@ waitUntil {
             missionNamespace getVariable ["GAIT_paceCalibrated", false],
             missionNamespace getVariable ["GAIT_walkTargetMS", -1], missionNamespace getVariable ["GAIT_sprintTargetMS", -1], loadAbs _unit,
             missionNamespace getVariable ["GAIT_nativeLastPreVegetation", -1], currentWeapon _unit,
-            count (_unit getVariable ["GAIT_paceMeasurements", []])];
+            count (_unit getVariable ["GAIT_paceMeasurements", []]), missionNamespace getVariable ["GAIT_rawSlopeDegrees", 0]];
         private _brace = [missionNamespace getVariable ["GAIT_braceActive", false],
             missionNamespace getVariable ["GAIT_ss_sprintStartBraceDuration", -1],
             missionNamespace getVariable ["GAIT_activeBraceDuration", -1], missionNamespace getVariable ["GAIT_activeBraceSpeed", -1],
@@ -76,7 +76,9 @@ waitUntil {
             _unit getVariable ["GAIT_slopeCanceledBraceEndTime", -2],
             _unit getVariable ["GAIT_turboPressedThisFrame", false],
             _unit getVariable ["GAIT_slopeEntrySource", ""], _unit getVariable ["GAIT_slopeEntryTarget", ""],
-            _unit getVariable ["GAIT_slopeExitSource", ""], _unit getVariable ["GAIT_slopeExitTarget", ""]];
+            _unit getVariable ["GAIT_slopeExitSource", ""], _unit getVariable ["GAIT_slopeExitTarget", ""],
+            _unit getVariable ["GAIT_uphillSprintGroundedAt", -1], _unit getVariable ["GAIT_uphillSprintRecoveryUsed", false],
+            _unit getVariable ["GAIT_uphillSprintInterrupted", false]];
         private _sprintRequested = (_input select 0) > 0.05 && {_input select 2};
         private _lockObservation = "no reported permission restriction";
         if (!_sprintAllowed || {_forcedWalk}) then {
@@ -93,11 +95,15 @@ waitUntil {
         private _ownerMatches = (count _staminaOwnership) > 0 && {(_staminaOwnership select 0) isEqualTo _unit};
         private _staminaPolicy = false;
         if (!isNil "GAIT_fnc_ownsNativeStaminaPolicy") then {_staminaPolicy = [_unit] call GAIT_fnc_ownsNativeStaminaPolicy;};
+        private _effectsCache = missionNamespace getVariable ["GAIT_aceFatigueEffectsCache", []];
+        private _effectsGuarded = (count _effectsCache) isEqualTo 2 && {(_effectsCache select 0) isNotEqualRef (_effectsCache select 1)};
         private _lockDiagnostics = [_lockObservation, _sprintRequested,
             missionNamespace getVariable ["GAIT_nativeStaminaOwned", false], _ownerMatches, _staminaPolicy,
             missionNamespace getVariable ["GAIT_nativeAceBridgeInstalled", false],
             missionNamespace getVariable ["GAIT_ss_clearAceMovementLocks", true],
-            missionNamespace getVariable ["GAIT_ss_compatibilityMode", -1], backpack _unit, load _unit];
+            missionNamespace getVariable ["GAIT_ss_compatibilityMode", -1], backpack _unit, load _unit,
+            uiNamespace getVariable ["GAIT_aceSprintReserveHookInstalled", false], _effectsGuarded,
+            missionNamespace getVariable ["ace_advanced_fatigue_anReservePercentage", -1]];
         private _feedback = [missionNamespace getVariable ["GAIT_exhaustionLevel", 0],
             missionNamespace getVariable ["GAIT_fatigueVignetteAlpha", 0],
             missionNamespace getVariable ["GAIT_fatigueVignetteHandle", -1],

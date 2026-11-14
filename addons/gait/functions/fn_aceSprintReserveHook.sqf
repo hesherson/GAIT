@@ -51,12 +51,13 @@ private _gaitRunFatigueEffects = {
     private _cache = missionNamespace getVariable ["GAIT_aceFatigueEffectsCache", []];
     if (_cache isEqualTo [] || {_original isNotEqualRef (_cache select 0)}) then {
         private _source = toString _original;
-        private _fatigueLock = '\[\s*_unit\s*,\s*"(blockSprint|forceWalk)"\s*,\s*"ace_advanced_fatigue"\s*,\s*true\s*\]\s*call\s+ace_common_fnc_statusEffect_set\b\s*;?/gi';
+        // Match each literal ACE fatigue write in the installed callback.
+        // A variant with fewer/more writes still gets its known locks guarded.
+        private _fatigueLock = '\[\s*_unit\s*,\s*"(blockSprint|forceWalk)"\s*,\s*"ace_advanced_fatigue"\s*,\s*true\s*\]\s*call\s+ace_common_fnc_statusEffect_set\b/gi';
         private _matches = _source regexFind [_fatigueLock];
-        private _blockSprintCount = {toLower (_x select 1 select 0) isEqualTo "blocksprint"} count _matches;
         private _guarded = _original;
-        if ((count _matches) isEqualTo 4 && {_blockSprintCount isEqualTo 3}) then {
-            _guarded = compileFinal (_source regexReplace [_fatigueLock, ""]);
+        if (_matches isNotEqualTo []) then {
+            _guarded = compileFinal (_source regexReplace [_fatigueLock, "false"]);
         } else {
             diag_log "[GAIT] ACE fatigue movement guard unavailable: installed Advanced Fatigue effects do not match the supported lock layout.";
         };

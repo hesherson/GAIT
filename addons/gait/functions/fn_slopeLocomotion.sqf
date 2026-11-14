@@ -524,7 +524,7 @@ GAIT_fnc_clearSlopeLocomotionState = {
     if (!isNull _unit) then {
         {
             _unit setVariable [_x, false];
-        } forEach ["GAIT_slopeAttemptLatched", "GAIT_slopeExitPending", "GAIT_slopeFailureReported", "GAIT_slopeLocomotionActive", "GAIT_slopeExitIssued", "GAIT_slopeExitFailureReported", "GAIT_slopeCancelEntry", "GAIT_nativeStopPending"];
+        } forEach ["GAIT_slopeAttemptLatched", "GAIT_slopeExitPending", "GAIT_slopeFailureReported", "GAIT_slopeLocomotionActive", "GAIT_slopeExitIssued", "GAIT_slopeExitFailureReported", "GAIT_slopeCancelEntry", "GAIT_nativeStopPending", "GAIT_slopeSprintObserved"];
         {
             _unit setVariable [_x, ""];
         } forEach ["GAIT_slopeAttemptFamily", "GAIT_slopeAttemptWeapon", "GAIT_slopeEntrySource", "GAIT_slopeEntryTarget", "GAIT_slopeExitSource", "GAIT_slopeExitTarget"];
@@ -935,10 +935,12 @@ GAIT_fnc_locomotionEntryStillInJog = {
 };
 
 GAIT_fnc_shouldRedirectLocomotionEntry = {
-    params ["_phase", "_directionChanged", "_turboPressed", "_gaitIntent", "_oldTarget"];
-    private _alreadyRequestedSprint = (["active", false, _oldTarget, ""] call GAIT_fnc_locomotionGaitIntent) isEqualTo "release";
-    (_phase in ["entering", "active"]) &&
-        {_directionChanged || {_gaitIntent isEqualTo "sprint" && {_turboPressed || {!_alreadyRequestedSprint}}}}
+    params ["_phase", "_directionChanged", "_turboPressed", "_gaitIntent", "_oldTarget", "_observedSprint"];
+    if !(_phase in ["entering", "active"]) exitWith {false};
+    if (_directionChanged) exitWith {true};
+    if (_gaitIntent isNotEqualTo "sprint") exitWith {false};
+    _turboPressed || {!_observedSprint && {(["active", false, _oldTarget, ""]
+        call GAIT_fnc_locomotionGaitIntent) isNotEqualTo "release"}}
 };
 
 // Input changes outrank both pending entry and active acceleration. Held
@@ -949,7 +951,8 @@ GAIT_fnc_redirectLocomotionEntryDirection = {
     private _phase = _unit getVariable ["GAIT_locomotionPhase", "native"];
     private _oldTarget = _unit getVariable ["GAIT_slopeEntryTarget", ""];
     if !([_phase, _unit getVariable ["GAIT_directionChangedThisFrame", false],
-        _unit getVariable ["GAIT_turboPressedThisFrame", false], _gaitIntent, _oldTarget]
+        _unit getVariable ["GAIT_turboPressedThisFrame", false], _gaitIntent, _oldTarget,
+        _unit getVariable ["GAIT_slopeSprintObserved", false]]
         call GAIT_fnc_shouldRedirectLocomotionEntry) exitWith {false};
     private _moving = abs (_input select 0) > 0.05 || {abs (_input select 1) > 0.05};
     if (!_moving || {!isTouchingGround _unit} || {([_unit] call GAIT_fnc_readLocomotionStance) isNotEqualTo "STAND"} ||
@@ -1149,6 +1152,10 @@ GAIT_fnc_tickLocomotion = {
     private _observed = toLower _animation;
     private _uphillSprintMoving = _activeFamily isNotEqualTo "" &&
         {(_observed select [8, 4]) isEqualTo "meva"} && {(_observed find "_amov") < 0};
+    if (_uphillSprintMoving && {_phase in ["native", "active", "entering"]} &&
+        {!(_unit getVariable ["GAIT_slopeSprintObserved", false])}) then {
+        _unit setVariable ["GAIT_slopeSprintObserved", true];
+    };
     if (_requested && {_eligible} && {_rawGrade > 18} && {_turbo} && {(_input select 0) > 0.05} &&
         {_uphillSprintMoving}) then {
         _unit setVariable ["GAIT_uphillSprintGroundedAt", diag_tickTime];

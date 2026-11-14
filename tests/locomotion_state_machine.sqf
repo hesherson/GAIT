@@ -254,11 +254,12 @@ if ((["AmovPercMevaSrasWrflDf_GAIT_AmovPercMwlkSlowWrflDf_ver2", "SrasWrfl"]
         _failures pushBack format ["Wrong locomotion input-edge redirect: %1", _arguments];
     };
 } forEach [
-    [["active", false, false, "sprint", "AmovPercMevaSlowWpstDf_GAIT"], false],
-    [["active", false, false, "sprint", "AmovPercMrunSlowWpstDf_GAIT"], true],
-    [["active", false, true, "sprint", ""], true],
-    [["entering", true, false, "", "AmovPercMevaSlowWpstDf_GAIT"], true],
-    [["blocked", true, true, "sprint", ""], false]
+    [["active", false, false, "sprint", "AmovPercMevaSlowWpstDf_GAIT", false], false],
+    [["active", false, false, "sprint", "AmovPercMrunSlowWpstDf_GAIT", false], true],
+    [["active", false, false, "sprint", "", true], false],
+    [["active", false, true, "sprint", "", true], true],
+    [["entering", true, false, "", "AmovPercMevaSlowWpstDf_GAIT", false], true],
+    [["blocked", true, true, "sprint", "", false], false]
 ];
 
 // Live W/A/D and idle changes retain one owned family. Policy `_requested`

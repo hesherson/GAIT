@@ -24,9 +24,9 @@ private _failures = [];
     {
         private _state = [_family, _x, true] call GAIT_fnc_slopeStateName;
         if ((_state find "_GAITSprint") < 0) then {
-            _failures pushBack format ["Turbo idle/lateral %1/%2 lost sprint-owned action suffix: %3", _family, _x, _state];
+            _failures pushBack format ["Turbo lateral %1/%2 lost sprint-owned action suffix: %3", _family, _x, _state];
         };
-    } forEach ["Dnon","Dl","Dbl","Db","Dbr","Dr"];
+    } forEach ["Dl","Dbl","Db","Dbr","Dr"];
 } forEach ["SrasWrfl", "SlowWrfl", "SrasWpst", "SlowWpst", "SnonWnon"];
 
 // Ordinary slope movement must use Mrun even when the engine asks for Walk/Slow.

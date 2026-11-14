@@ -29,7 +29,7 @@ private _seq = 0;
     "brace: active,configuredDuration,activeDuration,activeCoefficient,factor,plannedCoefficient,momentumProtected,downhillMomentum,endTime",
     "features: GAITenabled,ACEAFenabled,movementEligible,reserveRatio,exitIssued,exitFailed",
     "gearInertia: loadLbs,responseProfile",
-    "inputHistory: forwardReleaseSerial,canceledBraceEnd,turboPressedThisFrame,entrySource,entryTarget,exitSource,exitTarget,uphillLastGrounded,uphillRecoveryUsed,uphillInterrupted",
+    "inputHistory: forwardReleaseSerial,canceledBraceEnd,turboPressedThisFrame,entrySource,entryTarget,exitSource,exitTarget,uphillLastGrounded,uphillRecoveryUsed",
     "lockDiagnostics: observation,sprintRequested,nativeStaminaOwned,staminaOwnerMatches,staminaPolicyEligible,ACEbridgeInstalled,clearACElocksEnabled,compatibilityMode,backpack,normalizedLoad,ACEreserveHook,ACEeffectsGuard,ACEreserve",
     "feedback: exhaustion,vignetteAlpha,vignetteHandle,ACEfatigueVisualOwned,pulseState",
     "trip: eligible,currentKmh,speedSeverity,speedMultiplier,chancePerSecond,sustainedGate,sprintSeconds,highSpeedSeconds,cooldownRemaining,immunityRemaining",
@@ -77,8 +77,7 @@ waitUntil {
             _unit getVariable ["GAIT_turboPressedThisFrame", false],
             _unit getVariable ["GAIT_slopeEntrySource", ""], _unit getVariable ["GAIT_slopeEntryTarget", ""],
             _unit getVariable ["GAIT_slopeExitSource", ""], _unit getVariable ["GAIT_slopeExitTarget", ""],
-            _unit getVariable ["GAIT_uphillSprintGroundedAt", -1], _unit getVariable ["GAIT_uphillSprintRecoveryUsed", false],
-            _unit getVariable ["GAIT_uphillSprintInterrupted", false]];
+            _unit getVariable ["GAIT_uphillSprintGroundedAt", -1], _unit getVariable ["GAIT_uphillSprintRecoveryUsed", false]];
         private _sprintRequested = (_input select 0) > 0.05 && {_input select 2};
         private _lockObservation = "no reported permission restriction";
         if (!_sprintAllowed || {_forcedWalk}) then {

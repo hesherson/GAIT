@@ -52,7 +52,7 @@ class FoundationGraph(unittest.TestCase):
         cls.actions = {name: (base, body) for name, base, body in blocks if name.startswith("GAIT_Slope")}
 
     def test_real_native_clip_parents_and_controller_markers(self):
-        self.assertEqual(len(self.states), 90)
+        self.assertEqual(len(self.states), 85)
         counts = {"idle": 0, "sprint": 0, "run": 0}
         for name, (parent, body) in self.states.items():
             with self.subTest(state=name):
@@ -66,7 +66,7 @@ class FoundationGraph(unittest.TestCase):
                 self.assertEqual(p["GAIT_slopeFamily"], family)
                 neutral_actions, jog_actions, sprint_actions, _ = FAMILIES[family]
                 sprint_owned = pace == "Meva" or suffix == "GAITSprint"
-                expected_actions = sprint_actions if sprint_owned else neutral_actions if pace == "Mstp" else jog_actions
+                expected_actions = neutral_actions if pace == "Mstp" else sprint_actions if sprint_owned else jog_actions
                 self.assertEqual(p["actions"], expected_actions)
                 self.assertRegex(body, r"\bGAIT_slopeState\s*=\s*1;")
                 self.assertRegex(body, r"\blooped\s*=\s*1;")
@@ -83,11 +83,12 @@ class FoundationGraph(unittest.TestCase):
                 # Root motion, clip speed, brace timing and pose properties
                 # remain inherited; this graph must not retune those values.
                 self.assertNotRegex(body, r"\b(?:file|speed|duty|stamina|disableWeapons|headBobStrength)\s*=")
-        self.assertEqual(counts, {"idle": 10, "sprint": 15, "run": 65})
+        self.assertEqual(counts, {"idle": 5, "sprint": 15, "run": 65})
 
     def test_sprint_preserves_forward_and_exposes_native_lateral_release(self):
         self.assertEqual(len(self.actions), 15)
         for family, (neutral_actions, jog_actions, sprint_actions, native_actions) in FAMILIES.items():
+            idle = f"AmovPercMstp{family}Dnon_GAIT"
             for actions, policy in (
                 (neutral_actions, "neutral"),
                 (jog_actions, "jog"),
@@ -96,8 +97,6 @@ class FoundationGraph(unittest.TestCase):
                 parent, body = self.actions[actions]
                 p = properties(body)
                 self.assertEqual(parent, native_actions)
-                idle_suffix = "GAITSprint" if policy == "sprint" else "GAIT"
-                idle = f"AmovPercMstp{family}Dnon_{idle_suffix}"
                 for selector in ("Default", "Stop", "StopRelaxed", "TurnL", "TurnR", "TurnLRelaxed", "TurnRRelaxed"):
                     self.assertEqual(p[selector], idle)
                 for pace in ("Walk", "PlayerWalk", "Slow", "PlayerSlow", "Fast", "PlayerFast", "Tact", "PlayerTact"):
@@ -134,10 +133,22 @@ class FoundationGraph(unittest.TestCase):
                 self.assertIn(name, dict(edges(body, "InterpolateTo")))
                 self.assertIn(name, dict(edges(body, "InterpolateFrom")))
 
+    def test_held_sprint_can_resume_from_idle(self):
+        for family, (neutral_actions, _, sprint_actions, _) in FAMILIES.items():
+            with self.subTest(family=family):
+                sprint_map = properties(self.actions[sprint_actions][1])
+                idle = sprint_map["Stop"]
+                self.assertEqual(idle, f"AmovPercMstp{family}Dnon_GAIT")
+                _, idle_body = self.states[idle]
+                self.assertEqual(properties(idle_body)["actions"], neutral_actions)
+                resume = properties(self.actions[neutral_actions][1])["PlayerFastF"]
+                self.assertEqual(resume, f"AmovPercMeva{family}Df_GAIT")
+                self.assertIn(resume, dict(edges(idle_body, "InterpolateTo")))
+
     def test_idle_recovery_and_direction_reversals_have_direct_edges(self):
         for family in FAMILIES:
             members = {name for name, (_, body) in self.states.items() if properties(body)["GAIT_slopeFamily"] == family}
-            self.assertEqual(len(members), 18)
+            self.assertEqual(len(members), 17)
             for source in members:
                 pairs = edges(self.states[source][1], "InterpolateTo")
                 names = [name for name, _ in pairs]
@@ -203,8 +214,8 @@ class FoundationGraph(unittest.TestCase):
             name for name, (_, body) in self.states.items()
             if properties(body)["GAIT_slopeFamily"] == "SrasWpst"
         }
-        self.assertEqual(len(low_members), 18)
-        self.assertEqual(len(raised_members), 18)
+        self.assertEqual(len(low_members), 17)
+        self.assertEqual(len(raised_members), 17)
         self.assertTrue(all("SlowWpst" in name for name in low_members))
         self.assertTrue(all("SrasWpst" in name for name in raised_members))
         self.assertFalse(low_members & raised_members)

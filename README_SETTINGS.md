@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha28 settings reference
+# GAIT 1.8.0-alpha29 settings reference
 
 This reference covers the 107 current CBA registrations. The table shows registration defaults. Presets and mission or server overrides can change effective values. Select Custom to keep individual tuning.
 

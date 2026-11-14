@@ -1,12 +1,14 @@
-# GAIT 1.8.0-alpha28 terrain, load, and stamina
+# GAIT 1.8.0-alpha29 terrain, load, and stamina
 
 Requires Arma 3 2.18+, CBA_A3 and ACE3. Restart Arma with the new GAIT copy and start a fresh mission. Current build/deploy instructions are in README_HEMTT.md; local build output is `.hemttout\\build`.
 
 ## What changed
 
+This build restores alpha27 sprint entry and the sprint action graph. The alpha28 gait blend on Shift release and its stamina settings carry forward.
+
 A fully rested sprint starts with a brief flat-ground burst. Its target peaks at 1.14× normal sprint pace unloaded and about 1.08× with 110 lb. It settles into normal sprint pace within 4.1 seconds. Sprint pace gradually tapers below half reserve and targets at least 5–8% above matching combat pace at empty, depending on load. Sprint effort builds with time and continues spending reserve throughout the slowdown. Rest restores reserve and walking or jogging holds it steady.
 
-Stamina lasts longer on level ground and shallow inclines. Steep climbs increase effort, and load compounds that cost. Moderate descents conserve reserve, with the benefit fading on grades that need more braking. Descent speed still builds gradually toward a grade-dependent target. On steep climbs, brief interruptions keep the sprint state and pace from being repeatedly reset.
+Stamina lasts longer on level ground and shallow inclines. Steep climbs increase effort, and load compounds that cost. Moderate descents conserve reserve, with the benefit fading on grades that need more braking. Descent speed still builds gradually toward a grade-dependent target.
 
 Ordinary forward jog targets a small margin above native walking and combat jog. Deliberate walk uses native pace for formations. Sprint release blends into native walk or jog at the current stride phase. Arma handles direction and strafing while jog speed tapers.
 
@@ -36,7 +38,7 @@ The foundation retains the shared brief brace, lowered-pistol sprint family, sho
 ## In-game acceptance
 
 1. Test the secondary weapon separately. Begin from both a naturally lowered handgun state (`SlowWpst`) and a raised handgun state (`SrasWpst`), then sprint from rest through full speed. A lowered pistol must remain in the `SlowWpst` GAIT family for the entire acceleration instead of briefly converting to raised pistol; there must be no pause before full speed. Repeat with A/D throughout the ramp. Then compare rifle and unarmed starts to confirm their behavior is unchanged.
-2. On flat ground, start a sprint at 100% reserve with a light and a 110 lb kit. Check that the initial burst ramps in briefly, feels stronger with the light kit, and settles to normal pace. Release and re-press Shift before stamina refills. The second sprint should use normal pace.
+2. On flat ground, start with both Shift and W held from idle, then repeat by pressing Shift during an established W-only jog. Hold Shift+W through several strides in both cases. Repeat with a light kit and a 110 lb kit at 100% reserve. Check that the initial burst ramps in briefly, feels stronger with the light kit, and settles to normal pace. Release and re-press Shift before stamina refills. The second sprint should use normal pace.
 3. Tap Shift again during both the release and the animation blend. Repeat release/retap sequences; check for no restart, rebrace or stale top-speed value.
 4. While running and sprinting at low, mid and near-full speed, press Crouch/MoveUp with W still held. The character should bend into crouched running the same way vanilla Arma does: no abrupt stop, no standstill detour and no visible coefficient snap during the bend. Repeat during W+A/W+D, during the acceleration ramp, during sprint release, and with Prone. After the low-stance state has settled, GAIT may relinquish the carried coefficient normally.
 5. Hold W on an uphill slope, then press Shift without releasing W. Verify that the jog clip changes to the sprint clip and that sprint moves faster than both jog and deliberate walk, including on steep grades with heavy gear and low reserve. Release Shift and confirm that the jog animation starts before the pace taper is finished. Repeat with the walk toggle enabled and with an explicit movement lock.
@@ -54,7 +56,7 @@ The foundation retains the shared brief brace, lowered-pistol sprint family, sho
 For a read-only capture, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
 
 ```sqf
-[90, "alpha28 sprint, reserve, and release"] execVM "foundation_capture.sqf";
+[90, "alpha29 sprint, reserve, and release"] execVM "foundation_capture.sqf";
 ```
 
 Send the RPT after STOP with approximate issue times. Compare the recorded animation, directional input, coefficient and horizontal speed at each input change.

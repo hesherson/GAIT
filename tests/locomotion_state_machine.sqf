@@ -190,8 +190,6 @@ if ((["AmovPercMevaSrasWrflDf_GAIT_AmovPercMwlkSlowWrflDf_ver2", "SrasWrfl"]
     [["active", true, true, false, [1,0,true], 34, "AmovPercMtacSlowWrflDf_ver2", "SlowWrfl"], true, "Settled lowered-rifle tactical movement did not recover sprint"],
     [["blocked", true, true, false, [1,0,true], 34, "AmovPercMrunSlowWpstDf", "SlowWpst"], true, "A blocked uphill pistol sprint could not recover from native jog"],
     [["active", true, true, false, [1,0,true], 34, "AmovPercMstpSrasWrflDnon", "SrasWrfl"], true, "A native idle escape could not recover uphill sprint"],
-    [["active", true, true, false, [1,0,true], 34, "AmovPercMrunSlowWpstDf_GAIT", "SlowWpst"], true, "An uphill GAIT jog escape did not get the same one-shot recovery"],
-    [["active", true, true, false, [1,0,true], 34, "AmovPercMstpSlowWpstDnon_GAITSprint", "SlowWpst"], false, "Sprint-owned idle should recover through its action map, not a script request"],
     [["active", true, true, true, [1,0,true], 34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Held uphill sprint retried after consuming recovery"],
     [["active", false, true, false, [1,0,true], 34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Locked uphill sprint retried"],
     [["active", true, false, false, [1,0,true], 34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Ineligible uphill sprint retried"],
@@ -223,43 +221,13 @@ if ((["AmovPercMevaSrasWrflDf_GAIT_AmovPercMwlkSlowWrflDf_ver2", "SrasWrfl"]
     };
 } forEach [
     [["active", true, true, true, [1,0,true], 10.10, 10], true],
-    [["active", true, true, true, [1,0,true], 10.21, 10], true],
-    [["active", true, true, true, [1,0,true], 10.26, 10], false],
+    [["active", true, true, true, [1,0,true], 10.16, 10], false],
     [["active", false, true, true, [1,0,true], 10.05, 10], false],
     [["active", true, false, true, [1,0,true], 10.05, 10], false],
     [["active", true, true, false, [1,0,true], 10.05, 10], false],
     [["active", true, true, true, [1,0,false], 10.05, 10], false],
     [["native", true, true, true, [1,0,true], 10.05, 10], false],
     [["active", true, true, true, [1,0,true], 10.05, -1], false]
-];
-
-{
-    _x params ["_animation", "_expected"];
-    if (([_animation, "SlowWrfl"] call GAIT_fnc_isUphillSprintContinuation) isNotEqualTo _expected) then {
-        _failures pushBack format ["Wrong steep-sprint continuity observation: %1", _animation];
-    };
-} forEach [
-    ["AmovPercMevaSlowWrflDf_GAIT", true],
-    ["AmovPercMstpSlowWrflDnon_GAITSprint", true],
-    ["AmovPercMevaSlowWrflDf_GAIT_AmovPercMwlkSlowWrflDf_ver2", true],
-    ["AmovPercMwlkSlowWrflDf_ver2_AmovPercMevaSlowWrflDf", true],
-    ["AmovPercMevaSlowWrflDf_GAIT_AmovPercMrunSrasWrflDf", false],
-    ["AmovPercMevaSlowWrflDf_GAIT_AmovPknlMrunSlowWrflDf", false],
-    ["AmovPercMlmpSlowWrflDf", false]
-];
-
-{
-    _x params ["_arguments", "_expected"];
-    if ((_arguments call GAIT_fnc_shouldRedirectLocomotionEntry) isNotEqualTo _expected) then {
-        _failures pushBack format ["Wrong locomotion input-edge redirect: %1", _arguments];
-    };
-} forEach [
-    [["active", false, false, "sprint", "AmovPercMevaSlowWpstDf_GAIT", false], false],
-    [["active", false, false, "sprint", "AmovPercMrunSlowWpstDf_GAIT", false], true],
-    [["active", false, false, "sprint", "", true], false],
-    [["active", false, true, "sprint", "", true], true],
-    [["entering", true, false, "", "AmovPercMevaSlowWpstDf_GAIT", false], true],
-    [["blocked", true, true, "sprint", "", false], false]
 ];
 
 // Live W/A/D and idle changes retain one owned family. Policy `_requested`

@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha28: blended sprint release, steep-climb continuity, and grade-based exertion
+// GAIT 1.8.0-alpha29: restore sprint entry and held movement
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha28";
-        versionAr[] = {1,8,0,28};
+        versionStr = "1.8.0-alpha29";
+        versionAr[] = {1,8,0,29};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

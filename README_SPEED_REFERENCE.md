@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha28 movement speed reference
+# GAIT 1.8.0-alpha29 movement speed reference
 
 Animation-speed coefficients scale the active clip. Physical targets use measured reference speeds because weapon poses use different strides.
 
@@ -61,7 +61,7 @@ Sprint launch bracing ends 8% sooner. The ordinary first step is 20 ms shorter w
 
 Uphill sprint pace starts dropping at the configured onset, 2° by default. At 35° the configured reference penalty applies to all kits. The curve continues beyond 35°.
 
-Entering a climb applies the penalty with its own faster ramp. A zero-momentum uphill sprint start uses the uphill brace. Pressing Shift while jogging uphill requests the Meva sprint animation, including when W stays held. Brief terrain interruptions preserve the current sprint ownership and coefficient. The sprint action map keeps its own idle state if terrain briefly interrupts the stride. Medical and explicit movement locks take priority.
+Entering a climb applies the penalty with its own faster ramp. A zero-momentum uphill sprint start uses the uphill brace. Pressing Shift while jogging uphill requests the Meva sprint animation, including when W stays held. Medical and explicit movement locks take priority.
 
 ## Ordinary movement on slopes
 

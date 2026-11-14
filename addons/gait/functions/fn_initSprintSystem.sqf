@@ -192,7 +192,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha28"];
+missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha29"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -1405,7 +1405,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha28"];
                     _lastDebugHudTime = time;
                     private _debugFamily = [player] call GAIT_fnc_slopeWeaponFamily;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha28<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | Sprint reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Family: %11 | Active: %12 | Jog / sprint target: %13 / %14<br/>Foundation: %15 | Sprint ref: %16 | Full profile: %17<br/>Carried load: %18 lb</t>",
+                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha29<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | Sprint reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Family: %11 | Active: %12 | Jog / sprint target: %13 / %14<br/>Foundation: %15 | Sprint ref: %16 | Full profile: %17<br/>Carried load: %18 lb</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,

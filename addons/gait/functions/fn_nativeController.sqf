@@ -7,6 +7,14 @@
 GAIT_fnc_nativeCoefficientLocal = {params ["_unit"]; local _unit};
 GAIT_fnc_readNativeCoefficient = {params ["_unit"]; getAnimSpeedCoef _unit};
 GAIT_fnc_writeNativeCoefficient = {params ["_unit", "_coefficient"]; _unit setAnimSpeedCoef _coefficient;};
+GAIT_fnc_readTemporaryWalkRun = {inputAction "WalkRunTemp" > 0};
+
+GAIT_fnc_nativeWalkRequested = {
+    params ["_unit", "_turbo"];
+    if (([_unit] call GAIT_fnc_readLocomotionForcedWalk) ||
+        {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0}) exitWith {true};
+    !_turbo && {([_unit] call GAIT_fnc_readLocomotionWalkToggle) isNotEqualTo (call GAIT_fnc_readTemporaryWalkRun)}
+};
 
 // Coefficient ownership can change during an ordinary animation blend.
 // Acquiring it must not issue a second body-animation release.
@@ -36,6 +44,20 @@ GAIT_fnc_releaseNativeMovement = {
     // speed writer. The release helper expects an input array in slot two.
     if (!isNil "GAIT_fnc_releaseSlopeLocomotion") then {[] call GAIT_fnc_releaseSlopeLocomotion;};
     [] call GAIT_fnc_releaseSpeedCoefficient;
+};
+
+GAIT_fnc_releaseNativeWalkPace = {
+    params ["_unit"];
+    // The body graph still needs to hand off to the native walk state.
+    // Drop only the coefficient and the transient speed leases here.
+    _unit setVariable ["GAIT_nativeStopPaceLease", []];
+    _unit setVariable ["GAIT_stanceCarryCoefficient", []];
+    if (!isNil "GAIT_fnc_clearReleaseMomentum") then {[_unit] call GAIT_fnc_clearReleaseMomentum;};
+    if (!isNil "GAIT_fnc_clearPaceHandoff") then {[_unit] call GAIT_fnc_clearPaceHandoff;};
+    if (_unit isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull])) then {
+        [] call GAIT_fnc_releaseSpeedCoefficient;
+    };
+    [_unit] call GAIT_fnc_readNativeCoefficient
 };
 
 // Fatigue policy ownership is broader than permission to scale this frame's
@@ -177,7 +199,9 @@ GAIT_fnc_installNativeAceBridge = {
 };
 
 GAIT_fnc_applyNativeMovement = {
-    params [["_unit", player, [objNull]], ["_coefficient", 1, [0]], ["_allowCarry", false, [false]]];
+    params [["_unit", player, [objNull]], ["_coefficient", 1, [0]], ["_allowCarry", false, [false]],
+        ["_nativeWalk", false, [false]]];
+    if (_nativeWalk && {!_allowCarry}) exitWith {[_unit] call GAIT_fnc_releaseNativeWalkPace};
     if !([_unit, _allowCarry] call GAIT_fnc_nativeMovementEligible) exitWith {
         [] call GAIT_fnc_releaseNativeMovement;
         _coefficient

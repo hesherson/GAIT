@@ -1,6 +1,6 @@
 /*
-    Finite release motion in the CURRENT clip only. The pure planner and
-    sampler below perform no animation, input, coefficient or velocity writes.
+    Finite release motion starts in the sprint clip and follows the native
+    jog handoff. The planner and sampler do not own animation or input.
 
     Capture horizontal velocity and the applied pre-vegetation coefficient
     together, before leaving the sprint clip. Their ratio is a local sample
@@ -16,8 +16,8 @@
     Plan: [startTime, duration, startMS, targetMS,
            startCoefficient, targetCoefficient, curve].
     Sample: [coefficient, plannedMS, remainingFraction, active].
-    Caller retains the current clip only while the plan and live W input are
-    valid, then makes one normal blended handoff. W release cancels immediately.
+    Releasing Shift hands the body back immediately. Release interpolation
+    contributes only to the common coefficient writer, while W stays held.
 */
 
 GAIT_fnc_releaseMomentumPlan = {
@@ -106,6 +106,9 @@ GAIT_fnc_releaseMomentumContext = {
         {abs ((getAnimSpeedCoef _unit) - (missionNamespace getVariable ["GAIT_nativeLastWritten", -1])) < 0.001};
     private _animation = animationState _unit;
     private _family = [_animation] call GAIT_fnc_slopeAnimationFamily;
+    private _handoff = _unit getVariable ["GAIT_paceHandoff", []];
+    private _hasHandoff = _handoff isNotEqualTo [];
+    if (_hasHandoff) then {_family = [_unit] call GAIT_fnc_slopeWeaponFamily;};
     private _eligible = _fresh && {_request select 4} && {call GAIT_fnc_modeAllowsMovement} &&
         {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]} &&
         {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]} &&
@@ -116,8 +119,8 @@ GAIT_fnc_releaseMomentumContext = {
         {isSprintAllowed _unit} && {!isForcedWalk _unit} &&
         {(_unit getVariable ["ace_common_effect_blockSprint", 0]) <= 0} &&
         {(_unit getVariable ["ace_common_effect_forceWalk", 0]) <= 0} &&
-        {_unit isEqualTo (missionNamespace getVariable ["GAIT_slopeOwner", objNull])} &&
-        {(_unit getVariable ["GAIT_locomotionPhase", "native"]) in ["entering", "active"]} &&
+        {_hasHandoff || {_unit isEqualTo (missionNamespace getVariable ["GAIT_slopeOwner", objNull]) &&
+            {(_unit getVariable ["GAIT_locomotionPhase", "native"]) in ["entering", "active"]}}} &&
         {_family isNotEqualTo ""} && {_family isEqualTo ([_unit] call GAIT_fnc_slopeWeaponFamily)};
     private _velocity = velocity _unit;
     private _speed = sqrt (((_velocity select 0) ^ 2) + ((_velocity select 1) ^ 2));
@@ -139,8 +142,6 @@ GAIT_fnc_clearReleaseMomentum = {
     params [["_unit", missionNamespace getVariable ["GAIT_nativeOwner", objNull], [objNull]]];
     if (!isNull _unit) then {
         _unit setVariable ["GAIT_releaseMomentumState", []];
-        _unit setVariable ["GAIT_releasePaceMatch", []];
-        _unit setVariable ["GAIT_releaseBrakeHold", []];
         _unit setVariable ["GAIT_releasePendingCoefficient", -1];
         _unit setVariable ["GAIT_releaseResume", []];
         _unit setVariable ["GAIT_releaseInputPrevious", []];
@@ -168,6 +169,11 @@ GAIT_fnc_observeReleaseMomentum = {
     private _previous = _unit getVariable ["GAIT_releaseInputPrevious", []];
     private _forward = (_input select 0) > 0.05;
     private _turbo = _input select 2;
+    if ([_unit, _turbo] call GAIT_fnc_nativeWalkRequested) exitWith {
+        [_unit] call GAIT_fnc_clearReleaseMomentum;
+        [_unit] call GAIT_fnc_clearPaceHandoff;
+        false
+    };
     private _moving = _forward || {(_input select 0) < -0.05} || {abs (_input select 1) > 0.05};
     if (!_moving && {(_unit getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []}) then {
         [_unit] call GAIT_fnc_clearPaceHandoff;
@@ -183,19 +189,22 @@ GAIT_fnc_observeReleaseMomentum = {
     _context params ["_eligible", "_owns", "_weapon", "_family", "_animation", "_applied", "_speed", "_brake", "_ordinary", "_window", "_curve", "_singleClip"];
     private _identity = [_weapon, _family, _direction, toLower _animation];
     private _state = _unit getVariable ["GAIT_releaseMomentumState", []];
-    private _brakeHold = _unit getVariable ["GAIT_releaseBrakeHold", []];
+    private _handoff = _unit getVariable ["GAIT_paceHandoff", []];
     private _live = _eligible && {_owns} && {_forward};
-    private _same = (count _state) isEqualTo 2 && {(_state select 1) isEqualTo _identity};
+    private _same = (count _state) isEqualTo 2 && {(_state select 1) isEqualTo _identity ||
+        {_handoff isNotEqualTo [] && {((_state select 1) select [0, 3]) isEqualTo (_identity select [0, 3])}}};
     private _directionChanged = [_state, _weapon, _family, _direction] call GAIT_fnc_releaseDirectionChanged;
 
     // A/D is control input, not a reason to finish the old directional
     // animation first. Keep the exact current speed sample, retire only the
     // old directional release identity, and let the graph redirect this frame.
     if (_state isNotEqualTo [] && {_live} && {_directionChanged} && {!_brake} && {!_turbo}) then {
-        private _sample = [_state select 0, _now] call GAIT_fnc_releaseMomentumSample;
-        private _carryCoefficient = _sample select 0;
+        private _carryCoefficient = _applied;
+        if (_handoff isEqualTo []) then {
+            _carryCoefficient = ([_state select 0, _now] call GAIT_fnc_releaseMomentumSample) select 0;
+        };
+        if (_handoff isNotEqualTo []) then {[_unit] call GAIT_fnc_clearPaceHandoff;};
         _unit setVariable ["GAIT_releaseMomentumState", []];
-        _unit setVariable ["GAIT_releasePaceMatch", []];
         _unit setVariable ["GAIT_paceHandoffCandidate", []];
         _unit setVariable ["GAIT_releaseResume", []];
         _unit setVariable ["GAIT_releasePendingCoefficient", _carryCoefficient max 0];
@@ -207,12 +216,10 @@ GAIT_fnc_observeReleaseMomentum = {
     if (_state isNotEqualTo []) then {
         if (!_live || {!_same} || {_brake} || {!(missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true])}) then {
             _unit setVariable ["GAIT_releaseMomentumState", []];
-            _unit setVariable ["GAIT_releasePaceMatch", []];
             _unit setVariable ["GAIT_releasePendingCoefficient", -1];
             _unit setVariable ["GAIT_releaseResume", []];
-            if (_live && {_brake} && {_same}) then {
-                _unit setVariable ["GAIT_releaseBrakeHold", _identity];
-            } else {
+            if (_handoff isNotEqualTo []) then {[_unit] call GAIT_fnc_clearPaceHandoff;};
+            if (!_brake) then {
                 // Non-directional identity loss is not allowed to carry a
                 // sprint boost into an unrelated movement/action state.
                 if (_eligible && {_owns} && {_moving}) then {
@@ -222,46 +229,32 @@ GAIT_fnc_observeReleaseMomentum = {
         } else {
             if (_turbo) then {
                 private _sample = [_state select 0, _now] call GAIT_fnc_releaseMomentumSample;
-                _unit setVariable ["GAIT_releasePendingCoefficient", _sample select 0];
+                if (_handoff isEqualTo []) then {
+                    _unit setVariable ["GAIT_releasePendingCoefficient", _sample select 0];
+                };
+                if (_handoff isNotEqualTo []) then {[_unit] call GAIT_fnc_clearPaceHandoff;};
                 _unit setVariable ["GAIT_releaseResume", [_sample select 0, _now]];
                 _unit setVariable ["GAIT_releaseMomentumState", []];
-                _unit setVariable ["GAIT_releasePaceMatch", []];
             };
         };
     };
-    if (_brakeHold isNotEqualTo [] && {!_live || {_turbo} || {!_brake} || {_brakeHold isNotEqualTo _identity}}) then {
-        _unit setVariable ["GAIT_releaseBrakeHold", []];
-    };
     if (_release) then {_unit setVariable ["GAIT_releaseSinceFeatureTick", true];};
-    if (_release && {_live} && {_singleClip} && {((toLower _animation) select [8, 4]) in ["meva", "mspr"]}) then {
-        if (_brake) then {
-            _unit setVariable ["GAIT_releaseBrakeHold", _identity];
-        } else {
-            if (missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true]) then {
-                private _match = [];
-                if (!isNil "GAIT_fnc_releasePaceMatch") then {
-                    private _walkSelected = [_unit] call GAIT_fnc_readLocomotionWalkToggle;
-                    _match = [_unit, _animation, _family, _direction, _speed, _applied, _ordinary, _walkSelected]
-                        call GAIT_fnc_releasePaceMatch;
-                };
-                private _releaseTarget = if (_match isEqualTo []) then {_ordinary} else {_match select 0};
-                private _plan = [_now, _speed, _applied, _releaseTarget, _window, _curve] call GAIT_fnc_releaseMomentumPlan;
-                if (_plan isNotEqualTo []) then {
-                    _unit setVariable ["GAIT_releaseMomentumState", [_plan, _identity]];
-                    _unit setVariable ["GAIT_releasePaceMatch", _match];
-                    missionNamespace setVariable ["GAIT_releasePaceMatched", _match isNotEqualTo []];
-                    _unit setVariable ["GAIT_releasePendingCoefficient", -1];
-                    missionNamespace setVariable ["GAIT_releaseStartMS", _plan select 2];
-                    missionNamespace setVariable ["GAIT_releaseTargetMS", _plan select 3];
-                    missionNamespace setVariable ["GAIT_releaseDuration", _plan select 1];
-                } else {
-                    // A very short sprint may already be at or below the
-                    // destination speed. Preserve that actual speed through
-                    // the clip blend even when there is nothing to taper.
-                    if (_match isNotEqualTo []) then {
-                        _unit setVariable ["GAIT_paceHandoffCandidate", [_match select 1, _now + 0.15]];
-                    };
-                };
+    if (_release && {_live} && {_singleClip} && {!_brake} &&
+        {((toLower _animation) select [8, 4]) in ["meva", "mspr"]} &&
+        {missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true]}) then {
+        private _match = [_unit, _animation, _family, _direction, _speed, _applied, _ordinary]
+            call GAIT_fnc_releasePaceMatch;
+        if (_match isNotEqualTo []) then {
+            private _releaseTarget = _match select 0;
+            private _plan = [_now, _speed, _applied, _releaseTarget, _window, _curve] call GAIT_fnc_releaseMomentumPlan;
+            _unit setVariable ["GAIT_paceHandoffCandidate", [_match select 1, _now + 0.15]];
+            if (_plan isNotEqualTo []) then {
+                _unit setVariable ["GAIT_releaseMomentumState", [_plan, _identity]];
+                missionNamespace setVariable ["GAIT_releasePaceMatched", true];
+                _unit setVariable ["GAIT_releasePendingCoefficient", -1];
+                missionNamespace setVariable ["GAIT_releaseStartMS", _plan select 2];
+                missionNamespace setVariable ["GAIT_releaseTargetMS", _plan select 3];
+                missionNamespace setVariable ["GAIT_releaseDuration", _plan select 1];
             };
         };
     };
@@ -280,11 +273,11 @@ GAIT_fnc_observeReleaseMomentum = {
     if (_state isNotEqualTo [] && {_owns} && {!_eligible || {!_moving}}) then {
         [] call GAIT_fnc_releaseSpeedCoefficient;
     };
-    _active || {(_unit getVariable ["GAIT_releaseBrakeHold", []]) isNotEqualTo []}
+    _active
 };
 
-// Called ONLY by the existing coefficient writer. Endpoints are applied once
-// before the graph is allowed to hand off; nativePreviousCoef is untouched.
+// Both schedulers use the common writer. The handoff converts the same plan
+// into the active clip's coefficient once the native exit is issued.
 GAIT_fnc_sampleReleaseCoefficient = {
     params ["_unit", "_coefficient", ["_now", diag_tickTime, [0]]];
     private _pending = _unit getVariable ["GAIT_releasePendingCoefficient", -1];
@@ -292,6 +285,7 @@ GAIT_fnc_sampleReleaseCoefficient = {
         _coefficient = _pending;
         _unit setVariable ["GAIT_releasePendingCoefficient", -1];
     };
+    if ((_unit getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []) exitWith {_coefficient};
     private _state = _unit getVariable ["GAIT_releaseMomentumState", []];
     if ((count _state) isEqualTo 2) then {
         private _sample = [_state select 0, _now] call GAIT_fnc_releaseMomentumSample;
@@ -303,12 +297,7 @@ GAIT_fnc_sampleReleaseCoefficient = {
         missionNamespace setVariable ["GAIT_shiftReleaseRunTaperKeep", _sample select 2];
         missionNamespace setVariable ["GAIT_shiftReleaseRunTaperTargetKmh", (_sample select 1) * 3.6];
         if (!_active) then {
-            private _match = _unit getVariable ["GAIT_releasePaceMatch", []];
-            if (_match isNotEqualTo []) then {
-                _unit setVariable ["GAIT_paceHandoffCandidate", [_match select 1, _now + 0.15]];
-            };
             _unit setVariable ["GAIT_releaseMomentumState", []];
-            _unit setVariable ["GAIT_releasePaceMatch", []];
         };
     };
     _coefficient

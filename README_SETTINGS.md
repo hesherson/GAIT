@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha23 settings reference
+# GAIT 1.8.0-alpha24 settings reference
 
 This reference covers the 109 current CBA registrations. The table shows registration defaults. Presets and mission or server overrides can change effective values. Select Custom to keep individual tuning.
 
@@ -34,7 +34,7 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Ordinary movement coefficient (`GAIT_ss_normalSpeed`) | 0.86 | 0.5–1.5 | Base animation coefficient for non-sprint movement before gear and slope modifiers. 1.00 is the active clip at its native playback rate, not a fixed speed in km/h. Default: 0.86. |
+| Jog movement coefficient (`GAIT_ss_normalSpeed`) | 0.86 | 0.5–1.5 | Base jog animation coefficient before gear and slope modifiers. Arma controls deliberate walk pace. |
 | Sustained sprint coefficient (`GAIT_ss_sprintFullSpeed`) | 1.00 | 0.70–2 | Base sprint animation rate after the rested burst. 1.00 is the normal sprint clip speed before slope and animation adjustments. |
 | Flat dead sprint peak (`GAIT_ss_flatSprintPeak`) | 1.10 | 1–1.30 | Maximum multiplier over sustained sprint pace at a fully rested start on level ground. Carried mass reduces the bonus. |
 | Exhausted run pace midpoint (`GAIT_ss_exhaustedRunPace`) | 0.70 | 0.50–0.95 | Target fraction at empty reserve with a 50 lb kit. Defaults range from 0.75 unloaded to 0.65 at 100 lb or more. Uphill sprint keeps its jog-relative floor. |
@@ -42,8 +42,8 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Fallback reserve recovery (`GAIT_ss_sprintRecoverTime`) | 10 | 1–60 | Seconds at rest to recover the GAIT fallback reserve. |
 | Speed ramp smoothness (`GAIT_ss_speedLerp`) | 0.05 | 0.01–1 | Base smoothing rate for movement speed changes. Flat sprint acceleration uses 70% of this rate and reaches about 95% of target in 4.1 seconds before the carried-load adjustment. Hills have their own entry response. |
 | W-release zero-momentum delay (`GAIT_ss_wReleaseZeroMomentumDelay`) | 0.5 | 0–20 | Seconds after releasing forward movement before the next sprint start is treated as zero momentum. Lower values make brace return sooner. Default: 0.50. |
-| Smooth sprint release (`GAIT_ss_shiftReleaseRunTaperEnabled`) | true | on / off | Release sprint while keeping forward movement held to decelerate from current motion. Uses measured walk or jog pace when a valid reference exists. Stop, direction changes and medical restrictions cancel promptly. Default: enabled. |
-| Sprint release duration scale (`GAIT_ss_shiftReleaseRunTaperDuration`) | 1.15 | 0.05–4 | Sets the release window, scaled by load and bounded to 0.35–1.20 seconds. The taper eases from current speed to the selected walk or jog. |
+| Smooth sprint release (`GAIT_ss_shiftReleaseRunTaperEnabled`) | true | on / off | Releases the sprint gait immediately and tapers pace while continuing forward in a jog. Walk, stop, direction changes and medical restrictions take effect immediately. |
+| Sprint release duration scale (`GAIT_ss_shiftReleaseRunTaperDuration`) | 1.15 | 0.05–4 | Sets the release window, scaled by load and bounded to 0.35–1.20 seconds. The taper eases current speed into jog following immediate sprint release. |
 | Sprint release curve (`GAIT_ss_shiftReleaseRunTaperCurve`) | 1.45 | 1–3 | Shapes the finite slowdown. Higher values lose pace sooner. Effective range: 1-3. Does not add a hold or extend the deadline. Default: 1.45. |
 | Unarmed sprint normalizer (`GAIT_ss_unarmedSprintNormalizer`) | 0.725 | 0.3–1.2 | Multiplier applied when sprinting with no weapon out so holstering does not create an unrealistic speed boost. Default: 0.725. |
 ### Carry
@@ -105,11 +105,11 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Vegetation drag (`GAIT_ss_vegetationDragEnabled`) | true | on / off | Dense bushes bleed movement speed while passing through them. Default: enabled. |
 | Vegetation drag max (`GAIT_ss_vegetationDragMax`) | 0.18 | 0–0.75 | Maximum movement speed reduction in dense brush. 0.18 means up to 18% slower. Default: 0.18. |
 | Vegetation drag radius (`GAIT_ss_vegetationDragRadius`) | 2.5 | 0.5–6 | Bush proximity radius in meters considered for drag. Default: 2.5 m. |
-| Slow ordinary slope pace (`GAIT_ss_hillWalkSlowdownEnabled`) | true | on / off | Reduces normal W pace on inclines/declines before sprinting. This changes speed only; slope forward movement remains visually Mrun/jog rather than Mwlk/walk. Default: enabled. |
-| Hill walk slowdown starts (`GAIT_ss_hillWalkSlowdownStartDegrees`) | 15 | 0–45 | Slope angle where normal walking/jogging begins slowing before sprint. Default: 15 degrees. |
-| Hill walk reference angle (`GAIT_ss_hillWalkSlowdownMaxDegrees`) | 40 | 5–80 | Slope angle where walking reaches the reference penalty. Pace continues decreasing on steeper terrain. Default: 40 degrees. |
-| Uphill walk reference penalty (`GAIT_ss_hillWalkUphillMaxPenalty`) | 0.32 | 0–0.75 | Normal movement loss at the walk reference angle, adjusted for kit weight. Default: 0.32. |
-| Downhill walk max penalty (`GAIT_ss_hillWalkDownhillMaxPenalty`) | 0.08 | 0–0.35 | Small normal movement speed loss while walking downhill before momentum builds. Default: 0.08. |
+| Slow jog pace on slopes (`GAIT_ss_hillWalkSlowdownEnabled`) | true | on / off | Reduces jog pace on inclines and declines. Arma controls deliberate walk pace. |
+| Hill jog slowdown starts (`GAIT_ss_hillWalkSlowdownStartDegrees`) | 15 | 0–45 | Slope angle where jog begins slowing. Default: 15 degrees. |
+| Hill jog reference angle (`GAIT_ss_hillWalkSlowdownMaxDegrees`) | 40 | 5–80 | Slope angle where jog reaches the reference penalty. Pace continues decreasing on steeper terrain. Default: 40 degrees. |
+| Uphill jog reference penalty (`GAIT_ss_hillWalkUphillMaxPenalty`) | 0.32 | 0–0.75 | Jog pace loss at the reference angle, adjusted for kit weight. Default: 0.32. |
+| Downhill jog max penalty (`GAIT_ss_hillWalkDownhillMaxPenalty`) | 0.08 | 0–0.35 | Small jog pace loss while descending before momentum builds. Default: 0.08. |
 | Increase uphill stamina drain (`GAIT_ss_uphillFatigueDrainEnabled`) | true | on / off | Increases fallback reserve drain and raises the ACE sprint drain ceiling on steeper climbs. |
 | Uphill drain starts (`GAIT_ss_uphillFatigueDrainStartDegrees`) | 10 | 0–45 | Incline angle where additional uphill fatigue drain begins. Default: 10 degrees. |
 | Uphill drain max angle (`GAIT_ss_uphillFatigueDrainMaxDegrees`) | 35 | 5–80 | Incline angle where additional uphill fatigue drain reaches full strength. Default: 35 degrees. |

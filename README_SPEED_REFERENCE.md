@@ -1,12 +1,12 @@
-# GAIT 1.8.0-alpha23 movement speed reference
+# GAIT 1.8.0-alpha24 movement speed reference
 
 This document describes the current target model. Animation-speed coefficients are not interchangeable with km/h because weapon/pose families have different root motion. GAIT therefore distinguishes coefficient fallback behavior from calibrated physical targets.
 
 ## Flat sprint and load
 
-Balanced uses an armed sustained sprint coefficient of **1.00**. A sprint started with full stamina on flat terrain earns a brief burst. Its default peak is **1.10×** sustained pace unloaded and **1.06×** with 110 lb. The bonus reaches zero within about 6 seconds or by half reserve, whichever comes first. GAIT reads carried inventory mass from `loadAbs` and applies these tuning points to ordinary movement.
+Balanced uses an armed sustained sprint coefficient of **1.00**. A sprint started with full stamina on flat terrain earns a brief burst. Its default peak is **1.10×** sustained pace unloaded and **1.06×** with 110 lb. The bonus reaches zero within about 6 seconds or by half reserve, whichever comes first. GAIT reads carried inventory mass from `loadAbs` and applies these tuning points to jog pace.
 
-| Approximate carried weight | Flat pace multiplier |
+| Approximate carried weight | Flat jog multiplier |
 | --- | --- |
 | 0 lb | 1.08 |
 | 35 lb | 1.02 |
@@ -14,7 +14,7 @@ Balanced uses an armed sustained sprint coefficient of **1.00**. A sprint starte
 | 75 lb | 0.92 |
 | Above 75 lb | `0.92 / (1 + 0.18 * extraLb / 50)` |
 
-Mass between these points changes ordinary pace proportionally. First-step brace relief, acceleration, endurance, and release timing also respond to load.
+Mass between these points changes jog pace proportionally. Deliberate and forced walking yield to Arma's animation speed and terrain behavior. First-step brace relief, acceleration, endurance, and release timing also respond to load.
 
 ## Stamina and minimum sprint pace
 
@@ -57,7 +57,7 @@ With a matching animation pace reference, the default downhill targets also have
 
 ## Release continuity
 
-Shift release captures the current applied coefficient and observed horizontal velocity, then follows one finite W-held taper toward the selected walk or jog. The handoff accounts for the change in root motion using a matching clip measurement or a fallback ratio. A/D direction changes remain independent of that speed taper.
+Shift release immediately requests the jog selected by live input. A bounded speed taper can continue through the blend and native jog while W remains held, using clip reference speeds to compensate for the change in root motion. Stop, strafe, stance changes and deliberate walk can interrupt the taper immediately.
 
 ## Weapon/pose families
 

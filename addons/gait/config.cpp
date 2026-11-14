@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha23: rested sprint burst, stamina rules, and ACE heartbeat
+// GAIT 1.8.0-alpha24: responsive sprint release, native walk, and uphill sprint continuity
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha23";
-        versionAr[] = {1,8,0,23};
+        versionStr = "1.8.0-alpha24";
+        versionAr[] = {1,8,0,24};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;
@@ -26,13 +26,6 @@ class Extended_PreStart_EventHandlers
     {
         init = "['\z\ace\addons\medical_feedback\XEH_preStart.sqf', '\z\ace\addons\medical_feedback\functions\fnc_effectHeartBeat.sqf', '\gait\functions\fn_aceHeartbeatVolume.sqf'] call compileScript ['\gait\functions\fn_redirectAceStartup.sqf'];";
     };
-};
-
-// Documented terrain animation-speed multiplier. This is a config-time
-// change while the addon is loaded, not a guarantee of sprinting on all slopes.
-class CfgMovesFatigue
-{
-    terrainSpeedCoef = 1;
 };
 
 #include "slope_actions.hpp"
@@ -101,15 +94,6 @@ class CfgFactionClasses
 
 class CfgVehicles
 {
-    class Man;
-    class CAManBase: Man
-    {
-        class CfgMovesFatigue
-        {
-            terrainSpeedCoef = 1;
-        };
-    };
-
     class Logic;
 
     class Module_F: Logic

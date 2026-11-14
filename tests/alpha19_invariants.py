@@ -29,10 +29,10 @@ class LocomotionInvariants(unittest.TestCase):
         project = (ROOT / ".hemtt/project.toml").read_text()
         config = (ROOT / "addons/gait/config.cpp").read_text()
         mod = (ROOT / "mod.cpp").read_text()
-        self.assertIn("build = 23", project)
-        self.assertIn('versionStr = "1.8.0-alpha23";', config)
-        self.assertIn("versionAr[] = {1,8,0,23};", config)
-        self.assertIn('tooltip = "GAIT 1.8.0-alpha23";', mod)
+        self.assertIn("build = 24", project)
+        self.assertIn('versionStr = "1.8.0-alpha24";', config)
+        self.assertIn("versionAr[] = {1,8,0,24};", config)
+        self.assertIn('tooltip = "GAIT 1.8.0-alpha24";', mod)
 
     def test_graph_pose_and_no_walk_contract(self):
         text = GRAPH.read_text()
@@ -109,6 +109,19 @@ class LocomotionInvariants(unittest.TestCase):
             code = executable(path.read_text(encoding="utf-8-sig"))
             for command in forbidden:
                 self.assertNotRegex(code, rf"\b{command}\b", f"{path.name}: {command}")
+
+    def test_vanilla_terrain_and_live_walk_control(self):
+        config = (ROOT / "addons/gait/config.cpp").read_text()
+        self.assertNotIn("terrainSpeedCoef", config)
+        native = read("fn_nativeController.sqf")
+        main = read("fn_initSprintSystem.sqf")
+        slope = read("fn_slopeLocomotion.sqf")
+        self.assertIn('inputAction "WalkRunTemp"', native)
+        self.assertIn('if (_nativeWalk && {!_allowCarry}) exitWith', native)
+        self.assertIn('[player, _currentSpeed, false, true] call GAIT_fnc_applyNativeMovement', main)
+        self.assertIn('[player] call GAIT_fnc_releaseNativeWalkPace', slope)
+        self.assertIn('if (!_nativeWalk &&', slope)
+        self.assertNotIn('_releaseHeld', slope)
 
     def test_locality_and_reset_contract(self):
         helper = read("fn_traversalHelpers.sqf")

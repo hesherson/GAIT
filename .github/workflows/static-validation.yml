@@ -99,7 +99,7 @@ jobs:
           echo "SQFVM=$SQFVM" >> "$GITHUB_ENV"
           "$SQFVM" --version
 
-      - name: Run 21 SQF regression suites
+      - name: Run 22 SQF regression suites
         run: python tools/run_regressions.py --sqfvm "$SQFVM" --output tests/validation-ci
 
       - name: Upload SQF regression evidence

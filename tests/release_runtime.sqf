@@ -13,6 +13,20 @@ GAIT_testReleaseFamily = "SrasWpst";
 GAIT_testReleaseAnimation = "AmovPercMevaSrasWpstDf_GAIT";
 GAIT_testReleaseOrdinary = 0.5;
 GAIT_testReleaseWindow = 0.35;
+GAIT_testNativeWalk = false;
+GAIT_fnc_nativeWalkRequested = {GAIT_testNativeWalk};
+GAIT_fnc_clearPaceHandoff = {
+    params ["_unit"];
+    if ((_unit getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []) then {
+        _unit setVariable ["GAIT_releaseMomentumState", []];
+    };
+    _unit setVariable ["GAIT_paceHandoff", []];
+    _unit setVariable ["GAIT_paceHandoffCandidate", []];
+};
+GAIT_fnc_releasePaceMatch = {
+    params ["_unit", "_animation", "_family", "_direction", "_speed", "_applied", "_ordinary"];
+    [_ordinary, [toLower _animation, "amovpercmrunsraswpstdf", 5, 4, 2.5, "pistol", "Df", "ground", 0]]
+};
 GAIT_fnc_nativeMovementEligible = {GAIT_testReleaseEligible};
 GAIT_fnc_nativeCoefficientLocal = {true};
 GAIT_fnc_readNativeCoefficient = {params ["_unit"]; _unit getVariable ["GAIT_testCoefficient", 1]};
@@ -47,6 +61,7 @@ private _fixture = {
     GAIT_testReleaseWrites = [];
     GAIT_testReleaseEligible = true;
     GAIT_testReleaseBrake = false;
+    GAIT_testNativeWalk = false;
     GAIT_testReleaseSpeed = 6;
     GAIT_testReleaseWeapon = "pistol";
     GAIT_testReleaseFamily = "SrasWpst";
@@ -109,26 +124,38 @@ if ((_unit getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo []) then 
     _failures pushBack "Turbo release started sprint coast from an ordinary jogging clip";
 };
 
-// Model the exact destination match returned by the calibration helper. Its
-// endpoint must reach the animation handoff even if no speed needs shedding.
-GAIT_fnc_readLocomotionWalkToggle = {true};
-GAIT_fnc_releasePaceMatch = {
-    params ["_unit", "_animation", "_family", "_direction", "_speed", "_applied", "_ordinary", "_walkSelected"];
-    if (!_walkSelected) then {throw "FAIL: release did not read the deliberate walk toggle";};
-    [_applied, [toLower _animation, "amovpercmwlksraswpstdf", 5, 1.5, _speed, "pistol", "Df", "ground", 0]]
-};
+// The render owner can issue an immediate jog exit with the same edge sample.
 call _fixture;
 _unit setVariable ["GAIT_paceHandoffCandidate", []];
 [_unit, [1,0,false], 10] call GAIT_fnc_observeReleaseMomentum;
 private _candidate = _unit getVariable ["GAIT_paceHandoffCandidate", []];
 if ((count _candidate) isNotEqualTo 2 ||
-    {((_candidate select 0) select 1) isNotEqualTo "amovpercmwlksraswpstdf"} ||
-    {(_unit getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo []}) then {
-    _failures pushBack "Short release did not seed a walk handoff without adding a coast";
+    {((_candidate select 0) select 1) isNotEqualTo "amovpercmrunsraswpstdf"} ||
+    {(_unit getVariable ["GAIT_releaseMomentumState", []]) isEqualTo []}) then {
+    _failures pushBack "Sprint release did not seed its jog handoff before the taper finished";
 };
-GAIT_fnc_releasePaceMatch = {[]};
-GAIT_fnc_readLocomotionWalkToggle = {false};
-_unit setVariable ["GAIT_paceHandoffCandidate", []];
+// Deliberate walk bypasses every numerical release path, even while W stays held.
+GAIT_testNativeWalk = true;
+[_unit, [1,0,false], 10.01] call GAIT_fnc_observeReleaseMomentum;
+if ((_unit getVariable ["GAIT_paceHandoffCandidate", []]) isNotEqualTo [] ||
+    {(_unit getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo []}) then {
+    _failures pushBack "Deliberate walk retained sprint pace";
+};
+
+// Stop on the already-selected ordinary clip, after body ownership is gone.
+// The taper must release speed ownership that same observation.
+call _fixture;
+[_unit, [1,0,false], 10] call GAIT_fnc_observeReleaseMomentum;
+private _nativePlan = (_unit getVariable ["GAIT_releaseMomentumState", []]) select 0;
+_unit setVariable ["GAIT_paceHandoff", [[], 11, _nativePlan, 1, 10]];
+_unit setVariable ["GAIT_locomotionPhase", "native"];
+[_unit, [0,0,false], 10.01] call GAIT_fnc_observeReleaseMomentum;
+if ((_unit getVariable ["GAIT_paceHandoff", []]) isNotEqualTo [] ||
+    {(_unit getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo []} ||
+    {(_unit getVariable ["GAIT_testCoefficient", -1]) != 0.87} ||
+    {(missionNamespace getVariable ["GAIT_nativeOwner", _unit]) isNotEqualTo objNull}) then {
+    _failures pushBack "Stopping the live jog waited for numerical deceleration";
+};
 
 // Re-tap reverses the same plan at its remaining sample, with a main seed token.
 call _fixture;
@@ -199,13 +226,13 @@ if ((_durations select 0) >= (_durations select 1)) then {_failures pushBack "Re
     };
 } forEach [[0,0,false], [0,1,false], [-1,0,false], [1,1,false]];
 
-// Brake priority retains the same body while the separate finite brake runs.
+// Brake priority is numerical only. It cannot request a sprint body hold.
 call _fixture;
 GAIT_testReleaseBrake = true;
 [_unit, [1,0,false], 10] call GAIT_fnc_observeReleaseMomentum;
 if ((_unit getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo [] ||
-    {(_unit getVariable ["GAIT_releaseBrakeHold", []]) isEqualTo []}) then {
-    _failures pushBack "Prearmed uphill brake failed to take priority over the velocity plan";
+    {(_unit getVariable ["GAIT_releaseBrakeHold", []]) isNotEqualTo []}) then {
+    _failures pushBack "Prearmed uphill brake retained a numerical release or sprint body hold";
 };
 [_unit, [0,0,false], 10.01] call GAIT_fnc_observeReleaseMomentum;
 if ((_unit getVariable ["GAIT_releaseBrakeHold", []]) isNotEqualTo []) then {_failures pushBack "W-up waited for uphill brake deadline";};

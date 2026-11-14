@@ -214,7 +214,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
+missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -643,17 +643,17 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
                 private _carriedObject = player getVariable ["ace_dragging_carriedObject", objNull];
                 private _isOnFoot = isNull objectParent player;
                 private _movementInput = call GAIT_fnc_getMovementInput;
+                private _turboHeld = _movementInput select 2;
+                [player] call GAIT_fnc_clearACEAdvancedFatigueMovementLocks;
+                private _nativeWalk = !_isAceCarrying && {[player, _turboHeld] call GAIT_fnc_nativeWalkRequested};
                 private _stanceYieldActive = [player] call GAIT_fnc_stanceYieldActive;
                 // A render-observed stance request owns this transition. Never
                 // reassert release/handoff speed during its short native lease.
-                if (!_stanceYieldActive) then {
+                if (!_stanceYieldActive && {!_nativeWalk}) then {
                     [player, _movementInput] call GAIT_fnc_observeReleaseMomentum;
-                    if ((player getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []) then {
-                        [player, missionNamespace getVariable ["GAIT_nativeLastPreVegetation", _currentSpeed], false]
-                            call GAIT_fnc_applyNativeMovement;
-                    };
-                } else {
-                    if (!isNil "GAIT_fnc_clearReleaseMomentum") then {[player] call GAIT_fnc_clearReleaseMomentum;};
+                };
+                if (_stanceYieldActive && {!_nativeWalk}) then {
+                    [player] call GAIT_fnc_clearReleaseMomentum;
                     // Keep the currently applied coefficient through the native
                     // running-to-crouch/prone bend. No writer runs here; the
                     // value simply remains untouched until the lease ends.
@@ -668,8 +668,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
                 };
                 if (_releaseResumed) then {_currentSpeed = _releaseResume select 0;};
                 private _isForwardHeld = (_movementInput select 0) > 0.05;
-                private _turboHeld = _movementInput select 2;
-                [player] call GAIT_fnc_clearACEAdvancedFatigueMovementLocks;
                 private _externalSprintLock = !(isSprintAllowed player) || {(player getVariable ["ace_common_effect_blockSprint", 0]) > 0};
                 private _externalWalkLock = isForcedWalk player || {(player getVariable ["ace_common_effect_forceWalk", 0]) > 0};
                 private _movementEligible = [player, _isAceCarrying] call GAIT_fnc_nativeMovementEligible;
@@ -906,7 +904,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
 
                 // Keep W-only terrain jog distinct from intentional walking.
                 private _locomotionExternalLock = _externalSprintLock || {_externalWalkLock};
-                private _walkToggled = isWalking player;
+                private _walkToggled = [player, false] call GAIT_fnc_nativeWalkRequested;
                 private _slopeJogWasWanted = player getVariable ["GAIT_slopeJogIntent", false];
                 private _ordinaryInput = [_movementInput select 0, _movementInput select 1, false];
                 private _ordinarySlopeJog = _slopeHandlingEnabled && {_gaitMovementEnabled} &&
@@ -948,14 +946,14 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
                         {diag_tickTime >= (_forwardPressSnapshot select 1)} &&
                         {diag_tickTime - (_forwardPressSnapshot select 1) <= 0.35};
                     if (_sprintStartBraceEnabled && {_snapshotValid} &&
-                        {!(_forwardPressSnapshot select 3)} && {!_isSprinting} &&
+                        {!(_forwardPressSnapshot select 3)} && {!_isSprinting} && {!_nativeWalk} &&
                         {_isForwardHeld} && {_momentumContextOk} && {_gaitStanceOk} &&
                         {_onGroundNow} && {(_forwardPressSnapshot select 2) <= 0.35}) then {
                         _walkStartBraceState = [_forwardPressSnapshot select 1, _gearLbs,
                             _loadAnchors] call GAIT_fnc_walkStartBracePlan;
                     };
                 };
-                if (!_isForwardHeld || {_isSprinting} || {!_momentumContextOk} ||
+                if (!_isForwardHeld || {_isSprinting} || {_nativeWalk} || {!_momentumContextOk} ||
                     {!_gaitStanceOk} || {!_onGroundNow}) then {
                     _walkStartBraceState = [];
                 };
@@ -1008,7 +1006,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
 
                 // A deliberate uphill release is a braking event, separate
                 // from launch-brace eligibility and retained-momentum vetoes.
-                private _uphillBrakeEnabled = _slopeHandlingEnabled && {_slopeStopBraceEnabled} &&
+                private _uphillBrakeEnabled = _slopeHandlingEnabled && {!_nativeWalk} && {_slopeStopBraceEnabled} &&
                     {missionNamespace getVariable ["GAIT_ss_uphillReleaseBraceEnabled", false]};
                 private _uphillBrakeContext = _momentumContextOk && {_movementEligible} && {_gaitStanceOk} && {_isForwardHeld} && {!_forwardReleasedSinceTick} && {isTouchingGround player};
                 if ((missionNamespace getVariable ["GAIT_uphillBrakeUnit", objNull]) isNotEqualTo player) then {_uphillBrakeState = [];};
@@ -1261,6 +1259,9 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
                     _flatSprintPace = _flatSprintPace * _unarmedSprintNormalizer;
                 };
                 private _walkPace = _effectiveNormalSpeed * _hillWalkSlowdownMultiplier;
+                private _nativeWalkPace = if (player isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull])) then {
+                    missionNamespace getVariable ["GAIT_nativePreviousCoef", 1]
+                } else {getAnimSpeedCoef player};
                 private _freshSprintPace = _flatSprintPace * _slopeSpeedMultiplier;
                 private _pacePair = [_walkPace, _freshSprintPace];
                 private _targetSpeed = _walkPace;
@@ -1346,7 +1347,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
                     private _uphillMinimum = 0;
                     if (_uphillTravel) then {
                         private _jogPace = _jogFlatCoefficient * _weightSpeedMult * _hillWalkSlowdownMultiplier;
-                        _uphillMinimum = [_walkPace, _jogPace, _walkReference, _jogReference, _sprintReference]
+                        _uphillMinimum = [_nativeWalkPace, _jogPace, _walkReference, _jogReference, _sprintReference]
                             call GAIT_fnc_uphillSprintFloor;
                         private _lightWalkSlope = 1;
                         if (_hillWalkSlowdownEnabled) then {
@@ -1358,7 +1359,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
                         };
                         private _lightWalk = _normalSpeed * _unloadedSpeedMult * _lightWalkSlope;
                         private _lightJog = _lightWalk * 1.06;
-                        _freshSprintPace = _freshSprintPace max ([_lightWalk, _lightJog, _walkReference,
+                        _freshSprintPace = _freshSprintPace max ([_nativeWalkPace, _lightJog, _walkReference,
                             _jogReference, _sprintReference] call GAIT_fnc_uphillSprintFloor);
                     };
                     // Exhaustion uses unboosted pace, with the final fraction
@@ -1375,7 +1376,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
                     };
                     _pacePair set [1, _targetSpeed];
                 };
-                missionNamespace setVariable ["GAIT_walkTargetMS", [-1, _walkPace * _walkReference] select (_walkReference > 0)];
+                missionNamespace setVariable ["GAIT_walkTargetMS", [-1, _nativeWalkPace * _walkReference] select (_walkReference > 0)];
                 missionNamespace setVariable ["GAIT_sprintTargetMS", [-1, _targetSpeed * _sprintReference] select (_sprintReference > 0)];
                 missionNamespace setVariable ["GAIT_paceCalibrated", _walkReference > 0 && {_sprintReference > 0}];
                 missionNamespace setVariable ["GAIT_sprintReferenceCalibrated", _sprintReference > 0];
@@ -1386,7 +1387,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
                 // Publish a fresh ordinary target for the next raw release.
                 // Inventory/grade changes cannot restart an existing finite plan.
                 private _releaseWindow = [0, _shiftReleaseRunTaperDuration, _coastScale] call GAIT_fnc_gearCoastWindow;
-                private _releasePermission = _momentumContextOk && {_movementEligible} && {_gaitStanceOk} &&
+                private _releasePermission = _momentumContextOk && {!_nativeWalk} && {_movementEligible} && {_gaitStanceOk} &&
                     {_slopeHandlingEnabled} && {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]};
                 missionNamespace setVariable ["GAIT_releaseMomentumRequest", [player, _ordinaryReleaseTarget,
                     _releaseWindow select 1, _shiftReleaseRunTaperCurve, _releasePermission,
@@ -1396,7 +1397,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
                 missionNamespace setVariable ["GAIT_uphillBrakeUnit", player];
                 missionNamespace setVariable ["GAIT_uphillBrakeActive", _uphillBrakeActive];
                 missionNamespace setVariable ["GAIT_uphillBrakeEndTime", if (_uphillBrakeActive) then {_uphillBrakeState select 3} else {-1}];
-                [player, _movementInput] call GAIT_fnc_observeReleaseMomentum;
+                if (!_nativeWalk) then {[player, _movementInput] call GAIT_fnc_observeReleaseMomentum;};
 
                 private _walkStartBraceFactor = 1;
                 private _walkStartBraceActive = false;
@@ -1414,68 +1415,75 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
 
                 // Frame-rate independent speed ramp. Direction is never filtered.
                 private _hasMovementInput = _isForwardHeld || {_isBackHeld} || {_isLateralHeld};
-                if (_gaitMovementEnabled && {_movementEligible} && {_gaitStanceOk} && {_hasMovementInput}) then {
-                    private _ramp = if (_uphillBrakeActive) then {_uphillBrakeRamp} else {
-                        if (_isSprinting && {_sprintBraceEndTime > time}) then {_sprintStartBraceLerp} else {
-                            [_speedLerp, 1] select _walkStartBraceActive
-                        }
+                switch (true) do {
+                    case _nativeWalk: {
+                        _currentSpeed = [player, _currentSpeed, false, true] call GAIT_fnc_applyNativeMovement;
                     };
-                    private _rampTarget = if (_uphillBrakeActive) then {_uphillBrakeTarget min _currentSpeed} else {
-                        if (_isSprinting && {_sprintBraceEndTime > time}) then {_activeBraceSpeed min _targetSpeed} else {
-                            if (_walkStartBraceActive) then {_targetSpeed * _walkStartBraceFactor} else {_targetSpeed}
-                        }
-                    };
-                    if (!_isAceCarrying && {_isSprinting} && {!_uphillBrakeActive} && {_sprintBraceEndTime <= time}) then {
-                        private _speedIncreasing = _rampTarget > _currentSpeed;
-                        if (_speedIncreasing) then {
-                            _ramp = [_ramp, _accelerationScale] call GAIT_fnc_sprintAccelerationRamp;
-                            _ramp = [_ramp, 1 + (2 * _deadSprintStrength)] call GAIT_fnc_scaleInertiaRamp;
+                    case (_gaitMovementEnabled && {_movementEligible} && {_gaitStanceOk} && {_hasMovementInput}): {
+                        private _ramp = if (_uphillBrakeActive) then {_uphillBrakeRamp} else {
+                            if (_isSprinting && {_sprintBraceEndTime > time}) then {_sprintStartBraceLerp} else {
+                                [_speedLerp, 1] select _walkStartBraceActive
+                            }
                         };
-                        if (_slopeHandlingEnabled && {_onGroundNow}) then {
-                            _ramp = [_ramp, _slopeDegrees, _speedIncreasing, _uphillStartDegrees, _uphillSlowdownEnabled]
-                                call GAIT_fnc_slopeSprintRamp;
+                        private _rampTarget = if (_uphillBrakeActive) then {_uphillBrakeTarget min _currentSpeed} else {
+                            if (_isSprinting && {_sprintBraceEndTime > time}) then {_activeBraceSpeed min _targetSpeed} else {
+                                if (_walkStartBraceActive) then {_targetSpeed * _walkStartBraceFactor} else {_targetSpeed}
+                            }
                         };
-                        if (!_speedIncreasing && {_reserveRatio < 0.20}) then {
-                            _ramp = _ramp min 0.045;
-                        };
-                    };
-                    _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
-                    // Honor walk/injury locks and avoid carrying a sprint boost sideways.
-                    private _coef = _currentSpeed;
-                    if (!_isForwardHeld || {_externalSprintLock} || {_externalWalkLock}) then {
-                        _coef = _coef min _effectiveNormalSpeed;
-                    };
-                    _currentSpeed = [player, _coef, _isAceCarrying] call GAIT_fnc_applyNativeMovement;
-
-                } else {
-                    if (_stanceYieldActive) then {
-                        // Running-to-crouch/prone is still a live movement
-                        // transition. Preserve the exact scalar that was already
-                        // on the unit and let Arma's inherited stance graph bend
-                        // the body without a mid-transition speed reset.
-                        private _stanceCarry = player getVariable ["GAIT_stanceCarryCoefficient", []];
-                        if ((count _stanceCarry) isEqualTo 2 && {_stanceCarry select 1}) then {
-                            _currentSpeed = missionNamespace getVariable ["GAIT_nativeLastPreVegetation", _currentSpeed];
-                        };
-                    } else {
-                        private _keepMovingBlend = _hasMovementInput && {!_locomotionExternalLock} &&
-                            {[player, animationState player] call GAIT_fnc_locomotionMayFinishMoveBlend};
-                        if (!_keepMovingBlend) then {
-                            // No commanded forward movement means no scalar momentum.
-                            // The engine handles the stop blend and current side/back input.
-                            _currentSpeed = _inputReleasePace;
-                            // Speed ownership must not slow the native stop blend.
-                            // Render input chooses the body exit independently.
-                            if (_gaitMovementEnabled && {!_hasMovementInput} && {_gaitStanceOk} && {_movementEligible} &&
-                                {player isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull])} &&
-                                {abs ((getAnimSpeedCoef player) - (missionNamespace getVariable ["GAIT_nativeLastWritten", -1])) < 0.001}) then {
-                                // A scheduled tick can relinquish the coefficient
-                                // before Draw3D sees this same stop edge. Hand over
-                                // only this owned release, with a short-lived lease.
-                                player setVariable ["GAIT_nativeStopPaceLease", [diag_tickTime + 0.15, currentWeapon player,
-                                    missionNamespace getVariable ["GAIT_nativePreviousCoef", 1]]];
+                        if (!_isAceCarrying && {_isSprinting} && {!_uphillBrakeActive} && {_sprintBraceEndTime <= time}) then {
+                            private _speedIncreasing = _rampTarget > _currentSpeed;
+                            if (_speedIncreasing) then {
+                                _ramp = [_ramp, _accelerationScale] call GAIT_fnc_sprintAccelerationRamp;
+                                _ramp = [_ramp, 1 + (2 * _deadSprintStrength)] call GAIT_fnc_scaleInertiaRamp;
                             };
-                            [] call GAIT_fnc_releaseSpeedCoefficient;
+                            if (_slopeHandlingEnabled && {_onGroundNow}) then {
+                                _ramp = [_ramp, _slopeDegrees, _speedIncreasing, _uphillStartDegrees, _uphillSlowdownEnabled]
+                                    call GAIT_fnc_slopeSprintRamp;
+                            };
+                            if (!_speedIncreasing && {_reserveRatio < 0.20}) then {
+                                _ramp = _ramp min 0.045;
+                            };
+                        };
+                        _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
+                        // Honor walk/injury locks and avoid carrying a sprint boost sideways.
+                        private _coef = _currentSpeed;
+                        if (!_isForwardHeld || {_externalSprintLock} || {_externalWalkLock}) then {
+                            _coef = _coef min _effectiveNormalSpeed;
+                        };
+                        _currentSpeed = [player, _coef, _isAceCarrying] call GAIT_fnc_applyNativeMovement;
+
+                    };
+                    default {
+                        if (_stanceYieldActive) then {
+                            // Running-to-crouch/prone is still a live movement
+                            // transition. Preserve the exact scalar that was already
+                            // on the unit and let Arma's inherited stance graph bend
+                            // the body without a mid-transition speed reset.
+                            private _stanceCarry = player getVariable ["GAIT_stanceCarryCoefficient", []];
+                            if ((count _stanceCarry) isEqualTo 2 && {_stanceCarry select 1}) then {
+                                _currentSpeed = missionNamespace getVariable ["GAIT_nativeLastPreVegetation", _currentSpeed];
+                            };
+                        } else {
+                            private _keepMovingBlend = _hasMovementInput && {!_locomotionExternalLock} &&
+                                {([player, animationState player] call GAIT_fnc_locomotionMayFinishMoveBlend) ||
+                                {[player, _movementInput, _locomotionExternalLock] call GAIT_fnc_uphillSprintContactPending}};
+                            if (!_keepMovingBlend) then {
+                                // No commanded forward movement means no scalar momentum.
+                                // The engine handles the stop blend and current side/back input.
+                                _currentSpeed = _inputReleasePace;
+                                // Speed ownership must not slow the native stop blend.
+                                // Render input chooses the body exit independently.
+                                if (_gaitMovementEnabled && {!_hasMovementInput} && {_gaitStanceOk} && {_movementEligible} &&
+                                    {player isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull])} &&
+                                    {abs ((getAnimSpeedCoef player) - (missionNamespace getVariable ["GAIT_nativeLastWritten", -1])) < 0.001}) then {
+                                    // A scheduled tick can relinquish the coefficient
+                                    // before Draw3D sees this same stop edge. Hand over
+                                    // only this owned release, with a short-lived lease.
+                                    player setVariable ["GAIT_nativeStopPaceLease", [diag_tickTime + 0.15, currentWeapon player,
+                                        missionNamespace getVariable ["GAIT_nativePreviousCoef", 1]]];
+                                };
+                                [] call GAIT_fnc_releaseSpeedCoefficient;
+                            };
                         };
                     };
                 };
@@ -1510,7 +1518,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
                     _lastDebugHudTime = time;
                     private _debugFamily = [player] call GAIT_fnc_slopeWeaponFamily;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha23<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Family: %11 | Active: %12 | Walk / sprint target: %13 / %14<br/>Foundation: %15 | Sprint ref: %16 | Full profile: %17<br/>Carried load: %18 lb</t>",
+                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha24<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Family: %11 | Active: %12 | Jog / sprint target: %13 / %14<br/>Foundation: %15 | Sprint ref: %16 | Full profile: %17<br/>Carried load: %18 lb</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,

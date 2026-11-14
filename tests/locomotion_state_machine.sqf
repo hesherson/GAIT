@@ -22,6 +22,7 @@ private _policyCases = [
     ["Medical context interrupts pending entry", ["entering", true, false, false, true, false, true], "release"],
     ["Ordinary weapon-pose blend retains pending entry", ["entering", true, false, false, false, false, true, true], "hold"],
     ["Ordinary weapon-pose blend retains active movement", ["active", true, false, false, false, false, true, true], "hold"],
+    ["Eligible native pose blend does not escape active sprint", ["active", true, true, false, false, false, true, true], "hold"],
     ["Live lock still interrupts an ordinary blend", ["active", false, false, false, false, false, true, true], "release"],
     ["Custom movement stays active", ["active", true, true, true, false, false, true], "active"],
     ["Custom idle stays owned while Turbo held", ["active", true, true, true, false, false, false], "active"],
@@ -126,22 +127,43 @@ if ([[1,0,false],0.02,false,false,false,true] call GAIT_fnc_ordinarySlopeJogInte
         _failures pushBack _label;
     };
 } forEach [
-    [["active", true, false, "AmovPercMrunSlowWpstDf_GAIT", ""], "sprint", "Held W plus Turbo did not select actual sprint"],
-    [["entering", true, false, "AmovPercMrunSlowWpstDf", "AmovPercMrunSlowWpstDf_GAIT"], "sprint", "Turbo did not replace pending jog entry"],
-    [["entering", true, false, "AmovPercMrunSlowWpstDf_GAIT", "AmovPercMevaSlowWpstDf_GAIT"], "", "Pending sprint was requested twice"],
-    [["active", true, false, "AmovPercMevaSlowWpstDf_GAIT", ""], "", "Active sprint clip was requested twice"],
-    [["active", true, false, "AmovPercMrunSlowWpstDl_GAITSprint", ""], "", "Sprint-owned lateral state was mistaken for ordinary jog"],
-    [["active", false, true, "AmovPercMevaSlowWpstDf_GAIT", ""], "", "Finite sprint release was cut off"],
-    [["active", false, false, "AmovPercMevaSlowWpstDf_GAIT", ""], "release", "Sprint stayed selected after Turbo release"],
-    [["active", false, false, "AmovPercMevaSlowWpstDf_GAIT_AmovPercMevaSlowWpstDfl_GAIT", ""], "release", "Sprint blend stayed selected after Turbo release"],
-    [["active", false, false, "AmovPercMrunSlowWpstDl_GAITSprint", ""], "release", "Lateral sprint-owned state did not hand back to native gait"],
-    [["native", true, false, "AmovPercMwlkSlowWpstDf", ""], "", "Native walk was mistaken for owned jog"]
+    [["active", true, "AmovPercMrunSlowWpstDf_GAIT", ""], "sprint", "Held W plus Turbo did not select actual sprint"],
+    [["entering", true, "AmovPercMrunSlowWpstDf", "AmovPercMrunSlowWpstDf_GAIT"], "sprint", "Turbo did not replace pending jog entry"],
+    [["entering", true, "AmovPercMrunSlowWpstDf_GAIT", "AmovPercMevaSlowWpstDf_GAIT"], "", "Pending sprint was requested twice"],
+    [["active", true, "AmovPercMevaSlowWpstDf_GAIT", ""], "", "Active sprint clip was requested twice"],
+    [["active", true, "AmovPercMrunSlowWpstDl_GAITSprint", ""], "", "Sprint-owned lateral state was mistaken for ordinary jog"],
+    [["active", false, "AmovPercMevaSlowWpstDf_GAIT", ""], "release", "Sprint stayed selected after Turbo release"],
+    [["active", false, "AmovPercMevaSlowWpstDf_GAIT_AmovPercMevaSlowWpstDfl_GAIT", ""], "release", "Sprint blend stayed selected after Turbo release"],
+    [["active", false, "AmovPercMevaSrasWrflDf_GAIT_AmovPercMwlkSlowWrflDf_ver2", ""], "release", "Native weapon/pace blend hid the released sprint origin"],
+    [["active", false, "AmovPercMrunSlowWpstDf_AmovPercMevaSlowWpstDf_GAIT", ""], "release", "Native-to-sprint blend hid the released sprint destination"],
+    [["active", false, "AmovPercMevaSrasWrflDf_GAIT_AmovPknlMrunSrasWrflDf", ""], "", "Stance blend was treated as standing sprint release"],
+    [["active", false, "AmovPercMrunSlowWpstDl_GAITSprint", ""], "release", "Lateral sprint-owned state did not hand back to native gait"],
+    [["native", true, "AmovPercMwlkSlowWpstDf", ""], "", "Native walk was mistaken for owned jog"]
 ];
 if !(["entering", "AmovPercMrunSlowWpstDf_GAIT", "AmovPercMevaSlowWpstDf_GAIT"] call GAIT_fnc_locomotionEntryStillInJog) then {
     _failures pushBack "Old custom jog incorrectly completed pending sprint entry";
 };
 if (["entering", "AmovPercMevaSlowWpstDf_GAIT", "AmovPercMevaSlowWpstDf_GAIT"] call GAIT_fnc_locomotionEntryStillInJog) then {
     _failures pushBack "Observed custom sprint did not complete pending sprint entry";
+};
+
+{
+    _x params ["_arguments", "_expected"];
+    if ((_arguments call GAIT_fnc_locomotionExitRedirect) isNotEqualTo _expected) then {
+        _failures pushBack format ["Wrong live native exit redirect for %1", _arguments];
+    };
+} forEach [
+    [["AmovPercMrunSrasWrflDf", "Df", true], true],
+    [["AmovPercMevaSrasWrflDf", "Df", true], true],
+    [["AmovPercMwlkSrasWrflDf", "Df", false], true],
+    [["AmovPercMrunSrasWrflDf", "Df", false], false],
+    [["AmovPercMwlkSrasWrflDf", "Df", true], false],
+    [["AmovPercMrunSrasWrflDf", "Dfr", false], true],
+    [["AmovPercMstpSrasWrflDnon_GAITStop", "Dnon", true], false]
+];
+if ((["AmovPercMevaSrasWrflDf_GAIT_AmovPercMwlkSlowWrflDf_ver2", "SrasWrfl"]
+    call GAIT_fnc_locomotionExitBlendPose) isNotEqualTo "SlowWrfl") then {
+    _failures pushBack "Sprint release reversed the target pose of an ongoing weapon-lower blend";
 };
 
 // An uphill graph escape can be repaired once, only from a supported native
@@ -153,6 +175,7 @@ if (["entering", "AmovPercMevaSlowWpstDf_GAIT", "AmovPercMevaSlowWpstDf_GAIT"] c
     };
 } forEach [
     [["active", true, true, false, [1,0,true], 34, "AmovPercMwlkSlowWrflDf_ver2", "SlowWrfl"], true, "Steep uphill native walk did not recover sprint"],
+    [["active", true, true, false, [1,0,true], 34, "AmovPercMtacSlowWrflDf_ver2", "SlowWrfl"], true, "Settled lowered-rifle tactical movement did not recover sprint"],
     [["blocked", true, true, false, [1,0,true], 34, "AmovPercMrunSlowWpstDf", "SlowWpst"], true, "A blocked uphill pistol sprint could not recover from native jog"],
     [["active", true, true, false, [1,0,true], 34, "AmovPercMstpSrasWrflDnon", "SrasWrfl"], true, "A native idle escape could not recover uphill sprint"],
     [["active", true, true, true, [1,0,true], 34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Held uphill sprint retried after consuming recovery"],
@@ -164,6 +187,35 @@ if (["entering", "AmovPercMevaSlowWpstDf_GAIT", "AmovPercMevaSlowWpstDf_GAIT"] c
     [["active", true, true, false, [1,0,true], -34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Downhill walk triggered uphill recovery"],
     [["active", true, true, false, [1,0,false], 34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Released Turbo triggered sprint recovery"],
     [["active", true, true, false, [0,1,true], 34, "AmovPercMwlkSlowWrflDf", "SlowWrfl"], false, "Pure strafe triggered uphill sprint recovery"]
+];
+
+{
+    _x params ["_animation", "_expected"];
+    private _pose = [_animation, "SrasWrfl", ["SrasWrfl", "SlowWrfl"]] call GAIT_fnc_locomotionObservedWeaponPose;
+    if (_pose isNotEqualTo _expected) then {_failures pushBack format ["Wrong settled pose for %1: %2", _animation, _pose];};
+} forEach [
+    ["AmovPercMwlkSlowWrflDf_ver2", "SlowWrfl"],
+    ["AmovPercMtacSlowWrflDf_ver2", "SlowWrfl"],
+    ["AmovPercMrunSlowWrflDf", "SlowWrfl"],
+    ["AmovPercMevaSrasWrflDf_GAIT_AmovPercMrunSlowWrflDf", "SrasWrfl"],
+    ["AmovPercMrunSlowWrflDf_GAIT", "SrasWrfl"],
+    ["AmovPercMrunSlowWpstDf", "SrasWrfl"],
+    ["AmovPercMstpSlowWrflDnon", "SrasWrfl"]
+];
+{
+    _x params ["_arguments", "_expected"];
+    if ((_arguments call GAIT_fnc_uphillSprintContactGrace) isNotEqualTo _expected) then {
+        _failures pushBack format ["Wrong uphill contact grace for %1", _arguments];
+    };
+} forEach [
+    [["active", true, true, true, [1,0,true], 10.10, 10], true],
+    [["active", true, true, true, [1,0,true], 10.16, 10], false],
+    [["active", false, true, true, [1,0,true], 10.05, 10], false],
+    [["active", true, false, true, [1,0,true], 10.05, 10], false],
+    [["active", true, true, false, [1,0,true], 10.05, 10], false],
+    [["active", true, true, true, [1,0,false], 10.05, 10], false],
+    [["native", true, true, true, [1,0,true], 10.05, 10], false],
+    [["active", true, true, true, [1,0,true], 10.05, -1], false]
 ];
 
 // Live W/A/D and idle changes retain one owned family. Policy `_requested`

@@ -37,6 +37,11 @@ jobs:
       - name: Locomotion and ACE feedback ownership audit
         run: python tests/alpha19_invariants.py
 
+      - name: Verify ACE heartbeat and reserve hooks
+        run: |
+          python tests/heartbeat_audio.py
+          python tests/ace_sprint_reserve_hook.py
+
       - name: Compile Python validation sources
         run: python -m py_compile tools/generate_foundation_actions.py tests/settings_audit.py tests/pace_calibration_integration.py tests/foundation_graph.py tests/pbo_prefix_layout.py tests/alpha19_invariants.py
 
@@ -94,7 +99,7 @@ jobs:
           echo "SQFVM=$SQFVM" >> "$GITHUB_ENV"
           "$SQFVM" --version
 
-      - name: Run 20 SQF regression suites
+      - name: Run 21 SQF regression suites
         run: python tools/run_regressions.py --sqfvm "$SQFVM" --output tests/validation-ci
 
       - name: Upload SQF regression evidence

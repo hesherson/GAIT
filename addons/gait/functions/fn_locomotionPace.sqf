@@ -129,19 +129,48 @@ GAIT_fnc_locomotionPaceTargets = {
     [_walkCoefficient, _movingCoefficient, _walkMS, _movingMS, true]
 };
 
-// Preserve the fresh target through the first 80% of reserve use, then taper
-// toward a load-scaled fraction of unboosted sprint pace. Uphill sprint keeps its floor.
+// Arm one burst when a fully rested sprint starts. Recovery during a held
+// sprint cannot restart an expired burst, and letting go cancels it.
+GAIT_fnc_stepDeadSprint = {
+    params ["_elapsed", "_sprinting", "_wasSprinting", "_reserve", "_dt"];
+    if (!_sprinting) exitWith {-1};
+    if (!_wasSprinting) exitWith {[-1, 0] select (_reserve >= 0.999)};
+    if (_elapsed < 0 || {_reserve <= 0.50}) exitWith {-1};
+    _elapsed = _elapsed + (_dt max 0);
+    [_elapsed, -1] select (_elapsed >= 5.70)
+};
+
+// Hold the peak target through acceleration, then ease out over three
+// seconds. If reserve drains quickly, finish tapering by half reserve.
+GAIT_fnc_deadSprintStrength = {
+    params ["_elapsed", "_reserve"];
+    if (_elapsed < 0) exitWith {0};
+    private _time = ((5.70 - _elapsed) / 3) max 0 min 1;
+    private _remaining = ((_reserve - 0.50) / 0.25) max 0 min 1;
+    private _strength = _time min _remaining;
+    _strength * _strength * (3 - (2 * _strength))
+};
+
+// Normal sprint pace holds after the rested burst until the final fifth,
+// then tapers toward the load-scaled floor.
 GAIT_fnc_sprintReservePace = {
     params ["_fresh", "_normalRun", "_reserve", ["_gearLbs", 0, [0]],
-        ["_uphillMinimum", 0, [0]], ["_exhaustedRunPace", 0.70, [0]]];
+        ["_uphillMinimum", 0, [0]], ["_exhaustedRunPace", 0.70, [0]],
+        ["_flatGround", false, [false]], ["_flatPeak", 1.10, [0]], ["_deadSprintStrength", 0, [0]]];
     private _loadFraction = (_gearLbs / 100) max 0 min 1;
     private _exhaustedRatio = ((_exhaustedRunPace + 0.05) - (0.10 * _loadFraction)) max 0 min 1;
     private _floor = (_normalRun * _exhaustedRatio) max _uphillMinimum;
-    private _freshTarget = _fresh max _floor;
-    if (_reserve >= 0.20) exitWith {_freshTarget};
+    private _normalTarget = _fresh max _floor;
+    if (_flatGround && {_reserve > 0.50} && {_deadSprintStrength > 0}) exitWith {
+        private _mass = _gearLbs max 0;
+        private _burstLoadScale = 1 - (0.8 * (_mass / (_mass + 110)));
+        private _bonus = ((_flatPeak - 1) max 0) * (_deadSprintStrength min 1) * _burstLoadScale;
+        (_fresh * (1 + _bonus)) max _floor
+    };
+    if (_reserve >= 0.20) exitWith {_normalTarget};
     private _remaining = (_reserve / 0.20) max 0;
     private _effort = _remaining * _remaining * (3 - (2 * _remaining));
-    _floor + ((_freshTarget - _floor) * _effort)
+    _floor + ((_normalTarget - _floor) * _effort)
 };
 
 GAIT_fnc_uphillSprintFloor = {

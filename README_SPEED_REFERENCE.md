@@ -1,10 +1,10 @@
-# GAIT 1.8.0-alpha22 movement speed reference
+# GAIT 1.8.0-alpha23 movement speed reference
 
 This document describes the current target model. Animation-speed coefficients are not interchangeable with km/h because weapon/pose families have different root motion. GAIT therefore distinguishes coefficient fallback behavior from calibrated physical targets.
 
 ## Flat sprint and load
 
-Balanced uses an armed fresh sprint coefficient of **1.28** for all loadouts before the grade adjustment. GAIT reads carried inventory mass from `loadAbs` and applies these tuning points to ordinary movement.
+Balanced uses an armed sustained sprint coefficient of **1.00**. A sprint started with full stamina on flat terrain earns a brief burst. Its default peak is **1.10×** sustained pace unloaded and **1.06×** with 110 lb. The bonus reaches zero within about 6 seconds or by half reserve, whichever comes first. GAIT reads carried inventory mass from `loadAbs` and applies these tuning points to ordinary movement.
 
 | Approximate carried weight | Flat pace multiplier |
 | --- | --- |
@@ -18,13 +18,15 @@ Mass between these points changes ordinary pace proportionally. First-step brace
 
 ## Stamina and minimum sprint pace
 
-Fresh sprint holds its normal target until the last **20% of stamina**. With ACE Advanced Fatigue, GAIT reads the anaerobic reserve shown in the ACE bar. During that last bar, the target eases toward **75% unloaded, 70% at 50 lb, and 65% at 100 lb or more** of normal unboosted sprint pace. GAIT limits the deceleration rate so ACE’s periodic reserve updates do not cause abrupt speed drops. Heavier kits use reserve faster with the GAIT fallback.
+The burst settles into normal sprint pace until the last **20% of stamina**. The target then eases toward **75% unloaded, 70% at 50 lb, and 65% at 100 lb or more** of normal sprint pace. GAIT limits deceleration across ACE updates.
+
+Only moving sprints drain the reserve. Stationary rest restores it, and walking or jogging holds it steady. With a supported ACE loop, GAIT applies these rules to the anaerobic reserve before ACE draws the stamina bar. Flat drain has a ceiling of about **3 percentage points per second at 110 lb**. ACE's metabolic output determines actual drain within that ceiling. ACE retains aerobic fatigue and recovery, breathing, and medical feedback. The fallback reserve lasts about **33 seconds** of flat sprinting with the same load.
 
 On a climb, sprint also targets at least 8% above the faster of the same-grade, same-load walk and jog. Matching animation references make this a physical pace comparison. Without them, GAIT uses conservative walk-to-sprint and jog-to-sprint clip ratios.
 
 ## Sprint acceleration
 
-General speed smoothing defaults to `GAIT_ss_speedLerp = 0.05`. On flat ground sprint acceleration uses 70% of that rate before the carried-load adjustment.
+General speed smoothing defaults to `GAIT_ss_speedLerp = 0.05`. Outside the rested burst, flat sprint acceleration uses 70% of that rate before the carried-load adjustment. A rested burst accelerates faster while the bonus is active.
 
 At default tuning this is approximately:
 

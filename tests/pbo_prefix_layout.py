@@ -126,6 +126,7 @@ class PboPrefixLayout(unittest.TestCase):
         properties, contents = read_pbo(build / "gait_gait.pbo")
         self.assertEqual(properties["prefix"], "gait")
         self.assertIn("config.bin", contents)
+        self.assertIn("acm_heartbeat/config.bin", contents)
         self.assertFalse(any(name.startswith("heartbeat/") for name in contents))
         self.assertNotIn("sounds/tinnitus_loop.ogg", contents)
         source_functions = ROOT / "addons/gait/functions"

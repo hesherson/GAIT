@@ -71,9 +71,8 @@ GAIT_fnc_modeAllowsAceLockClearing = {
 
 // =====================================================
 // ACE ADVANCED FATIGUE INTEGRATION
-// ACE keeps its physiology model: anaerobic reserve, aerobic reserve,
-// acidosis, muscle damage, breathing, and stamina bar.
-// GAIT reads ACE reserves and adjusts sprint pace, bracing, and momentum.
+// ACE runs its physiology and fatigue feedback. The reserve hook limits its
+// anaerobic reserve before ACE publishes the bar and percentages.
 // =====================================================
 GAIT_fnc_aceAdvancedFatigueActive = {
     (missionNamespace getVariable ["GAIT_ss_aceBridgeEnabled", true]) &&
@@ -106,6 +105,7 @@ GAIT_fnc_readPaceMoveInfo = {params ["_unit"]; getUnitMovesInfo _unit};
 
 // Traversal helpers are definitions only, loaded before any client loops start.
 call compile preprocessFileLineNumbers "\gait\functions\fn_traversalHelpers.sqf";
+call compile preprocessFileLineNumbers "\gait\functions\fn_sprintReserve.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_slopePaceModel.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_locomotionPace.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_braceMomentum.sqf";
@@ -214,7 +214,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
+missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha23"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -270,12 +270,13 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
     private _normalSpeed = missionNamespace getVariable ["GAIT_ss_normalSpeed", 0.86];
 
     // Sprint reserve settings
-    private _sprintReserveMax = missionNamespace getVariable ["GAIT_ss_sprintReserveMax", 25.0];        // seconds of full sprint
-    private _sprintRecoverTime = missionNamespace getVariable ["GAIT_ss_sprintRecoverTime", 10.0];       // seconds to fully recover when not sprinting
+    private _sprintReserveMax = missionNamespace getVariable ["GAIT_ss_sprintReserveMax", 40.0];
+    private _sprintRecoverTime = missionNamespace getVariable ["GAIT_ss_sprintRecoverTime", 10.0];
     private _sprintReserve = _sprintReserveMax;
+    private _reserveUnit = player;
 
     // Normal sprint speeds
-    private _sprintFullSpeed = missionNamespace getVariable ["GAIT_ss_sprintFullSpeed", 1.28];        // full-speed sprint while reserve remains
+    private _sprintFullSpeed = missionNamespace getVariable ["GAIT_ss_sprintFullSpeed", 1.00];
 
     // Carry movement speeds
     private _carryWalkSpeed = missionNamespace getVariable ["GAIT_ss_carryWalkSpeed", 0.80];
@@ -413,6 +414,9 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
     private _lastTick = time;
     private _currentSpeed = _normalSpeed;
     private _wasSprinting = false;
+    private _deadSprintElapsed = -1;
+    private _deadSprintIntentHeld = false;
+    private _deadSprintReady = true;
     private _lastNonSprintAnimation = "";
     private _preSprintAnimation = "";
     private _preSprintWasJog = false;
@@ -433,6 +437,12 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
         private _now = time;
         private _dt = _now - _lastTick;
         _lastTick = _now;
+
+        if (_reserveUnit isNotEqualTo player) then {
+            _reserveUnit = player;
+            _sprintReserve = _sprintReserveMax;
+            _deadSprintReady = true;
+        };
 
         // Per-tick W-release coast state.
         // These are intentionally refreshed from missionNamespace every tick so
@@ -465,9 +475,10 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
             _uphillPaceExposure = 0;
             missionNamespace setVariable ["GAIT_uphillPaceExposure", 0];
             missionNamespace setVariable ["GAIT_uphillPaceMultiplier", 1];
-            _sprintReserve = _sprintReserveMax;
             _currentSpeed = _normalSpeed;
             _wasSprinting = false;
+            _deadSprintElapsed = -1;
+            _deadSprintIntentHeld = false;
             _lastKnownSlopeDegrees = 0;
             _lastSprintStopSlopeDegrees = 0;
             _lastSprintStopTime = -999;
@@ -506,9 +517,9 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
         _uphillFatigueDrainStartDegrees = missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainStartDegrees", 10.0];
         private _oldSprintReserveMax = _sprintReserveMax;
         _normalSpeed = missionNamespace getVariable ["GAIT_ss_normalSpeed", 0.86];
-        _sprintReserveMax = missionNamespace getVariable ["GAIT_ss_sprintReserveMax", 25.0];
+        _sprintReserveMax = missionNamespace getVariable ["GAIT_ss_sprintReserveMax", 40.0];
         _sprintRecoverTime = missionNamespace getVariable ["GAIT_ss_sprintRecoverTime", 10.0];
-        _sprintFullSpeed = missionNamespace getVariable ["GAIT_ss_sprintFullSpeed", 1.28];
+        _sprintFullSpeed = missionNamespace getVariable ["GAIT_ss_sprintFullSpeed", 1.00];
         _carryWalkSpeed = missionNamespace getVariable ["GAIT_ss_carryWalkSpeed", 0.80];
         _carrySprintFullSpeed = missionNamespace getVariable ["GAIT_ss_carrySprintFullSpeed", 1.50];
         _carrySprintExhaustedSpeed = missionNamespace getVariable ["GAIT_ss_carrySprintExhaustedSpeed", 0.9];
@@ -1177,10 +1188,11 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
                 private _reserveRatio = 1;
                 private _sprintPaceReserve = 1;
 
-                // v1.1.36 uphill fatigue drain:
-                // Use the last measured travel slope so stamina drain can react before
-                // the next terrain block finishes. Uphill traversals become more costly
-                // as the incline approaches the configured max angle.
+                // Reserve drain is bounded by grade and load. A small delay
+                // in animation eligibility cannot create recovery mid-stride.
+                private _reserveActivity = [_movementInput, _horizontalSpeedMS, animationState player,
+                    _isSprinting, _onGroundNow && {[player] call GAIT_fnc_fatigueMovementContextEligible}]
+                    call GAIT_fnc_sprintReserveActivity;
                 private _uphillFatigueDrainSeverityNow = 0;
                 private _uphillFatigueDrainMultiplierNow = 1;
                 if (_uphillFatigueDrainEnabled && {_isSprinting} && {_lastKnownSlopeDegrees > ((_uphillFatigueDrainStartDegrees max 0) min 60)}) then {
@@ -1193,9 +1205,11 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
                 missionNamespace setVariable ["GAIT_uphillFatigueDrainMultiplier", _uphillFatigueDrainMultiplierNow];
 
                 private _aceReserve = -1;
-                if (_aceAdvancedFatigueActive && {missionNamespace getVariable ["GAIT_ss_useAceReserveModel", true]}) then {
+                if (_aceAdvancedFatigueActive && {missionNamespace getVariable ["GAIT_ss_useAceReserveModel", true]} &&
+                    {uiNamespace getVariable ["GAIT_aceSprintReserveHookInstalled", false]}) then {
                     _aceReserve = missionNamespace getVariable ["ace_advanced_fatigue_anReservePercentage", -1];
                 };
+                private _reserveBeforeStep = _sprintReserve / _sprintReserveMax;
                 if (_aceReserve >= 0) then {
                     private _aerobic = (missionNamespace getVariable ["ace_advanced_fatigue_aeReservePercentage", 1]) max 0 min 1;
                     private _acidosis = (missionNamespace getVariable ["ace_advanced_fatigue_anFatigue", 0]) max 0 min 1;
@@ -1205,18 +1219,15 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
                     // ACE draws the bar from anaerobic reserve. Aerobic fatigue
                     // and its penalties can shape the last bar, never start it early.
                     _reserveRatio = _aceReserve max 0 min 1;
+                    _reserveBeforeStep = _reserveRatio;
                     private _perceivedReserve = (_reserveRatio min _aerobic) * _acidosisPenalty * _musclePenalty;
                     private _lastBarProgress = (1 - (_reserveRatio / 0.20)) max 0;
                     _sprintPaceReserve = _reserveRatio + ((_perceivedReserve - _reserveRatio) * _lastBarProgress);
                     _sprintReserve = _sprintReserveMax * _reserveRatio;
                 } else {
-                    if (_isSprinting) then {
-                        private _mass = _gearLbs max 0;
-                        private _loadDrain = 1 + (0.35 * (_mass / (_mass + 75)));
-                        _sprintReserve = (_sprintReserve - (_dt * _loadDrain * _uphillFatigueDrainMultiplierNow)) max 0;
-                    } else {
-                        _sprintReserve = (_sprintReserve + ((_sprintReserveMax / _sprintRecoverTime) * _dt)) min _sprintReserveMax;
-                    };
+                    private _drainRate = [_gearLbs, _uphillFatigueDrainMultiplierNow] call GAIT_fnc_sprintReserveDrainRate;
+                    _sprintReserve = [_sprintReserve, _reserveActivity, _dt max 0 min 0.25, _sprintReserveMax, _sprintRecoverTime, _drainRate]
+                        call GAIT_fnc_stepFallbackSprintReserve;
                     _reserveRatio = _sprintReserve / _sprintReserveMax;
                     _sprintPaceReserve = _reserveRatio;
                 };
@@ -1225,6 +1236,22 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
                 private _exhaustion = 1 - _reserveRatio;
                 _exhaustion = (_exhaustion max 0) min 1;
                 missionNamespace setVariable ["GAIT_exhaustionLevel", _exhaustion];
+
+                private _deadSprintIntent = _sprintIntent && {_gaitStanceOk} && {_isOnFoot} &&
+                    {!_isAceCarrying} && {!_isAceDragging} && {_horizontalSpeedMS > 0.15};
+                if (_renderReleasedSinceTick || {_forwardReleasedSinceTick}) then {_deadSprintElapsed = -1;};
+                if (_reserveActivity isEqualTo "rest" && {_reserveRatio >= 0.999}) then {_deadSprintReady = true;};
+                private _deadSprintStartReserve = [0, _reserveBeforeStep] select (_deadSprintReady || {_deadSprintIntentHeld});
+                _deadSprintElapsed = [_deadSprintElapsed, _deadSprintIntent, _deadSprintIntentHeld, _deadSprintStartReserve, _dt]
+                    call GAIT_fnc_stepDeadSprint;
+                if (_deadSprintElapsed isEqualTo 0) then {_deadSprintReady = false;};
+                _deadSprintIntentHeld = _deadSprintIntent;
+                private _flatBurstSetting = missionNamespace getVariable ["GAIT_ss_flatSprintPeak", 1.10];
+                private _flatBurstTerrain = 1 - linearConversion [0.20, 1.0, abs _slopeDegrees, 0, 1, true];
+                private _deadSprintStrength = 0;
+                if (_flatBurstSetting > 1 && {_onGroundNow} && {!_downhillTravel}) then {
+                    _deadSprintStrength = ([_deadSprintElapsed, _reserveRatio] call GAIT_fnc_deadSprintStrength) * _flatBurstTerrain;
+                };
 
                 // =====================================================
                 // SPEED CONTROL
@@ -1338,7 +1365,8 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
                     // set by load. The uphill minimum still protects gait order.
                     private _normalRun = _flatSprintPace * ([_slopeSpeedMultiplier, 1] select _downhillTravel);
                     _targetSpeed = [_freshSprintPace, _normalRun, _sprintPaceReserve, _gearLbs, _uphillMinimum,
-                        missionNamespace getVariable ["GAIT_ss_exhaustedRunPace", 0.70]]
+                        missionNamespace getVariable ["GAIT_ss_exhaustedRunPace", 0.70], _deadSprintStrength > 0,
+                        _flatBurstSetting, _deadSprintStrength]
                         call GAIT_fnc_sprintReservePace;
                     if (_downhillMovementContext && {_downhillTravel}) then {
                         _targetSpeed = [_targetSpeed, _sprintReference,
@@ -1401,6 +1429,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
                         private _speedIncreasing = _rampTarget > _currentSpeed;
                         if (_speedIncreasing) then {
                             _ramp = [_ramp, _accelerationScale] call GAIT_fnc_sprintAccelerationRamp;
+                            _ramp = [_ramp, 1 + (2 * _deadSprintStrength)] call GAIT_fnc_scaleInertiaRamp;
                         };
                         if (_slopeHandlingEnabled && {_onGroundNow}) then {
                             _ramp = [_ramp, _slopeDegrees, _speedIncreasing, _uphillStartDegrees, _uphillSlowdownEnabled]
@@ -1481,7 +1510,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
                     _lastDebugHudTime = time;
                     private _debugFamily = [player] call GAIT_fnc_slopeWeaponFamily;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha22<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Family: %11 | Active: %12 | Walk / sprint target: %13 / %14<br/>Foundation: %15 | Sprint ref: %16 | Full profile: %17<br/>Carried load: %18 lb</t>",
+                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha23<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Family: %11 | Active: %12 | Walk / sprint target: %13 / %14<br/>Foundation: %15 | Sprint ref: %16 | Full profile: %17<br/>Carried load: %18 lb</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,
@@ -1500,6 +1529,8 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
                 };
             } else {
                 // Fast Carry pickup/lift owns its animation.
+                _deadSprintElapsed = -1;
+                _deadSprintIntentHeld = false;
                 _uphillPaceExposure = 0;
                 missionNamespace setVariable ["GAIT_uphillPaceExposure", 0];
                 missionNamespace setVariable ["GAIT_uphillPaceMultiplier", 1];
@@ -1538,7 +1569,8 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha22"];
             _slopeSmoothInitialized = false;
             _smoothedSlopeDegrees = 0;
             [] call GAIT_fnc_releaseNativeMovement;
-            _sprintReserve = _sprintReserveMax;
+            _deadSprintElapsed = -1;
+            _deadSprintIntentHeld = false;
             _currentSpeed = _normalSpeed;
             if (alive player && {!(call GAIT_fnc_modeAllowsMovement)}) then {
                 [] call GAIT_fnc_releaseNativeMovement;

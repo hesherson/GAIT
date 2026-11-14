@@ -25,7 +25,7 @@ def read_settings():
     return rows
 class SettingsAudit(unittest.TestCase):
     def test_registry_unique_and_valid(self):
-        rows=read_settings();self.assertEqual(len(rows),108);self.assertEqual(len({r['name'] for r in rows}),len(rows))
+        rows=read_settings();self.assertEqual(len(rows),109);self.assertEqual(len({r['name'] for r in rows}),len(rows))
         for r in rows:
             if r['kind']=='Slider':self.assertTrue(r['min']<=r['default']<=r['max'],r['name'])
             if r['kind']=='List':self.assertEqual(len(r['values']),len(r['labels']))
@@ -49,6 +49,9 @@ class SettingsAudit(unittest.TestCase):
         self.assertEqual((rows['GAIT_ss_shiftReleaseRunTaperCurve']['min'],rows['GAIT_ss_shiftReleaseRunTaperCurve']['max']),(1,3))
         self.assertEqual(rows['GAIT_ss_debugHudInterval']['min'],0.05)
         self.assertEqual(rows['GAIT_ss_exhaustedRunPace']['default'],0.70)
+        self.assertEqual(rows['GAIT_ss_sprintFullSpeed']['default'],1.00)
+        self.assertEqual(rows['GAIT_ss_flatSprintPeak']['default'],1.10)
+        self.assertEqual(rows['GAIT_ss_sprintReserveMax']['default'],40)
         self.assertEqual(rows['GAIT_ss_aceHeartbeatVolume']['default'],10)
         self.assertFalse(rows['GAIT_ss_uphillReleaseBraceEnabled']['default'])
         self.assertEqual(rows['GAIT_ss_downhillSprintCapKmh']['default'],30)

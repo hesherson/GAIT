@@ -1,6 +1,6 @@
-# GAIT 1.8.0-alpha22 settings reference
+# GAIT 1.8.0-alpha23 settings reference
 
-This reference covers the 108 current CBA registrations. The table shows registration defaults. Presets and mission or server overrides can change effective values. Select Custom to keep individual tuning.
+This reference covers the 109 current CBA registrations. The table shows registration defaults. Presets and mission or server overrides can change effective values. Select Custom to keep individual tuning.
 
 ## Current cleanup and compatibility behavior
 
@@ -23,9 +23,9 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Read ACE Advanced Fatigue (`GAIT_ss_aceBridgeEnabled`) | true | on / off | Allows GAIT to read active ACE Advanced Fatigue reserves and physiological penalties. This does not enable, disable or write ACE physiology. Default: enabled. |
+| Integrate ACE Advanced Fatigue (`GAIT_ss_aceBridgeEnabled`) | true | on / off | Allows GAIT to integrate with the active ACE fatigue model. ACE owns fatigue effects, aerobic fatigue and medical feedback. |
 | ACE heartbeat volume (`GAIT_ss_aceHeartbeatVolume`) | 10 | 0–100% | Local volume for ACE’s heartbeat. 0 mutes it, and 100 restores ACE’s usual playback. |
-| Use ACE reserve for sprint strength (`GAIT_ss_useAceReserveModel`) | true | on / off | Uses the anaerobic reserve shown in the ACE bar. Other reserve and fatigue factors shape the final 20% taper. |
+| Use ACE sprint reserve (`GAIT_ss_useAceReserveModel`) | true | on / off | Uses the anaerobic reserve shown in the ACE bar. Sprint spends reserve, rest recovers it, and jogging or walking holds it. GAIT falls back to its own reserve if the installed ACE loop is unsupported. |
 | Prevent ACE walk-lock override (`GAIT_ss_clearAceMovementLocks`) | true | on / off | Clears only ACE Advanced Fatigue's forced-walk and block-sprint locks so GAIT movement is not overwritten. |
 | Protect GAIT animation speed (`GAIT_ss_registerAceAnimExclusion`) | true | on / off | Adds GAIT to ACE Advanced Fatigue's animation-speed exclusion list so ACE does not reset GAIT speed every fatigue tick. |
 | Acidosis sprint penalty (`GAIT_ss_aceAcidosisPenaltyFactor`) | 0.45 | 0–1 | How strongly ACE acidosis shapes the sprint taper during the last 20% of stamina. |
@@ -35,10 +35,11 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
 | Ordinary movement coefficient (`GAIT_ss_normalSpeed`) | 0.86 | 0.5–1.5 | Base animation coefficient for non-sprint movement before gear and slope modifiers. 1.00 is the active clip at its native playback rate, not a fixed speed in km/h. Default: 0.86. |
-| Fresh sprint coefficient (`GAIT_ss_sprintFullSpeed`) | 1.28 | 0.70–2 | Base sprint animation coefficient shared by all loadouts before slope and animation adjustments. |
+| Sustained sprint coefficient (`GAIT_ss_sprintFullSpeed`) | 1.00 | 0.70–2 | Base sprint animation rate after the rested burst. 1.00 is the normal sprint clip speed before slope and animation adjustments. |
+| Flat dead sprint peak (`GAIT_ss_flatSprintPeak`) | 1.10 | 1–1.30 | Maximum multiplier over sustained sprint pace at a fully rested start on level ground. Carried mass reduces the bonus. |
 | Exhausted run pace midpoint (`GAIT_ss_exhaustedRunPace`) | 0.70 | 0.50–0.95 | Target fraction at empty reserve with a 50 lb kit. Defaults range from 0.75 unloaded to 0.65 at 100 lb or more. Uphill sprint keeps its jog-relative floor. |
-| Fallback sprint reserve (`GAIT_ss_sprintReserveMax`) | 25 | 1–120 | Seconds of full sprint in the GAIT reserve model when ACE reserve reading is disabled, unavailable or not initialized. Default: 25 seconds. |
-| Fallback reserve recovery (`GAIT_ss_sprintRecoverTime`) | 10 | 1–60 | Seconds to recover the GAIT fallback reserve. Does not change ACE recovery. Default: 10 seconds. |
+| Fallback sprint reserve (`GAIT_ss_sprintReserveMax`) | 40 | 1–120 | Seconds of sprinting on flat ground without a load when using GAIT's fallback reserve. |
+| Fallback reserve recovery (`GAIT_ss_sprintRecoverTime`) | 10 | 1–60 | Seconds at rest to recover the GAIT fallback reserve. |
 | Speed ramp smoothness (`GAIT_ss_speedLerp`) | 0.05 | 0.01–1 | Base smoothing rate for movement speed changes. Flat sprint acceleration uses 70% of this rate and reaches about 95% of target in 4.1 seconds before the carried-load adjustment. Hills have their own entry response. |
 | W-release zero-momentum delay (`GAIT_ss_wReleaseZeroMomentumDelay`) | 0.5 | 0–20 | Seconds after releasing forward movement before the next sprint start is treated as zero momentum. Lower values make brace return sooner. Default: 0.50. |
 | Smooth sprint release (`GAIT_ss_shiftReleaseRunTaperEnabled`) | true | on / off | Release sprint while keeping forward movement held to decelerate from current motion. Uses measured walk or jog pace when a valid reference exists. Stop, direction changes and medical restrictions cancel promptly. Default: enabled. |
@@ -109,7 +110,7 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Hill walk reference angle (`GAIT_ss_hillWalkSlowdownMaxDegrees`) | 40 | 5–80 | Slope angle where walking reaches the reference penalty. Pace continues decreasing on steeper terrain. Default: 40 degrees. |
 | Uphill walk reference penalty (`GAIT_ss_hillWalkUphillMaxPenalty`) | 0.32 | 0–0.75 | Normal movement loss at the walk reference angle, adjusted for kit weight. Default: 0.32. |
 | Downhill walk max penalty (`GAIT_ss_hillWalkDownhillMaxPenalty`) | 0.08 | 0–0.35 | Small normal movement speed loss while walking downhill before momentum builds. Default: 0.08. |
-| Increase uphill stamina drain (`GAIT_ss_uphillFatigueDrainEnabled`) | true | on / off | Increases GAIT fallback reserve drain uphill when ACE reserves are unavailable. ACE calculates its own terrain exertion; its reserves and acidosis are read-only. Default: enabled. |
+| Increase uphill stamina drain (`GAIT_ss_uphillFatigueDrainEnabled`) | true | on / off | Increases fallback reserve drain and raises the ACE sprint drain ceiling on steeper climbs. |
 | Uphill drain starts (`GAIT_ss_uphillFatigueDrainStartDegrees`) | 10 | 0–45 | Incline angle where additional uphill fatigue drain begins. Default: 10 degrees. |
 | Uphill drain max angle (`GAIT_ss_uphillFatigueDrainMaxDegrees`) | 35 | 5–80 | Incline angle where additional uphill fatigue drain reaches full strength. Default: 35 degrees. |
 | Uphill max drain multiplier (`GAIT_ss_uphillFatigueDrainMaxMultiplier`) | 1.75 | 1–4 | Maximum multiplier applied to sprint stamina drain on steep uphill terrain. 1.75 means 75% faster drain. Default: 1.75. |

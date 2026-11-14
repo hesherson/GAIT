@@ -38,6 +38,7 @@ SUITES = {
     "slope_direction": ("slopeLocomotion",),
     "slope_state_selection": ("slopeLocomotion",),
     "locomotion_pace": ("slopePaceModel", "locomotionPace"),
+    "sprint_reserve": ("sprintReserve",),
     "release_momentum": ("releaseMomentum",),
     "pace_calibration": ("paceCalibration",),
     "pace_handoff": ("paceCalibration",),

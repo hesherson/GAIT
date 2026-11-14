@@ -1,10 +1,10 @@
-# GAIT 1.8.0-alpha22 terrain, load, and stamina
+# GAIT 1.8.0-alpha23 terrain, load, and stamina
 
-Requires Arma 3 2.18+, CBA_A3 and ACE3. Load only the new GAIT copy and start a fresh mission. Current build/deploy instructions are in README_HEMTT.md; local build output is `.hemttout\\build`.
+Requires Arma 3 2.18+, CBA_A3 and ACE3. Restart Arma with the new GAIT copy and start a fresh mission. Current build/deploy instructions are in README_HEMTT.md; local build output is `.hemttout\\build`.
 
 ## What changed
 
-Every loadout can reach the normal sprint target. The last 20% of the stamina bar tapers toward 65–75% of normal sprint pace. Sprint release eases into the selected walk or jog. On hills, GAIT leaves a working native jog alone and avoids restarting compatible moving animation blends.
+A fully rested sprint starts with a brief flat-ground burst. Its target peaks at 1.10× normal sprint pace unloaded and 1.06× with 110 lb. Ordinary jogging and walking hold stamina, and resting restores it. The last 20% still tapers toward 65–75% of normal sprint pace. Sprint release eases into the selected walk or jog.
 
 The final sprint-to-jog handoff now has a measured destination pace when a matching reference is available. Normal steady jogging supplies a session-local reference using horizontal velocity divided by the applied animation coefficient. Measurements require settled motion, ground contact, an eligible healthy character, a clear path and no active brace/release/vegetation penalty. References match the clip/config, character, weapon, surface and a narrow grade band and expire after ten minutes. No guessed km/h values are bundled.
 
@@ -16,7 +16,7 @@ Alpha19 audit hardening closes non-animation gaps found in the full foundation r
 
 ## Settings pass
 
-The menu has 108 controls. Presets use the active controls.
+The menu has 109 controls. Presets use the active controls.
 
 | Removed control | Reason / current behavior |
 | --- | --- |
@@ -38,26 +38,27 @@ The foundation retains the shared brief brace, lowered-pistol sprint family, sho
 ## In-game acceptance
 
 1. Test the secondary weapon separately. Begin from both a naturally lowered handgun state (`SlowWpst`) and a raised handgun state (`SrasWpst`), then sprint from rest through full speed. A lowered pistol must remain in the `SlowWpst` GAIT family for the entire acceleration instead of briefly converting to raised pistol; there must be no pause before full speed. Repeat with A/D throughout the ramp. Then compare rifle and unarmed starts to confirm their behavior is unchanged.
-2. On flat ground with default speed-ramp settings, sprint acceleration should build continuously toward maximum speed, reaching roughly 95% of the target in about 4.1 seconds before the carried-load adjustment. Add or remove individual items around 35, 55, and 75 lb and confirm that acceleration and ordinary movement respond gradually while fresh top sprint speed stays the same. Then release Shift during partial acceleration and at full sprint to check the handoff.
+2. On flat ground, start a sprint at 100% reserve with a light and a 110 lb kit. Check that the initial burst ramps in briefly, feels stronger with the light kit, and settles to normal pace. Release and re-press Shift before stamina refills. The second sprint should use normal pace.
 3. Tap Shift again during both the release and the animation blend. Repeat release/retap sequences; check for no restart, rebrace or stale top-speed value.
 4. While running and sprinting at low, mid and near-full speed, press Crouch/MoveUp with W still held. The character should bend into crouched running the same way vanilla Arma does: no abrupt stop, no standstill detour and no visible coefficient snap during the bend. Repeat during W+A/W+D, during the acceleration ramp, during sprint release, and with Prone. After the low-stance state has settled, GAIT may relinquish the carried coefficient normally.
 5. Hold W on an uphill slope, then press Shift without releasing W. Verify that the jog clip changes to the sprint clip and that sprint moves faster than both jog and deliberate walk, including on steep grades with heavy gear and low reserve. Release Shift and confirm that jog returns after the release taper. Repeat with the walk toggle enabled and with an explicit movement lock.
 6. Repeat immediately after mission start, before calibration, and after changing surface/weapon. The existing release must remain available when no valid reference exists.
 7. Compare flat and downhill movement on gentle and steep grades, both jogging and sprinting. Check that speed builds gradually over several seconds and settles. With matching pace references, check the default targets of 18 km/h for jog and 30 km/h for sprint. Repeat with a heavy ruck and verify that the capped boost fades on leaving the slope.
-8. Hold sprint to empty reserve with light and heavy kits on flat ground. Both should reach normal sprint pace and begin tapering only in the last 20% of the bar. The light kit should settle near 75% and the heavy kit near 65%. Repeat uphill and downhill to check the uphill minimum and the removal of downhill momentum from the exhausted target.
+8. Hold sprint to empty reserve with light and heavy kits on flat ground. After the initial burst, both should sustain normal sprint pace until the final 20% of the bar. The light kit should settle near 75% and the heavy kit near 65%. Repeat uphill and downhill to check the uphill minimum and the removal of downhill momentum from the exhausted target.
 9. Hold W on hills for at least 15 seconds with a raised and a lowered rifle, then repeat with a pistol. Look for periodic speed dips or unwanted weapon lowering. Release Shift while holding W both with and without the walk toggle. Compare speed through the taper and the final gait change.
-10. In ACE heartbeat conditions, compare slider values of 0%, 10%, and 100%. Check that breathing and other ACE feedback still play at their usual volumes.
+10. In ACE heartbeat conditions, compare slider values of 0%, 10%, and 100% with stock ACE and with ACM Extended. The next beat should use the new setting, and breathing should still play at its usual volume.
+11. Spend some stamina, jog for 30 seconds, walk for 30 seconds, then stop. The bar should hold during the jog and walk and refill once stationary.
 
 For a read-only capture, copy tests/foundation_capture.sqf into a saved Eden mission and run locally:
 
 ```sqf
-[90, "alpha22 last-bar pace and slope continuity"] execVM "foundation_capture.sqf";
+[90, "alpha23 rested sprint and stamina"] execVM "foundation_capture.sqf";
 ```
 
 Send the RPT after STOP with approximate issue times. Its releaseMotion fields include whether a measured release was selected, reference count and the current handoff state.
 
 ## Verification
 
-Run `tools\verify_build.ps1 -BuildPath .\.hemttout\build -SourceRoot .` after `hemtt build`. It validates the `gait_gait.pbo` checksum, its `gait` prefix, and all 17 embedded runtime scripts against source.
+Run `tools\verify_build.ps1 -BuildPath .\.hemttout\build -SourceRoot .` after `hemtt build`. It validates the `gait_gait.pbo` checksum, its `gait` prefix, and all 20 embedded runtime scripts against source.
 
 `tests/VALIDATION_FOUNDATION.txt` and `tests/VALIDATION_RESULTS.json` record alpha11 results. `tests/AUDIT_ALPHA19.md` records the alpha19 source audit and reproduction commands. Use the in-game cases above to verify physical pace and animation feel.

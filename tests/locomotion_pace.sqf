@@ -95,7 +95,7 @@ private _lowPistolProfile = [["SlowWpst", "Df", 1.4, 2.8, 5.6]];
 [[0, 6] call GAIT_fnc_paceCoefficientToMS isEqualTo 0, "zero coefficient remains zero; no launch floor"] call _assert;
 [[-0.1, 6] call GAIT_fnc_paceCoefficientToMS isEqualTo -1, "negative coefficient is unknown"] call _assert;
 [["1", 6] call GAIT_fnc_paceMSToCoefficient isEqualTo -1, "nonnumeric speed is unknown"] call _assert;
-// The last fifth of reserve tapers toward 65–75% of the kit's unboosted run.
+// The second half of reserve tapers toward 65–75% of the kit's unboosted run.
 private _fullSprint = 1.28;
 private _lightFloor = [_fullSprint, _fullSprint, 0, 0, 0, 0.70, true] call GAIT_fnc_sprintReservePace;
 private _heavyFloor = [_fullSprint, _fullSprint, 0, 100, 0, 0.70, true] call GAIT_fnc_sprintReservePace;
@@ -111,10 +111,10 @@ private _mediumFloor = [_fullSprint, _fullSprint, 0, 50] call GAIT_fnc_sprintRes
 {
     private _reserve = _x;
     [[_fullSprint, _fullSprint, _reserve, 0, 0, 0.70, true] call GAIT_fnc_sprintReservePace, _fullSprint,
-        "light kit holds normal pace from half reserve through the start of exhaustion"] call _near;
+        "light kit holds normal pace above half reserve"] call _near;
     [[_fullSprint, _fullSprint, _reserve, 100, 0, 0.70, true] call GAIT_fnc_sprintReservePace, _fullSprint,
-        "heavy kit holds the same normal pace until the final fifth"] call _near;
-} forEach [0.20, 0.25, 0.45, 0.50, 0.75, 1];
+        "heavy kit holds the same normal pace above half reserve"] call _near;
+} forEach [0.50, 0.51, 0.75, 1];
 
 private _burstStart = [-1, true, false, 1, 0.05] call GAIT_fnc_stepDeadSprint;
 [_burstStart, 0, "starting fully rested arms the dead sprint"] call _near;
@@ -126,65 +126,67 @@ private _burstStart = [-1, true, false, 1, 0.05] call GAIT_fnc_stepDeadSprint;
     "a partially recovered re-press cannot replay the burst"] call _near;
 [[2, true, true, 0.50, 0.05] call GAIT_fnc_stepDeadSprint, -1,
     "the burst is spent by half reserve even if its timer has time left"] call _near;
-[[5.69, true, true, 0.90, 0.05] call GAIT_fnc_stepDeadSprint, -1,
+[[4.09, true, true, 0.90, 0.05] call GAIT_fnc_stepDeadSprint, -1,
     "held burst expires after its limited window"] call _near;
 [[-1, true, true, 1, 0.05] call GAIT_fnc_stepDeadSprint, -1,
     "reaching full reserve while still held does not arm a burst"] call _near;
 {
     private _elapsed = _burstStart;
     private _dt = _x;
-    for "_step" from 1 to round (4.2 / _dt) do {
+    for "_step" from 1 to round (3.0 / _dt) do {
         _elapsed = [_elapsed, true, true, 0.80, _dt] call GAIT_fnc_stepDeadSprint;
     };
     [[_elapsed, 0.80] call GAIT_fnc_deadSprintStrength, 0.50, "burst time response is independent of the feature interval"] call _near;
 } forEach [0.02, 0.05, 0.10, 0.20];
 {
     [[_x, 0.80] call GAIT_fnc_deadSprintStrength, 1, "peak allowance remains available while building initial acceleration"] call _near;
-} forEach [0, 1, 2, 2.7];
+} forEach [0, 1, 1.5, 1.9];
 [[2, 0.625] call GAIT_fnc_deadSprintStrength, 0.50, "rapid reserve use can taper the dead sprint before the timer"] call _near;
 [[2, 0.50] call GAIT_fnc_deadSprintStrength, 0, "dead-sprint strength is zero at half reserve"] call _near;
-[[5.70, 1] call GAIT_fnc_deadSprintStrength, 0, "the full-reserve burst still ends on time"] call _near;
+[[4.10, 1] call GAIT_fnc_deadSprintStrength, 0, "the full-reserve burst still ends on time"] call _near;
 
 private _lastPeak = 2;
 {
     private _mass = _x;
-    private _peak = [_fullSprint, _fullSprint, 1, _mass, 0, 0.70, true, 1.10, 1] call GAIT_fnc_sprintReservePace;
+    private _peak = [_fullSprint, _fullSprint, 1, _mass, 0, 0.70, true, 1.14, 1] call GAIT_fnc_sprintReservePace;
     [_peak > _fullSprint && {_peak < _lastPeak}, "additional carried mass continuously reduces the dead-sprint peak"] call _assert;
     _lastPeak = _peak;
     private _previous = _peak;
-    for "_step" from 28 to 57 do {
+    for "_step" from 20 to 41 do {
         private _strength = [_step / 10, 0.80] call GAIT_fnc_deadSprintStrength;
-        private _target = [_fullSprint, _fullSprint, 0.80, _mass, 0, 0.70, true, 1.10, _strength]
+        private _target = [_fullSprint, _fullSprint, 0.80, _mass, 0, 0.70, true, 1.14, _strength]
             call GAIT_fnc_sprintReservePace;
         [_target < _previous, "dead sprint tapers continuously to normal pace as time runs out"] call _assert;
         _previous = _target;
     };
     [_previous, _fullSprint, "ending a dead sprint returns every load to normal pace"] call _near;
 } forEach [0, 50, 110, 150];
-[[_fullSprint, _fullSprint, 1, 0, 0, 0.70, true, 1.10, 1] call GAIT_fnc_sprintReservePace, _fullSprint * 1.10,
-    "an unloaded dead sprint tops out at the configured 110 percent"] call _near;
-[[_fullSprint, _fullSprint, 1, 110, 0, 0.70, true, 1.10, 1] call GAIT_fnc_sprintReservePace, _fullSprint * 1.06,
-    "110 lb of carried mass leaves a six percent peak bonus"] call _near;
-[[_fullSprint, _fullSprint, 0.50, 50, 0, 0.70, true, 1.10, 1] call GAIT_fnc_sprintReservePace, _fullSprint,
+[[_fullSprint, _fullSprint, 1, 0, 0, 0.70, true, 1.14, 1] call GAIT_fnc_sprintReservePace, _fullSprint * 1.14,
+    "an unloaded dead sprint tops out at the configured 114 percent"] call _near;
+[[_fullSprint, _fullSprint, 1, 110, 0, 0.70, true, 1.14, 1] call GAIT_fnc_sprintReservePace, _fullSprint * 1.084,
+    "110 lb of carried mass leaves an 8.4 percent peak bonus"] call _near;
+[[_fullSprint, _fullSprint, 0.50, 50, 0, 0.70, true, 1.14, 1] call GAIT_fnc_sprintReservePace, _fullSprint,
     "flat sprint never receives a burst bonus at half reserve"] call _near;
 [[_fullSprint, _fullSprint, 0.75, 0, 0, 0.70, true, 1.20, 0.50] call GAIT_fnc_sprintReservePace, _fullSprint * 1.10,
     "custom peak changes the active bonus without changing normal sprint pace"] call _near;
 [[_fullSprint, _fullSprint, 1, 50, 0, 0.70, true, 1, 1] call GAIT_fnc_sprintReservePace, _fullSprint,
     "a flat peak of one disables the bonus"] call _near;
 {
-    [[_x, _fullSprint, 1, 50, 0, 0.70, false, 1.10, 1] call GAIT_fnc_sprintReservePace, _x,
+    [[_x, _fullSprint, 1, 50, 0, 0.70, false, 1.14, 1] call GAIT_fnc_sprintReservePace, _x,
         "uphill and downhill pace do not receive a flat sprint bonus"] call _near;
 } forEach [0.9, 1.6];
+private _midTaperPace = [_fullSprint, _fullSprint, 0.25, 100] call GAIT_fnc_sprintReservePace;
+[_midTaperPace, (_fullSprint + _heavyFloor) / 2, "halfway through the exhaustion taper is halfway to the floor"] call _near;
+private _justUnderHalf = [_fullSprint, _fullSprint, 0.49, 100] call GAIT_fnc_sprintReservePace;
+[_justUnderHalf < _fullSprint && {_justUnderHalf > 0.999 * _fullSprint}, "taper begins just below half reserve without a step"] call _assert;
 private _previous = _heavyFloor;
-for "_percent" from 1 to 20 do {
+for "_percent" from 1 to 50 do {
     private _target = [_fullSprint, _fullSprint, _percent / 100, 100, 0, 0.70, true] call GAIT_fnc_sprintReservePace;
     [_target > _previous, "sprint target changes continuously through low reserve"] call _assert;
     _previous = _target;
 };
 private _nearEmpty = [_fullSprint, _fullSprint, 0.01, 100, 0, 0.70, true] call GAIT_fnc_sprintReservePace;
 [_nearEmpty < (_heavyFloor * 1.01), "last reserve ticks approach the run floor smoothly"] call _assert;
-private _justBelowTaper = [_fullSprint, _fullSprint, 0.19, 100, 0, 0.70, true] call GAIT_fnc_sprintReservePace;
-[_justBelowTaper > (_fullSprint * 0.99), "pace begins tapering gradually below one fifth reserve"] call _assert;
 [[ _fullSprint, _fullSprint, 0, 100, 0, 0.80] call GAIT_fnc_sprintReservePace, _fullSprint * 0.75,
     "custom exhaustion setting shifts the weight-scaled floor"] call _near;
 
@@ -205,4 +207,10 @@ private _fallbackFloor = [_uphillWalk, _uphillJog, -1, -1, -1] call GAIT_fnc_uph
 } forEach [0, 0.10, 0.20, 1];
 private _walkDominates = [0.9, 0.2, _walkRef, _jogRef, _sprintRef] call GAIT_fnc_uphillSprintFloor;
 [_walkDominates * _sprintRef, 0.9 * _walkRef * 1.06 * 1.08, "uphill sprint also exceeds a jog held at its walk-relative floor"] call _near;
+[[1, 1.5, 2.8, 4] call GAIT_fnc_ordinaryJogFloor, 2.8 * 1.04 / 4,
+    "ordinary jog floor is slightly faster than measured combat pace"] call _near;
+[[1.2, 2.5, 2.4, 4] call GAIT_fnc_ordinaryJogFloor, 3 * 1.04 / 4,
+    "ordinary jog floor also respects measured walk pace"] call _near;
+[[1, -1, -1, -1] call GAIT_fnc_ordinaryJogFloor, 0.78,
+    "uncalibrated jog uses an estimate without changing native walk"] call _near;
 diag_log format ["GAIT TEST PASS: physical pace adapter; %1 exact legacy fallback cases, %2 conversion roundtrips, physical floor, partial profiles and invalid calibration rejection", _fallbackChecks, _roundTrips];

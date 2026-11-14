@@ -138,6 +138,7 @@ class FoundationGraph(unittest.TestCase):
         self.assertEqual(len(self.releases), 40)
         for family, (_, _, _, native_actions) in FAMILIES.items():
             native_jogs = {f"AmovPercMrun{family}{direction}" for direction in DIRECTIONS}
+            bridges = {jog + "_GAITRelease" for jog in native_jogs}
             native_stop = f"AmovPercMstp{family}Dnon_GAITStop"
             sprint_entries = {f"AmovPercMeva{family}{direction}_GAIT" for direction in FORWARD}
             for native_jog in native_jogs:
@@ -151,7 +152,7 @@ class FoundationGraph(unittest.TestCase):
                 incoming = dict(edges(body, "InterpolateFrom"))
                 outgoing = dict(edges(body, "InterpolateTo"))
                 self.assertTrue(sprint_entries <= incoming.keys())
-                self.assertTrue(native_jogs | sprint_entries | {native_stop} <= outgoing.keys())
+                self.assertTrue(native_jogs | sprint_entries | {native_stop} | (bridges - {target}) <= outgoing.keys())
                 for source in sprint_entries:
                     self.assertIn(target, dict(edges(self.states[source][1], "InterpolateTo")))
 

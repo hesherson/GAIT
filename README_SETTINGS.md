@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha25 settings reference
+# GAIT 1.8.0-alpha26 settings reference
 
 This reference covers the 107 current CBA registrations. The table shows registration defaults. Presets and mission or server overrides can change effective values. Select Custom to keep individual tuning.
 
@@ -6,7 +6,7 @@ This reference covers the 107 current CBA registrations. The table shows registr
 
 Removed the inactive release sustain timer, redundant downhill onset cap, and three switches that allowed lifecycle cleanup to be disabled. Cleanup on player replacement, spectator/control changes and unconsciousness is now unconditional. Movement only is the default. Saved numeric values 0 and 1 enable movement, and the old effects-only modes resolve to Disabled.
 
-The Downhill boost starts control now defaults to 0.5°. Exhausted sprint tapers in the last 20% of the stamina bar, and uphill sprint has a jog-relative floor. Jog deceleration uses the common speed ramp in every direction.
+The Downhill boost starts control now defaults to 0.5°. Exhausted sprint tapers in the last 50% of the stamina bar, and uphill sprint has a jog-relative floor. Jog deceleration uses the common speed ramp in every direction.
 
 ACE supplies fatigue feedback. Stable same-clip measurements may automatically calibrate sprint pace, and complete manual pace profiles are optional.
 
@@ -17,7 +17,7 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
 | Enable GAIT (`GAIT_ss_enabled`) | true | on / off | Enables GAIT movement and bracing. ACE supplies fatigue feedback. |
-| Feature update interval (`GAIT_ss_tickRate`) | 0.05 | 0.01–0.2 | Seconds between terrain, reserve and ordinary acceleration updates. Release interpolation is sampled each rendered frame. Default: 0.05 seconds. |
+| Feature update interval (`GAIT_ss_tickRate`) | 0.05 | 0.01–0.2 | Seconds between terrain, reserve and pace smoothing updates. |
 | Master: trip frequency (`GAIT_ss_masterTripFrequency`) | 1 | 0–3 | Meta-knob that scales downhill trip chance without changing thresholds. 1.00 is baseline. |
 ### ACE
 
@@ -28,15 +28,15 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Use ACE sprint reserve (`GAIT_ss_useAceReserveModel`) | true | on / off | Uses the anaerobic reserve shown in the ACE bar. Sprint spends reserve, rest recovers it, and jogging or walking holds it. GAIT falls back to its own reserve if the installed ACE loop is unsupported. |
 | Prevent ACE walk-lock override (`GAIT_ss_clearAceMovementLocks`) | true | on / off | Clears only ACE Advanced Fatigue's forced-walk and block-sprint locks so GAIT movement is not overwritten. |
 | Protect GAIT animation speed (`GAIT_ss_registerAceAnimExclusion`) | true | on / off | Adds GAIT to ACE Advanced Fatigue's animation-speed exclusion list so ACE does not reset GAIT speed every fatigue tick. |
-| Acidosis sprint penalty (`GAIT_ss_aceAcidosisPenaltyFactor`) | 0.45 | 0–1 | How strongly ACE acidosis shapes the sprint taper during the last 20% of stamina. |
-| Muscle-damage sprint penalty (`GAIT_ss_aceMuscleDamagePenaltyFactor`) | 0.25 | 0–1 | How strongly ACE muscle damage shapes the sprint taper during the last 20% of stamina. |
+| Acidosis sprint penalty (`GAIT_ss_aceAcidosisPenaltyFactor`) | 0.45 | 0–1 | How strongly ACE acidosis shapes the sprint taper during the last 50% of stamina. |
+| Muscle-damage sprint penalty (`GAIT_ss_aceMuscleDamagePenaltyFactor`) | 0.25 | 0–1 | How strongly ACE muscle damage shapes the sprint taper during the last 50% of stamina. |
 ### Move
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Jog movement coefficient (`GAIT_ss_normalSpeed`) | 0.86 | 0.5–1.5 | Base jog animation coefficient before gear and slope modifiers. Arma controls deliberate walk pace. |
+| Jog movement coefficient (`GAIT_ss_normalSpeed`) | 0.90 | 0.5–1.5 | Base jog coefficient before gear and slope modifiers. Forward jog targets a small margin over deliberate walk and combat jog. Arma controls deliberate walk. |
 | Sustained sprint coefficient (`GAIT_ss_sprintFullSpeed`) | 1.00 | 0.70–2 | Base sprint animation rate after the rested burst. 1.00 is the normal sprint clip speed before slope and animation adjustments. |
-| Flat dead sprint peak (`GAIT_ss_flatSprintPeak`) | 1.10 | 1–1.30 | Maximum multiplier over sustained sprint pace at a fully rested start on level ground. Carried mass reduces the bonus. |
+| Flat dead sprint peak (`GAIT_ss_flatSprintPeak`) | 1.14 | 1–1.30 | Maximum multiplier over sustained sprint pace at a fully rested start on level ground. Carried mass reduces the bonus. |
 | Exhausted run pace midpoint (`GAIT_ss_exhaustedRunPace`) | 0.70 | 0.50–0.95 | Target fraction at empty reserve with a 50 lb kit. Defaults range from 0.75 unloaded to 0.65 at 100 lb or more. Uphill sprint keeps its jog-relative floor. |
 | Fallback sprint reserve (`GAIT_ss_sprintReserveMax`) | 40 | 1–120 | Seconds of sprinting on flat ground without a load when using GAIT's fallback reserve. |
 | Fallback reserve recovery (`GAIT_ss_sprintRecoverTime`) | 10 | 1–60 | Seconds at rest to recover the GAIT fallback reserve. |
@@ -108,7 +108,7 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Hill jog reference angle (`GAIT_ss_hillWalkSlowdownMaxDegrees`) | 40 | 5–80 | Slope angle where jog reaches the reference penalty. Pace continues decreasing on steeper terrain. Default: 40 degrees. |
 | Uphill jog reference penalty (`GAIT_ss_hillWalkUphillMaxPenalty`) | 0.32 | 0–0.75 | Jog pace loss at the reference angle, adjusted for kit weight. Default: 0.32. |
 | Downhill jog max penalty (`GAIT_ss_hillWalkDownhillMaxPenalty`) | 0.08 | 0–0.35 | Small jog pace loss while descending before momentum builds. Default: 0.08. |
-| Increase uphill stamina drain (`GAIT_ss_uphillFatigueDrainEnabled`) | true | on / off | Increases fallback reserve drain and raises the ACE sprint drain ceiling on steeper climbs. |
+| Increase uphill stamina drain (`GAIT_ss_uphillFatigueDrainEnabled`) | true | on / off | Applies an additional sprint reserve cost on climbs in both the ACE and fallback reserve models. |
 | Uphill drain starts (`GAIT_ss_uphillFatigueDrainStartDegrees`) | 10 | 0–45 | Incline angle where additional uphill fatigue drain begins. Default: 10 degrees. |
 | Uphill drain max angle (`GAIT_ss_uphillFatigueDrainMaxDegrees`) | 35 | 5–80 | Incline angle where additional uphill fatigue drain reaches full strength. Default: 35 degrees. |
 | Uphill max drain multiplier (`GAIT_ss_uphillFatigueDrainMaxMultiplier`) | 1.75 | 1–4 | Maximum multiplier applied to sprint stamina drain on steep uphill terrain. 1.75 means 75% faster drain. Default: 1.75. |
@@ -116,8 +116,8 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Downhill bonus starts (`GAIT_ss_downhillBoostStartDegrees`) | 0.5 | 0–30 | Decline angle where the downhill speed bonus starts. |
 | Downhill base boost angle (`GAIT_ss_downhillBoostMaxDegrees`) | 18 | 5–60 | Decline angle where the configured base bonus reaches full strength. Steeper grades continue adding gravity amplification. Default: 18 degrees. |
 | Downhill entry speed boost (`GAIT_ss_downhillMaxBoost`) | 0.03 | 0–0.35 | Small pace gain on entering a descent before sustained momentum builds. |
-| Sustained downhill bonus (`GAIT_ss_downhillSustainedExtraBoost`) | 0.10 | 0–0.25 | Additional pace earned during grounded downhill travel. |
-| Downhill momentum build time (`GAIT_ss_downhillMomentumBuildSeconds`) | 4.5 | 0.5–8 | Time to earn 95% of the sprint momentum meter. Jog builds a smaller share at a slower rate. |
+| Sustained downhill bonus (`GAIT_ss_downhillSustainedExtraBoost`) | 0.14 | 0–0.25 | Additional pace earned gradually during grounded downhill travel and scaled by grade and load. |
+| Downhill momentum build time (`GAIT_ss_downhillMomentumBuildSeconds`) | 6.5 | 0.5–8 | Seconds of sustained downhill sprinting to reach 95% of the current grade target. Jog earns a smaller share more slowly. |
 | Downhill sprint speed cap (`GAIT_ss_downhillSprintCapKmh`) | 30 | 20–45 km/h | Maximum downhill sprint target with a matching animation pace reference. |
 | Downhill jog speed cap (`GAIT_ss_downhillJogCapKmh`) | 18 | 8–30 km/h | Maximum downhill jog target with a matching animation pace reference. |
 | Enable steep downhill trips (`GAIT_ss_downhillTripEnabled`) | true | on / off | Allows a chance to stumble/ragdoll during fast grounded travel down a steep hill, including sprint deceleration. This does not apply damage by itself. Default: enabled. |
@@ -153,7 +153,7 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
-| Additional heavy-kit penalty (`GAIT_ss_extraHeavyPenaltyPer50Lb`) | 0.18 | 0.01–1 | Continuous load penalty beyond the heavy threshold: multiplier divided by 1 + value times extra pounds / 50. Default 0.18. Every additional pound continues to reduce walking and sprint pace. |
+| Additional heavy-kit penalty (`GAIT_ss_extraHeavyPenaltyPer50Lb`) | 0.18 | 0.01–1 | Continuous load penalty beyond the heavy threshold: multiplier divided by 1 + value times extra pounds / 50. Default 0.18. Every additional pound continues to affect the jog and brace load curves. |
 ### Slope
 
 | Control / variable | Default | Allowed values | Implemented behavior |

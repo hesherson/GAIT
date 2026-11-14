@@ -127,8 +127,9 @@ def render():
  * scaling its clip playback or adding forward movement. They do not belong
  * to the sprint family and accept new movement immediately through native
  * actions. Moving release targets use the native jog clips and native action
- * maps, with the same faster blend. Their selectors accept direction changes
- * directly without restarting the queued release on every A/D input.
+ * maps, with the same faster blend. Once reached, their selectors accept
+ * direction changes directly. The controller may redirect a pending bridge
+ * once if a new direction arrives while sprint is still observed.
  * Transition weights are graph costs, not fixed blend durations in seconds.
  *
  * Sources for native names/selectors and preserving explicit action exits:
@@ -239,7 +240,8 @@ class CfgMovesBasic
                 "            variantsAI[] = {};",
             ]
             append_edges(lines, "InterpolateFrom", sprint_members)
-            append_edges(lines, "InterpolateTo", sprint_members + native_states + [stop_target(family)])
+            append_edges(lines, "InterpolateTo", sprint_members + native_states + [stop_target(family)] +
+                         [other for other in release_targets if other != target])
             lines += ["        };", ""]
     lines += ["    };", "};", ""]
     return "\n".join(lines)

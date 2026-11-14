@@ -60,7 +60,7 @@ private _addList = {
 // 01 General
 // -----------------------------------------------------
 ["GAIT_ss_enabled", "Enable GAIT", "Enables GAIT movement and bracing. ACE supplies fatigue feedback.", _categoryGeneral, true] call _addCheckbox;
-["GAIT_ss_tickRate", "Feature update interval", "Seconds between terrain, reserve and ordinary acceleration updates. Release interpolation is sampled each rendered frame. Default: 0.05 seconds.", _categoryGeneral, 0.01, 0.20, 0.05, 2] call _addSlider;
+["GAIT_ss_tickRate", "Feature update interval", "Seconds between terrain, reserve and pace smoothing updates. Default: 0.05 seconds.", _categoryGeneral, 0.01, 0.20, 0.05, 2] call _addSlider;
 
 ["GAIT_ss_masterTripFrequency", "Master: trip frequency", "Meta-knob that scales downhill trip chance without changing thresholds. 1.00 is baseline.", _categoryGeneral, 0.00, 3.00, 1.00, 2] call _addSlider;
 
@@ -72,15 +72,15 @@ private _addList = {
 ["GAIT_ss_useAceReserveModel", "Use ACE sprint reserve", "Uses the ACE stamina bar for sprint pace. Sprinting spends the bar, standing still restores it, and other movement holds it. GAIT uses its fallback reserve when the installed ACE loop is unsupported.", _categoryACE, true] call _addCheckbox;
 ["GAIT_ss_clearAceMovementLocks", "Prevent ACE walk-lock override", "Clears only ACE Advanced Fatigue's forced-walk and block-sprint locks so GAIT movement is not overwritten.", _categoryACE, true] call _addCheckbox;
 ["GAIT_ss_registerAceAnimExclusion", "Protect GAIT animation speed", "Adds GAIT to ACE Advanced Fatigue's animation-speed exclusion list so ACE does not reset GAIT speed every fatigue tick.", _categoryACE, true] call _addCheckbox;
-["GAIT_ss_aceAcidosisPenaltyFactor", "Acidosis sprint penalty", "How strongly acidosis reduces sprint pace during the last 20% of the ACE stamina bar. Default: 0.45.", _categoryACE, 0.00, 1.00, 0.45, 2] call _addSlider;
-["GAIT_ss_aceMuscleDamagePenaltyFactor", "Muscle-damage sprint penalty", "How strongly ACE muscle damage reduces sprint pace during the last 20% of the ACE stamina bar. Higher means long-duration overwork hurts speed more. Default: 0.25.", _categoryACE, 0.00, 1.00, 0.25, 2] call _addSlider;
+["GAIT_ss_aceAcidosisPenaltyFactor", "Acidosis sprint penalty", "How strongly acidosis reduces sprint pace during the last 50% of the ACE stamina bar. Default: 0.45.", _categoryACE, 0.00, 1.00, 0.45, 2] call _addSlider;
+["GAIT_ss_aceMuscleDamagePenaltyFactor", "Muscle-damage sprint penalty", "How strongly ACE muscle damage reduces sprint pace during the last 50% of the ACE stamina bar. Higher means long-duration overwork hurts speed more. Default: 0.25.", _categoryACE, 0.00, 1.00, 0.25, 2] call _addSlider;
 
 // -----------------------------------------------------
 // 03 Movement and Sprint
 // -----------------------------------------------------
-["GAIT_ss_normalSpeed", "Jog movement coefficient", "Base jog animation coefficient before gear and slope modifiers. Arma controls deliberate walk pace. Default: 0.86.", _categoryMove, 0.50, 1.50, 0.86, 2] call _addSlider;
+["GAIT_ss_normalSpeed", "Jog movement coefficient", "Base jog animation coefficient before gear and slope modifiers. Ordinary forward jog targets a pace slightly above native walking and combat jog. Arma controls deliberate walk pace. Default: 0.90.", _categoryMove, 0.50, 1.50, 0.90, 2] call _addSlider;
 ["GAIT_ss_sprintFullSpeed", "Sustained sprint coefficient", "Base sprint animation rate after the rested burst. 1.00 is the normal sprint clip speed before slope and animation adjustments. Default: 1.00.", _categoryMove, 0.70, 2.00, 1.00, 2] call _addSlider;
-["GAIT_ss_flatSprintPeak", "Flat dead sprint peak", "Peak speed as a multiple of sustained sprint pace when starting fully rested on level ground. Carried mass reduces the bonus. 1.00 disables it. Default: 1.10.", _categoryMove, 1.00, 1.30, 1.10, 2] call _addSlider;
+["GAIT_ss_flatSprintPeak", "Flat dead sprint peak", "Peak speed as a multiple of sustained sprint pace when starting fully rested on level ground. Carried mass reduces the bonus. 1.00 disables it. Default: 1.14.", _categoryMove, 1.00, 1.30, 1.14, 2] call _addSlider;
 ["GAIT_ss_exhaustedRunPace", "Exhausted run pace midpoint", "Fraction of normal run pace at empty reserve with a 50 lb load. The default 0.70 ranges from 0.75 unloaded to 0.65 at 100 lb or more. Uphill sprint still targets a pace above walking and jogging.", _categoryMove, 0.50, 0.95, 0.70, 2] call _addSlider;
 ["GAIT_ss_sprintReserveMax", "Fallback sprint reserve", "Seconds of sprinting on flat terrain without a load when using GAIT's fallback reserve. Default: 40 seconds.", _categoryMove, 1.00, 120.00, 40.00, 0] call _addSlider;
 ["GAIT_ss_sprintRecoverTime", "Fallback reserve recovery", "Seconds at rest to recover the GAIT fallback reserve. Default: 10 seconds.", _categoryMove, 1.00, 60.00, 10.00, 0] call _addSlider;
@@ -157,7 +157,7 @@ private _addList = {
 ["GAIT_ss_hillWalkSlowdownMaxDegrees", "Hill jog reference angle", "Slope angle where jog reaches the reference penalty. Pace continues decreasing on steeper terrain. Default: 40 degrees.", _categorySlope, 5.00, 80.00, 40.00, 1] call _addSlider;
 ["GAIT_ss_hillWalkUphillMaxPenalty", "Uphill jog reference penalty", "Jog pace loss at the reference angle, adjusted for kit weight. Default: 0.32.", _categorySlope, 0.00, 0.75, 0.32, 2] call _addSlider;
 ["GAIT_ss_hillWalkDownhillMaxPenalty", "Downhill jog max penalty", "Small jog pace loss while descending before momentum builds. Default: 0.08.", _categorySlope, 0.00, 0.35, 0.08, 2] call _addSlider;
-["GAIT_ss_uphillFatigueDrainEnabled", "Increase uphill stamina drain", "Increases fallback reserve drain and raises the ACE sprint drain ceiling on steeper climbs. Default: enabled.", _categorySlope, true] call _addCheckbox;
+["GAIT_ss_uphillFatigueDrainEnabled", "Increase uphill stamina drain", "Applies an additional sprint reserve cost on climbs in both the ACE and fallback reserve models. Default: enabled.", _categorySlope, true] call _addCheckbox;
 ["GAIT_ss_uphillFatigueDrainStartDegrees", "Uphill drain starts", "Incline angle where additional uphill fatigue drain begins. Default: 10 degrees.", _categorySlope, 0.00, 45.00, 10.00, 1] call _addSlider;
 ["GAIT_ss_uphillFatigueDrainMaxDegrees", "Uphill drain max angle", "Incline angle where additional uphill fatigue drain reaches full strength. Default: 35 degrees.", _categorySlope, 5.00, 80.00, 35.00, 1] call _addSlider;
 ["GAIT_ss_uphillFatigueDrainMaxMultiplier", "Uphill max drain multiplier", "Maximum multiplier applied to sprint stamina drain on steep uphill terrain. 1.75 means 75% faster drain. Default: 1.75.", _categorySlope, 1.00, 4.00, 1.75, 2] call _addSlider;
@@ -166,8 +166,8 @@ private _addList = {
 ["GAIT_ss_downhillBoostStartDegrees", "Downhill bonus starts", "Decline angle along the direction of travel where the downhill boost starts. Default: 0.5 degrees.", _categorySlope, 0.00, 30.00, 0.50, 1] call _addSlider;
 ["GAIT_ss_downhillBoostMaxDegrees", "Downhill base boost angle", "Decline angle where the configured base downhill bonus reaches full strength. Steeper grades continue adding gravity amplification beyond this point. Default: 18 degrees.", _categorySlope, 5.00, 60.00, 18.00, 1] call _addSlider;
 ["GAIT_ss_downhillMaxBoost", "Downhill entry speed boost", "Small pace gain on entering a descent, before sustained momentum builds. Default: 0.03.", _categorySlope, 0.00, 0.35, 0.03, 2] call _addSlider;
-["GAIT_ss_downhillSustainedExtraBoost", "Sustained downhill bonus", "Pace earned gradually during grounded downhill travel. Load and grade affect the gain. Default: 0.10.", _categorySlope, 0.00, 0.25, 0.10, 2] call _addSlider;
-["GAIT_ss_downhillMomentumBuildSeconds", "Downhill momentum build time", "Seconds of downhill sprint travel to earn 95% of the momentum meter. Jog builds a smaller share at a slower rate. Default: 4.5 seconds.", _categorySlope, 0.50, 8.00, 4.50, 2] call _addSlider;
+["GAIT_ss_downhillSustainedExtraBoost", "Sustained downhill bonus", "Pace earned gradually during grounded downhill travel. Load and grade affect the gain. Default: 0.14.", _categorySlope, 0.00, 0.25, 0.14, 2] call _addSlider;
+["GAIT_ss_downhillMomentumBuildSeconds", "Downhill momentum build time", "Seconds of sustained downhill sprinting to reach 95% of the current grade target. Jog earns a smaller share more slowly. Default: 6.5 seconds.", _categorySlope, 0.50, 8.00, 6.50, 2] call _addSlider;
 
 ["GAIT_ss_downhillSprintCapKmh", "Downhill sprint speed cap", "Maximum downhill sprint target with a matching animation pace reference. Default: 30 km/h.", _categorySlope, 20.00, 45.00, 30.00, 1] call _addSlider;
 ["GAIT_ss_downhillJogCapKmh", "Downhill jog speed cap", "Maximum downhill jog target with a matching animation pace reference. Default: 18 km/h.", _categorySlope, 8.00, 30.00, 18.00, 1] call _addSlider;

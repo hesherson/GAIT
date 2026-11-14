@@ -36,8 +36,9 @@
  * scaling its clip playback or adding forward movement. They do not belong
  * to the sprint family and accept new movement immediately through native
  * actions. Moving release targets use the native jog clips and native action
- * maps, with the same faster blend. Their selectors accept direction changes
- * directly without restarting the queued release on every A/D input.
+ * maps, with the same faster blend. Once reached, their selectors accept
+ * direction changes directly. The controller may redirect a pending bridge
+ * once if a new direction arrives while sprint is still observed.
  * Transition weights are graph costs, not fixed blend durations in seconds.
  *
  * Sources for native names/selectors and preserving explicit action exits:
@@ -2767,7 +2768,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -2820,7 +2828,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -2873,7 +2888,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -2926,7 +2948,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -2979,7 +3008,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -3032,7 +3068,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -3085,7 +3128,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -3138,7 +3188,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02
             };
         };
 
@@ -5300,7 +5357,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -5369,7 +5433,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -5438,7 +5509,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -5507,7 +5585,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -5576,7 +5661,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -5645,7 +5737,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -5714,7 +5813,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -5783,7 +5889,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02
             };
         };
 
@@ -7353,7 +7466,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -7406,7 +7526,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -7459,7 +7586,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -7512,7 +7646,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -7565,7 +7706,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -7618,7 +7766,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -7671,7 +7826,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -7724,7 +7886,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02
             };
         };
 
@@ -9294,7 +9463,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -9347,7 +9523,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -9400,7 +9583,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -9453,7 +9643,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -9506,7 +9703,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -9559,7 +9763,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -9612,7 +9823,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -9665,7 +9883,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02
             };
         };
 
@@ -11235,7 +11460,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -11288,7 +11520,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -11341,7 +11580,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -11394,7 +11640,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -11447,7 +11700,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -11500,7 +11760,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -11553,7 +11820,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -11606,7 +11880,14 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02
             };
         };
 

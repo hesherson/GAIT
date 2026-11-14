@@ -34,11 +34,22 @@ for "_gate" from 0 to 4 do {
     ["AmovPercMrunSrasWrflDf","Df",false],["AmovPercMrunSrasWrflDf","Dnon",true],
     ["AmovPercMrunSrasWrflDl","Dr",true],["AmovPercMrunSrasWrflDr","Dr",false],["","Df",false]
 ];
-// Once native actions are queued, W+A, W+D or a pure strafe may use their
-// regular selectors without restarting the previous destination.
+// A settled native bridge owns ordinary direction. A newly changed key can
+// replace the destination once while sprint still owns the outgoing state.
 {
     [!([_jogBridge, _x, false] call GAIT_fnc_locomotionExitRedirect), "native bridge lets the engine own direction"] call _assert;
 } forEach ["Df", "Dfl", "Dfr", "Dl", "Dr", "Db"];
+{
+    _x params ["_direction", "_walk", "_pending", "_edge", "_redirected", "_expected"];
+    [([_jogBridge, _direction, _walk, _pending, _edge, _redirected] call GAIT_fnc_pendingJogReleaseDirectionRedirect) isEqualTo _expected,
+        "only a fresh direction change can replace a pending sprint-to-jog destination"] call _assert;
+} forEach [
+    ["Dfl",false,true,true,false,true], ["Dfr",false,true,true,false,true],
+    ["Dl",false,true,true,false,true], ["Dr",false,true,true,false,true],
+    ["Df",false,true,true,false,false], ["Dnon",false,true,true,false,false],
+    ["Dfr",false,false,true,false,false], ["Dfr",false,true,false,false,false],
+    ["Dfr",false,true,true,true,false], ["Dfr",true,true,true,false,false]
+];
 [[_jogBridge, "Dnon", false] call GAIT_fnc_locomotionExitRedirect, "a stop can interrupt a queued jog bridge"] call _assert;
 [[_jogBridge, "Df", true] call GAIT_fnc_locomotionExitRedirect, "deliberate walk can interrupt a queued jog bridge"] call _assert;
 // This pure policy handles Turbo intent irrespective of the speed ramp.

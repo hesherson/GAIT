@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha25: scalar jog deceleration with native direction
+// GAIT 1.8.0-alpha26: sprint endurance, sustained descent, and release direction
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha25";
-        versionAr[] = {1,8,0,25};
+        versionStr = "1.8.0-alpha26";
+        versionAr[] = {1,8,0,26};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

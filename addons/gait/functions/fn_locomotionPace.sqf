@@ -137,26 +137,26 @@ GAIT_fnc_stepDeadSprint = {
     if (!_wasSprinting) exitWith {[-1, 0] select (_reserve >= 0.999)};
     if (_elapsed < 0 || {_reserve <= 0.50}) exitWith {-1};
     _elapsed = _elapsed + (_dt max 0);
-    [_elapsed, -1] select (_elapsed >= 5.70)
+    [_elapsed, -1] select (_elapsed >= 4.10)
 };
 
-// Hold the peak target through acceleration, then ease out over three
+// Hold the peak target through acceleration, then ease out over 2.2
 // seconds. If reserve drains quickly, finish tapering by half reserve.
 GAIT_fnc_deadSprintStrength = {
     params ["_elapsed", "_reserve"];
     if (_elapsed < 0) exitWith {0};
-    private _time = ((5.70 - _elapsed) / 3) max 0 min 1;
+    private _time = ((4.10 - _elapsed) / 2.20) max 0 min 1;
     private _remaining = ((_reserve - 0.50) / 0.25) max 0 min 1;
     private _strength = _time min _remaining;
     _strength * _strength * (3 - (2 * _strength))
 };
 
-// Normal sprint pace holds after the rested burst until the final fifth,
+// Normal sprint pace holds after the rested burst until half reserve,
 // then tapers toward the load-scaled floor.
 GAIT_fnc_sprintReservePace = {
     params ["_fresh", "_normalRun", "_reserve", ["_gearLbs", 0, [0]],
         ["_uphillMinimum", 0, [0]], ["_exhaustedRunPace", 0.70, [0]],
-        ["_flatGround", false, [false]], ["_flatPeak", 1.10, [0]], ["_deadSprintStrength", 0, [0]]];
+        ["_flatGround", false, [false]], ["_flatPeak", 1.14, [0]], ["_deadSprintStrength", 0, [0]]];
     private _loadFraction = (_gearLbs / 100) max 0 min 1;
     private _exhaustedRatio = ((_exhaustedRunPace + 0.05) - (0.10 * _loadFraction)) max 0 min 1;
     private _floor = (_normalRun * _exhaustedRatio) max _uphillMinimum;
@@ -167,8 +167,8 @@ GAIT_fnc_sprintReservePace = {
         private _bonus = ((_flatPeak - 1) max 0) * (_deadSprintStrength min 1) * _burstLoadScale;
         (_fresh * (1 + _bonus)) max _floor
     };
-    if (_reserve >= 0.20) exitWith {_normalTarget};
-    private _remaining = (_reserve / 0.20) max 0;
+    if (_reserve >= 0.50) exitWith {_normalTarget};
+    private _remaining = (_reserve / 0.50) max 0;
     private _effort = _remaining * _remaining * (3 - (2 * _remaining));
     _floor + ((_normalTarget - _floor) * _effort)
 };
@@ -185,4 +185,17 @@ GAIT_fnc_uphillSprintFloor = {
     private _walkOnSprintClip = _walk * _walkToSprint;
     // Ordinary jog already has a 6% floor over walking in the pace adapter.
     ((_walkOnSprintClip * 1.06) max (_jog * _jogToSprint)) * 1.08
+};
+
+GAIT_fnc_ordinaryJogFloor = {
+    params ["_walkCoefficient", "_walkReference", "_combatReference", "_jogReference"];
+    private _walkToJog = 0.50;
+    private _combatToJog = 0.75;
+    if (_jogReference > 0) then {
+        if (_walkReference > 0) then {_walkToJog = _walkReference / _jogReference;};
+        if (_combatReference > 0) then {_combatToJog = _combatReference / _jogReference;};
+    };
+    // Deliberate walking and combat pace keep their own clips. This floor
+    // makes the ordinary jog slightly faster when mass would drop it below.
+    ((_walkCoefficient * _walkToJog) max _combatToJog) * 1.04
 };

@@ -18,6 +18,7 @@ EFFECTS_SOURCES = []
 
 # Minimal macro-expanded shape of the surrounding ACE statements.
 LOOP = """\
+_currentWork = [_gearMass, _terrainGradient * ace_advanced_fatigue_terrainGradientFactor * 0.1, _terrainFactor, _currentSpeed] call ace_advanced_fatigue_fnc_getMetabolicCosts;
 ace_advanced_fatigue_ae2Reserve = _aerobicAfter;
 ace_advanced_fatigue_anReserve  = 0 max (ace_advanced_fatigue_anReserve  -  _anPower / ace_advanced_fatigue_anWattsPerATP);
 ace_advanced_fatigue_anFatigue = _acidosisAfter;
@@ -53,12 +54,12 @@ def literal(hook, name):
 def instrument(source):
     hook = HOOK.read_text()
     matches = []
-    for name in ("before", "after"):
+    for name in ("work", "before", "after"):
         pattern = literal(hook, name)
         assert pattern.endswith("/g")
         matches.append(list(re.finditer(pattern[:-2], source)))
-    before, after = matches
-    if len(before) != 1 or len(after) != 1 or before[0].start() >= after[0].start():
+    work, before, after = matches
+    if any(len(found) != 1 for found in matches) or not work[0].start() < before[0].start() < after[0].start():
         return source
     start, end = before[0].start(), after[0].start()
     return source[:start] + literal(hook, "capture") + source[start:end] + literal(hook, "filter") + source[end:]
@@ -91,10 +92,14 @@ class AceSprintReserveHook(unittest.TestCase):
         self.assertLess(result.index(filter_at), result.index("anReservePercentage"))
         self.assertLess(result.index(filter_at), result.index("fnc_handleEffects"))
         self.assertLess(result.index(filter_at), result.index("fnc_handleStaminaBar"))
-        self.assertIn("ACE_player, _anPower / ace_advanced_fatigue_anWattsPerATP]", filter_at)
+        self.assertIn("ACE_player, _anPower / ace_advanced_fatigue_anWattsPerATP, _fwdAngle,", filter_at)
+        self.assertIn("[_currentWork, _gearMass, _terrainGradient * ace_advanced_fatigue_terrainGradientFactor * 0.1,", filter_at)
+        self.assertIn("_terrainFactor, _currentSpeed, ace_advanced_fatigue_anWattsPerATP]", filter_at)
 
     def test_unknown_or_ambiguous_loop_keeps_stock_behavior(self):
         self.assertEqual(instrument(LOOP.replace("2300", "2400")), LOOP.replace("2300", "2400"))
+        changed_work = LOOP.replace("* 0.1", "* 0.2")
+        self.assertEqual(instrument(changed_work), changed_work)
         self.assertEqual(instrument(LOOP * 2), LOOP * 2)
         reversed_loop = "\n".join(reversed(LOOP.splitlines()))
         self.assertEqual(instrument(reversed_loop), reversed_loop)
@@ -147,10 +152,10 @@ class AceSprintReserveHook(unittest.TestCase):
     def test_reference_checkout(self):
         if SOURCE is None:
             self.skipTest("Pass --ace-source to check an ACE checkout")
-        # The release SQF uses ACE macros. Expand only the two identifier and
-        # constant forms relevant to the production regexes.
+        # Expand only the identifiers and constant used by the reserve hook.
         source = (SOURCE / "addons/advanced_fatigue/functions/fnc_mainLoop.sqf").read_text()
         expanded = re.sub(r"\bGVAR\((\w+)\)", r"ace_advanced_fatigue_\1", source).replace("AN_MAXRESERVE", "2300")
+        expanded = expanded.replace("FUNC(getMetabolicCosts)", "ace_advanced_fatigue_fnc_getMetabolicCosts")
         result = instrument(expanded)
         self.assertNotEqual(result, expanded)
         self.assertLess(result.index("GAIT_fnc_filterAceSprintReserve"), result.index("call FUNC(handleEffects)"))

@@ -493,7 +493,7 @@ GAIT_fnc_clearSlopeLocomotionState = {
     if (!isNull _unit) then {
         {
             _unit setVariable [_x, false];
-        } forEach ["GAIT_slopeAttemptLatched", "GAIT_slopeExitPending", "GAIT_slopeFailureReported", "GAIT_slopeLocomotionActive", "GAIT_slopeExitIssued", "GAIT_slopeExitFailureReported", "GAIT_slopeCancelEntry", "GAIT_nativeStopPending"];
+        } forEach ["GAIT_slopeAttemptLatched", "GAIT_slopeExitPending", "GAIT_slopeFailureReported", "GAIT_slopeLocomotionActive", "GAIT_slopeExitIssued", "GAIT_slopeExitFailureReported", "GAIT_slopeExitDirectionRedirected", "GAIT_slopeCancelEntry", "GAIT_nativeStopPending"];
         {
             _unit setVariable [_x, ""];
         } forEach ["GAIT_slopeAttemptFamily", "GAIT_slopeAttemptWeapon", "GAIT_slopeEntrySource", "GAIT_slopeEntryTarget", "GAIT_slopeExitSource", "GAIT_slopeExitTarget"];
@@ -553,6 +553,7 @@ GAIT_fnc_releaseSlopeLocomotion = {
         _unit setVariable ["GAIT_slopeExitPending", true];
         _unit setVariable ["GAIT_slopeExitIssued", false];
         _unit setVariable ["GAIT_slopeExitFailureReported", false];
+        _unit setVariable ["GAIT_slopeExitDirectionRedirected", false];
         _unit setVariable ["GAIT_slopeExitWalkOnly", _walkOnly];
         _unit setVariable ["GAIT_slopeLocomotionActive", false];
         _unit setVariable ["GAIT_slopeCancelEntry", _cancelEntry];
@@ -570,9 +571,9 @@ GAIT_fnc_serviceLocomotionExit = {
     private _inside = ([_animation] call GAIT_fnc_slopeAnimationFamily) isNotEqualTo "" ||
         {[_unit, _animation] call GAIT_fnc_locomotionExitOwnsMoveBlend};
     private _entryBlend = [_animation, _source, _unit getVariable ["GAIT_slopeEntryTarget", ""]] call GAIT_fnc_isLocomotionHandoffBlend;
-    private _exitBlend = [_animation, _unit getVariable ["GAIT_slopeExitSource", ""],
-        _unit getVariable ["GAIT_slopeExitTarget", ""]] call GAIT_fnc_isLocomotionHandoffBlend;
+    private _exitSource = _unit getVariable ["GAIT_slopeExitSource", ""];
     private _exitTarget = _unit getVariable ["GAIT_slopeExitTarget", ""];
+    private _exitBlend = [_animation, _exitSource, _exitTarget] call GAIT_fnc_isLocomotionHandoffBlend;
     private _atReleaseBridge = (toLower _animation) isEqualTo (toLower _exitTarget) &&
         {[_animation] call GAIT_fnc_isJogReleaseBridge};
     private _cancelEntry = (_unit getVariable ["GAIT_slopeCancelEntry", false]) && {!(_unit getVariable ["GAIT_slopeExitIssued", false])};
@@ -591,8 +592,16 @@ GAIT_fnc_serviceLocomotionExit = {
     private _exitIssued = _unit getVariable ["GAIT_slopeExitIssued", false];
     private _walk = (_unit getVariable ["GAIT_slopeExitWalkOnly", false]) ||
         {[_unit, _input select 2] call GAIT_fnc_nativeWalkRequested};
-    private _redirect = _exitIssued && {[_exitTarget, _direction, _walk]
-        call GAIT_fnc_locomotionExitRedirect};
+    private _pendingSprintRelease = _exitIssued && {!_atReleaseBridge} &&
+        {[_exitTarget] call GAIT_fnc_isJogReleaseBridge} &&
+        {!(_input select 2)} &&
+        {_exitBlend || {(toLower _animation) isEqualTo (toLower _exitSource)}} &&
+        {(["active", false, _animation, ""] call GAIT_fnc_locomotionGaitIntent) isEqualTo "release"};
+    private _directionRedirect = [_exitTarget, _direction, _walk, _pendingSprintRelease,
+        _unit getVariable ["GAIT_directionChangedThisFrame", false],
+        _unit getVariable ["GAIT_slopeExitDirectionRedirected", false]] call GAIT_fnc_pendingJogReleaseDirectionRedirect;
+    private _redirect = _directionRedirect || {_exitIssued && {[_exitTarget, _direction, _walk]
+        call GAIT_fnc_locomotionExitRedirect}};
     if (_exitIssued && {!_redirect}) exitWith {
         if (_atReleaseBridge) then {
             [_unit] call GAIT_fnc_clearSlopeLocomotionState;
@@ -621,8 +630,8 @@ GAIT_fnc_serviceLocomotionExit = {
     private _target = [_family, _direction, _walk] call GAIT_fnc_nativeOrdinaryMoveName;
     private _states = configFile >> "CfgMovesMaleSdr" >> "States";
     if (!_walk && {!(_input select 2)} && {_direction isNotEqualTo "Dnon"} &&
-        {[_animation] call GAIT_fnc_isSlopeLocomotionState} &&
-        {(["active", false, _animation, ""] call GAIT_fnc_locomotionGaitIntent) isEqualTo "release"}) then {
+        {_directionRedirect || {[_animation] call GAIT_fnc_isSlopeLocomotionState &&
+            {(["active", false, _animation, ""] call GAIT_fnc_locomotionGaitIntent) isEqualTo "release"}}}) then {
         private _bridge = _target + "_GAITRelease";
         if ((getNumber (_states >> _bridge >> "GAIT_releaseBridge")) isEqualTo 1) then {_target = _bridge;};
     };
@@ -631,6 +640,7 @@ GAIT_fnc_serviceLocomotionExit = {
     if (!isClass (_states >> _target)) then {_target = "AmovPercMstp" + _family + "Dnon";};
     if (!isClass (_states >> _target)) exitWith {false};
     _unit setVariable ["GAIT_slopeExitIssued", true];
+    if (_directionRedirect) then {_unit setVariable ["GAIT_slopeExitDirectionRedirected", true];};
     _unit setVariable ["GAIT_slopeExitSource", _animation];
     _unit setVariable ["GAIT_slopeExitTarget", _target];
     _unit setVariable ["GAIT_slopeExitDeadline", diag_tickTime + 1.5];
@@ -679,6 +689,14 @@ GAIT_fnc_locomotionExitRedirect = {
     if ([_target, _direction] call GAIT_fnc_locomotionStopRedirect) exitWith {true};
     private _pace = (toLower _target) select [8, 4];
     (_pace in ["mwlk", "mrun", "meva"]) && {_walk isNotEqualTo (_pace isEqualTo "mwlk")}
+};
+
+// The native bridge takes direction after it is observed. Before then, allow
+// one new movement edge to replace the forward target still in the queue.
+GAIT_fnc_pendingJogReleaseDirectionRedirect = {
+    params ["_target", "_direction", "_walk", "_pendingSprintRelease", "_directionChanged", "_alreadyRedirected"];
+    _pendingSprintRelease && {_directionChanged} && {!_alreadyRedirected} && {!_walk} &&
+        {_direction isNotEqualTo "Dnon"} && {[_target, _direction] call GAIT_fnc_locomotionDirectionRedirectNeeded}
 };
 
 GAIT_fnc_isJogReleaseBridge = {

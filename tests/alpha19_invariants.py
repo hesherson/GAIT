@@ -29,10 +29,10 @@ class LocomotionInvariants(unittest.TestCase):
         project = (ROOT / ".hemtt/project.toml").read_text()
         config = (ROOT / "addons/gait/config.cpp").read_text()
         mod = (ROOT / "mod.cpp").read_text()
-        self.assertIn("build = 25", project)
-        self.assertIn('versionStr = "1.8.0-alpha25";', config)
-        self.assertIn("versionAr[] = {1,8,0,25};", config)
-        self.assertIn('tooltip = "GAIT 1.8.0-alpha25";', mod)
+        self.assertIn("build = 26", project)
+        self.assertIn('versionStr = "1.8.0-alpha26";', config)
+        self.assertIn("versionAr[] = {1,8,0,26};", config)
+        self.assertIn('tooltip = "GAIT 1.8.0-alpha26";', mod)
 
     def test_graph_pose_and_no_walk_contract(self):
         text = GRAPH.read_text()

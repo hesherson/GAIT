@@ -51,7 +51,7 @@ GAIT_fnc_observePaceCalibration = {
     if (_clip isEqualTo "") exitWith {_unit setVariable ["GAIT_paceObservation", []];};
     private _base = (_clip splitString "_") select 0;
     private _ordinary = (_base select [0,8]) isEqualTo "amovperc" &&
-        {(_base select [8,4]) in ["mrun", "mwlk", "meva"]} &&
+        {(_base select [8,4]) in ["mrun", "mwlk", "mtac", "meva"]} &&
         {(_base select [12,8]) in ["sraswrfl", "slowwrfl", "sraswpst", "slowwpst", "snonwnon"]} &&
         {(_base select [20]) in ["df", "dfl", "dfr"]};
     private _info = [_unit] call GAIT_fnc_readPaceMoveInfo;

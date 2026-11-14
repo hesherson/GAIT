@@ -7,12 +7,27 @@
     heavy kit carries into each step when braking the descent.
 */
 
+GAIT_fnc_downhillMomentumTarget = {
+    params [
+        ["_gradeDegrees", 0, [0]],
+        ["_startDegrees", 0.5, [0]],
+        ["_peakDegrees", 18, [0]]
+    ];
+    _startDegrees = (_startDegrees max 0) min 80;
+    _peakDegrees = (_peakDegrees max (_startDegrees + 0.1)) min 89.9;
+    // Moderate descents sustain the full meter. Shallow grades earn a smaller
+    // share so a long gentle descent cannot bank the full steep descent boost.
+    private _range = (_peakDegrees - _startDegrees) * 0.55;
+    private _gradeShare = (((-_gradeDegrees) - _startDegrees) / _range) max 0 min 1;
+    _gradeShare ^ 0.35
+};
+
 GAIT_fnc_stepDownhillMomentum = {
     params [
         ["_current", 0, [0]],
         ["_target", 0, [0]],
         ["_dt", 0.05, [0]],
-        ["_riseSeconds", 4.5, [0]],
+        ["_riseSeconds", 6.5, [0]],
         ["_fallSeconds", 1.5, [0]]
     ];
     _current = (_current max 0) min 1;
@@ -36,12 +51,12 @@ GAIT_fnc_downhillPaceMultiplier = {
         ["_startDegrees", 0.5, [0]],
         ["_peakDegrees", 18, [0]],
         ["_entryBoost", 0.03, [0]],
-        ["_sustainedBoost", 0.10, [0]],
+        ["_sustainedBoost", 0.14, [0]],
         ["_loadMultiplier", 1, [0]],
         ["_unloadedMultiplier", 1, [0]],
         ["_steepStartDegrees", 18, [0]],
         ["_steepFullDegrees", 40, [0]],
-        ["_maximumRelativePace", 1.15, [0]]
+        ["_maximumRelativePace", 1.18, [0]]
     ];
     private _decline = (-_gradeDegrees) max 0;
     _startDegrees = (_startDegrees max 0) min 80;
@@ -49,8 +64,9 @@ GAIT_fnc_downhillPaceMultiplier = {
     _entryBoost = (_entryBoost max 0) min 0.35;
     _sustainedBoost = (_sustainedBoost max 0) min 0.25;
     _momentum = (_momentum max 0) min 1;
-    // The first part of a descent earns little boost, even with a full ruck.
-    private _earnedMomentum = _momentum * _momentum * _momentum;
+    // Keep the first seconds close to the entry boost, then give sustained
+    // descents room to build pace through the latter part of the meter.
+    private _earnedMomentum = _momentum ^ 4;
     private _activeBoost = _entryBoost + (_sustainedBoost * _earnedMomentum);
     if (_decline <= _startDegrees || {_activeBoost <= 0}) exitWith {1};
 

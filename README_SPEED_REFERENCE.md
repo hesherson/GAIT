@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha24 movement speed reference
+# GAIT 1.8.0-alpha25 movement speed reference
 
 This document describes the current target model. Animation-speed coefficients are not interchangeable with km/h because weapon/pose families have different root motion. GAIT therefore distinguishes coefficient fallback behavior from calibrated physical targets.
 
@@ -33,7 +33,7 @@ At default tuning this is approximately:
 - generic 95% convergence: ~2.9 s
 - sprint build to 95% target: ~4.1 s
 
-Sprint launch bracing ends 8% sooner. The ordinary first step is 20 ms shorter with a slightly shallower dip. Shift release defaults to a 1.15-second window before load scaling. The optional uphill release brake defaults off.
+Sprint launch bracing ends 8% sooner. The ordinary first step is 20 ms shorter with a slightly shallower dip. Jog deceleration defaults to 1.15 seconds to cover 95% of the coefficient change.
 
 ## Uphill
 
@@ -57,7 +57,7 @@ With a matching animation pace reference, the default downhill targets also have
 
 ## Release continuity
 
-Shift release immediately requests the jog selected by live input. A bounded speed taper can continue through the blend and native jog while W remains held, using clip reference speeds to compensate for the change in root motion. Stop, strafe, stance changes and deliberate walk can interrupt the taper immediately.
+On Shift release, Arma handles walking, jogging and direction through its native action map. The same speed coefficient eases toward the current jog target during forward, diagonal, lateral and backward movement. Stopping or selecting walk yields the coefficient immediately. A change of animation can naturally change ground speed as its stride changes.
 
 ## Weapon/pose families
 

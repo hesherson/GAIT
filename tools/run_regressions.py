@@ -24,8 +24,6 @@ import tempfile
 
 
 SUITES = {
-    "uphill_brake": ("traversalHelpers", "uphillBrake"),
-    "uphill_brake_handoff": ("slopeLocomotion",),
     "brace_momentum": ("gearInertia", "braceMomentum"),
     "downhill_pace": ("slopePaceModel", "downhillPace"),
     "downhill_trip": ("downhillPace",),
@@ -40,11 +38,8 @@ SUITES = {
     "slope_state_selection": ("slopeLocomotion",),
     "locomotion_pace": ("slopePaceModel", "locomotionPace"),
     "sprint_reserve": ("sprintReserve",),
-    "release_momentum": ("releaseMomentum",),
     "pace_calibration": ("paceCalibration",),
-    "pace_handoff": ("releaseMomentum", "paceCalibration"),
-    "release_runtime": ("releaseMomentum", "slopeLocomotion", "nativeController"),
-    "gear_inertia": ("gearInertia", "traversalHelpers", "uphillBrake"),
+    "gear_inertia": ("gearInertia", "traversalHelpers"),
     "locomotion_coast": ("traversalHelpers", "slopeLocomotion"),
 }
 

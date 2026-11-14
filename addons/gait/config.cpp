@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha24: responsive sprint release, native walk, and uphill sprint continuity
+// GAIT 1.8.0-alpha25: scalar jog deceleration with native direction
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha24";
-        versionAr[] = {1,8,0,24};
+        versionStr = "1.8.0-alpha25";
+        versionAr[] = {1,8,0,25};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;

@@ -140,7 +140,6 @@ GAIT_fnc_clearLocomotionInputHistory = {
         "GAIT_turboInputHeld",
         "GAIT_uphillSprintRecoveryUsed",
         "GAIT_slopeJogIntent",
-        "GAIT_sprintReleaseHandled",
         "GAIT_forwardInputHeld",
         "GAIT_releaseSinceFeatureTick",
         "GAIT_stanceInputHeld"
@@ -149,7 +148,6 @@ GAIT_fnc_clearLocomotionInputHistory = {
         _unit setVariable [_x, []];
     } forEach [
         "GAIT_nativeStopPaceLease",
-        "GAIT_sprintReleaseSnapshot",
         "GAIT_forwardPressSnapshot",
         "GAIT_stanceCarryCoefficient",
         "GAIT_paceObservation"
@@ -192,22 +190,8 @@ GAIT_fnc_observeLocomotionInput = {
     };
     _unit setVariable ["GAIT_turboPressedThisFrame", _turbo && {!_previousTurbo}];
     _unit setVariable ["GAIT_turboInputHeld", _turbo];
-    if (_turbo && {!_previousTurbo || {_forwardHeld && {!_previousForwardForRelease}}}) then {
-        _unit setVariable ["GAIT_sprintReleaseHandled", false];
-    };
-    if (_previousTurbo && {!_turbo} && {_forwardHeld} &&
-        {!(_unit getVariable ["GAIT_sprintReleaseHandled", false])} &&
-        {_unit isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull])}) then {
-        private _applied = getAnimSpeedCoef _unit;
-        if (abs (_applied - (missionNamespace getVariable ["GAIT_nativeLastWritten", -1])) < 0.001) then {
-            private _velocity = velocity _unit;
-            private _speedMS = sqrt (((_velocity select 0) ^ 2) + ((_velocity select 1) ^ 2));
-            _unit setVariable ["GAIT_sprintReleaseSnapshot", [time, _applied, _speedMS,
-                missionNamespace getVariable ["GAIT_vegDragFactor", 0]]];
-        };
-    };
-    if (!_forwardHeld || {_turbo && {!_previousTurbo}}) then {
-        _unit setVariable ["GAIT_sprintReleaseSnapshot", []];
+    if (_previousTurbo && {!_turbo}) then {
+        _unit setVariable ["GAIT_releaseSinceFeatureTick", true];
     };
     if (!_forwardHeld && {_previousForwardForRelease}) then {
         _unit setVariable ["GAIT_forwardReleaseSerial", (_unit getVariable ["GAIT_forwardReleaseSerial", 0]) + 1];
@@ -216,10 +200,7 @@ GAIT_fnc_observeLocomotionInput = {
 
     private _end = missionNamespace getVariable ["GAIT_braceEndTime", -1];
     private _active = (missionNamespace getVariable ["GAIT_braceActive", false]) && {time < _end};
-    private _braking = _unit isEqualTo (missionNamespace getVariable ["GAIT_uphillBrakeUnit", objNull]) &&
-        {missionNamespace getVariable ["GAIT_uphillBrakeActive", false]} &&
-        {_end isEqualTo (missionNamespace getVariable ["GAIT_uphillBrakeEndTime", -1])};
-    private _live = _active && {_forwardHeld} && {[_turbo, !_turbo] select _braking};
+    private _live = _active && {_forwardHeld} && {_turbo};
     if (_active && {!_live}) then {_unit setVariable ["GAIT_slopeCanceledBraceEndTime", _end];};
     _live && {_end isNotEqualTo (_unit getVariable ["GAIT_slopeCanceledBraceEndTime", -2])}
 };
@@ -372,9 +353,8 @@ GAIT_fnc_locomotionDecision = {
     if (!_requested) exitWith {
         ["clear", "release"] select (_inside || {_entryBlend} || {_phase in ["entering", "active"]})
     };
-    // A normal weapon-pose/pace transition can briefly fail the movement
-    // writer's stricter eligibility check. While raw intent and locks still
-    // agree, let that blend finish instead of issuing an exit then re-entry.
+    // A compatible blend or native lateral fallback can temporarily sit
+    // outside the custom family. Live locks and raw release still win.
     if (_compatibleBlend && {_phase in ["entering", "active"]}) exitWith {"hold"};
     if (_phase isEqualTo "blocked") exitWith {"hold"};
     if (!_eligible) exitWith {
@@ -502,11 +482,6 @@ GAIT_fnc_beginStanceYield = {
     missionNamespace setVariable ["GAIT_locomotionRequest", []];
     missionNamespace setVariable ["GAIT_braceActive", false];
     missionNamespace setVariable ["GAIT_braceEndTime", -1];
-    if (!isNil "GAIT_fnc_clearReleaseMomentum") then {[_unit] call GAIT_fnc_clearReleaseMomentum;};
-    _unit setVariable ["GAIT_paceHandoff", []];
-    _unit setVariable ["GAIT_paceHandoffCandidate", []];
-    _unit setVariable ["GAIT_releasePendingCoefficient", -1];
-    _unit setVariable ["GAIT_releaseResume", []];
     // Clear standing animation ownership only. Do NOT release the current
     // coefficient until the stance-yield lease is over.
     [_unit] call GAIT_fnc_clearSlopeLocomotionState;
@@ -526,7 +501,6 @@ GAIT_fnc_clearSlopeLocomotionState = {
         _unit setVariable ["GAIT_slopeCancelDeadline", -1];
         _unit setVariable ["GAIT_slopeExitDeadline", -1];
         _unit setVariable ["GAIT_uphillSprintGroundedAt", -1];
-        _unit setVariable ["GAIT_paceHandoffCandidate", []];
         _unit setVariable ["GAIT_locomotionPhase", "native"];
     };
     private _owner = missionNamespace getVariable ["GAIT_slopeOwner", objNull];
@@ -541,10 +515,8 @@ GAIT_fnc_releaseSlopeLocomotion = {
     params [
         ["_unit", missionNamespace getVariable ["GAIT_slopeOwner", objNull], [objNull]],
         ["_movementInput", [], [[]]],
-        ["_walkOnly", false, [false]],
-        ["_keepRelease", false, [false]]
+        ["_walkOnly", false, [false]]
     ];
-    if (!_keepRelease && {!isNil "GAIT_fnc_clearReleaseMomentum"}) then {[_unit] call GAIT_fnc_clearReleaseMomentum;};
     // Cancel intent atomically. Only Draw3D may issue the eventual body exit.
     // Retain cleanup ownership while a reload/ground/weapon handoff defers it.
     isNil {
@@ -600,12 +572,15 @@ GAIT_fnc_serviceLocomotionExit = {
     private _entryBlend = [_animation, _source, _unit getVariable ["GAIT_slopeEntryTarget", ""]] call GAIT_fnc_isLocomotionHandoffBlend;
     private _exitBlend = [_animation, _unit getVariable ["GAIT_slopeExitSource", ""],
         _unit getVariable ["GAIT_slopeExitTarget", ""]] call GAIT_fnc_isLocomotionHandoffBlend;
+    private _exitTarget = _unit getVariable ["GAIT_slopeExitTarget", ""];
+    private _atReleaseBridge = (toLower _animation) isEqualTo (toLower _exitTarget) &&
+        {[_animation] call GAIT_fnc_isJogReleaseBridge};
     private _cancelEntry = (_unit getVariable ["GAIT_slopeCancelEntry", false]) && {!(_unit getVariable ["GAIT_slopeExitIssued", false])};
     private _ownsObservation = [_inside, _entryBlend, _cancelEntry, (toLower _animation) isEqualTo (toLower _source), diag_tickTime <= (_unit getVariable ["GAIT_slopeCancelDeadline", -1])] call GAIT_fnc_locomotionExitOwnsObservation;
     _ownsObservation = _ownsObservation || {(_unit getVariable ["GAIT_nativeStopPending", false]) &&
         {(toLower _animation) isEqualTo (toLower (_unit getVariable ["GAIT_slopeExitSource", ""]))} &&
         {diag_tickTime <= (_unit getVariable ["GAIT_slopeExitDeadline", -1])}};
-    if ((!_ownsObservation && {!_exitBlend}) || {!alive _unit} || {!local _unit} || {_unit isNotEqualTo player}) exitWith {
+    if ((!_ownsObservation && {!_exitBlend} && {!_atReleaseBridge}) || {!alive _unit} || {!local _unit} || {_unit isNotEqualTo player}) exitWith {
         // A native or full-body action already owns the character. Discard the
         // pending request without sending an animation after that handoff.
         [_unit] call GAIT_fnc_clearSlopeLocomotionState;
@@ -616,12 +591,16 @@ GAIT_fnc_serviceLocomotionExit = {
     private _exitIssued = _unit getVariable ["GAIT_slopeExitIssued", false];
     private _walk = (_unit getVariable ["GAIT_slopeExitWalkOnly", false]) ||
         {[_unit, _input select 2] call GAIT_fnc_nativeWalkRequested};
-    private _redirect = _exitIssued && {[_unit getVariable ["GAIT_slopeExitTarget", ""], _direction, _walk]
+    private _redirect = _exitIssued && {[_exitTarget, _direction, _walk]
         call GAIT_fnc_locomotionExitRedirect};
     if (_exitIssued && {!_redirect}) exitWith {
-        if (diag_tickTime > (_unit getVariable ["GAIT_slopeExitDeadline", -1]) && {!(_unit getVariable ["GAIT_slopeExitFailureReported", false])}) then {
-            _unit setVariable ["GAIT_slopeExitFailureReported", true];
-            diag_log format ["[GAIT_LOCOMOTION] native exit not observed from %1; cleanup ownership retained, no repeated animation request.", _animation];
+        if (_atReleaseBridge) then {
+            [_unit] call GAIT_fnc_clearSlopeLocomotionState;
+        } else {
+            if (diag_tickTime > (_unit getVariable ["GAIT_slopeExitDeadline", -1]) && {!(_unit getVariable ["GAIT_slopeExitFailureReported", false])}) then {
+                _unit setVariable ["GAIT_slopeExitFailureReported", true];
+                diag_log format ["[GAIT_LOCOMOTION] native exit not observed from %1; cleanup ownership retained, no repeated animation request.", _animation];
+            };
         };
         false
     };
@@ -640,16 +619,21 @@ GAIT_fnc_serviceLocomotionExit = {
     private _sprint = (_input select 2) && {_direction in ["Df", "Dfl", "Dfr"]} &&
         {[_unit] call GAIT_fnc_readLocomotionSprintAllowed} && {(_unit getVariable ["ace_common_effect_blockSprint", 0]) <= 0};
     private _target = [_family, _direction, _walk] call GAIT_fnc_nativeOrdinaryMoveName;
+    private _states = configFile >> "CfgMovesMaleSdr" >> "States";
+    if (!_walk && {!(_input select 2)} && {_direction isNotEqualTo "Dnon"} &&
+        {[_animation] call GAIT_fnc_isSlopeLocomotionState} &&
+        {(["active", false, _animation, ""] call GAIT_fnc_locomotionGaitIntent) isEqualTo "release"}) then {
+        private _bridge = _target + "_GAITRelease";
+        if ((getNumber (_states >> _bridge >> "GAIT_releaseBridge")) isEqualTo 1) then {_target = _bridge;};
+    };
     if (!_walk && {_sprint}) then {_target = "AmovPercMeva" + _family + _direction;};
     if (_direction isEqualTo "Dnon") then {_target = "AmovPercMstp" + _family + "Dnon_GAITStop";};
-    private _states = configFile >> "CfgMovesMaleSdr" >> "States";
     if (!isClass (_states >> _target)) then {_target = "AmovPercMstp" + _family + "Dnon";};
     if (!isClass (_states >> _target)) exitWith {false};
     _unit setVariable ["GAIT_slopeExitIssued", true];
     _unit setVariable ["GAIT_slopeExitSource", _animation];
     _unit setVariable ["GAIT_slopeExitTarget", _target];
     _unit setVariable ["GAIT_slopeExitDeadline", diag_tickTime + 1.5];
-    if (!isNil "GAIT_fnc_beginPaceHandoff") then {[_unit, _animation, _target] call GAIT_fnc_beginPaceHandoff;};
     diag_log format ["[GAIT_LOCOMOTION] exit Draw3D %1 -> %2", _animation, _target];
     [_unit, _target] call GAIT_fnc_requestLocomotionMove;
     true
@@ -689,9 +673,21 @@ GAIT_fnc_locomotionStopRedirect = {
 
 GAIT_fnc_locomotionExitRedirect = {
     params ["_target", "_direction", "_walk"];
+    // Its native actions own W/A/D, including new diagonals during key-up.
+    // Only stop or a deliberate walk selection may interrupt this bridge.
+    if ([_target] call GAIT_fnc_isJogReleaseBridge) exitWith {_walk || {_direction isEqualTo "Dnon"}};
     if ([_target, _direction] call GAIT_fnc_locomotionStopRedirect) exitWith {true};
     private _pace = (toLower _target) select [8, 4];
     (_pace in ["mwlk", "mrun", "meva"]) && {_walk isNotEqualTo (_pace isEqualTo "mwlk")}
+};
+
+GAIT_fnc_isJogReleaseBridge = {
+    params ["_animation"];
+    private _parts = (toLower _animation) splitString "_";
+    (count _parts) isEqualTo 2 && {(_parts select 1) isEqualTo "gaitrelease"} &&
+        {((_parts select 0) select [0, 12]) isEqualTo "amovpercmrun"} &&
+        {((_parts select 0) select [12, 8]) in ["sraswrfl", "slowwrfl", "sraswpst", "slowwpst", "snonwnon"]} &&
+        {((_parts select 0) select [20]) in ["df", "dfl", "dfr", "dl", "dbr", "db", "dbl", "dr"]}
 };
 
 // A real rifle pose blend should finish in its selected raised/lowered pose
@@ -930,6 +926,16 @@ GAIT_fnc_uphillSprintRecoveryDecision = {
     _direction in _directions
 };
 
+GAIT_fnc_ownedNativeLateralSprint = {
+    params ["_phase", "_animation", "_family", "_entryTarget"];
+    if !(_phase in ["entering", "active"]) exitWith {false};
+    if ((["active", false, _entryTarget, ""] call GAIT_fnc_locomotionGaitIntent) isNotEqualTo "release") exitWith {false};
+    private _name = toLower _animation;
+    (_name select [0, 12]) isEqualTo "amovpercmrun" &&
+        {(_name select [12, 8]) isEqualTo toLower _family} &&
+        {(_name select [20]) in ["dl", "dbr", "db", "dbl", "dr"]}
+};
+
 // A new Turbo press can replace an issued ordinary release before it finishes.
 // One edge produces one graph request. Held Turbo, an unissued/deferred exit,
 // unrelated animation, lost input, stale envelope or unsafe context cannot.
@@ -967,6 +973,7 @@ GAIT_fnc_resumeLocomotionExit = {
         {[_unit, false] call GAIT_fnc_nativeMovementEligible};
     private _animation = [_unit] call GAIT_fnc_readLocomotionAnimation;
     private _known = ([_animation] call GAIT_fnc_slopeAnimationFamily) isNotEqualTo "" ||
+        {[_animation] call GAIT_fnc_isJogReleaseBridge} ||
         {[_animation, _unit getVariable ["GAIT_slopeExitSource", ""],
             _unit getVariable ["GAIT_slopeExitTarget", ""]] call GAIT_fnc_isLocomotionHandoffBlend};
     if !(["exiting", true, _unit getVariable ["GAIT_slopeExitIssued", false], _requested, _eligible, _known] call GAIT_fnc_locomotionResumeDecision) exitWith {false};
@@ -997,13 +1004,6 @@ GAIT_fnc_tickLocomotion = {
         _stanceYieldNow = [player] call GAIT_fnc_stanceYieldActive;
         if (!_stanceYieldNow) then {
             if (!isNil "GAIT_fnc_observePaceCalibration") then {[player, _input] call GAIT_fnc_observePaceCalibration;};
-            [player, _input] call GAIT_fnc_observeReleaseMomentum;
-            if (!_nativeWalk && {((player getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo []) ||
-                {(player getVariable ["GAIT_releasePendingCoefficient", -1]) >= 0} ||
-                {(player getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []}}) then {
-                [player, missionNamespace getVariable ["GAIT_nativeLastPreVegetation", 1], false]
-                    call GAIT_fnc_applyNativeMovement;
-            };
         };
     };
     // This must exit the whole render controller. Continuing into native-stop
@@ -1071,6 +1071,14 @@ GAIT_fnc_tickLocomotion = {
             call GAIT_fnc_locomotionGaitIntent;
     };
     if (_gaitIntent isEqualTo "release") then {_requested = false;};
+    private _nativeLateralSprint = _requested && {_eligible} && {_turbo} &&
+        {[_phase, _animation, _family, _entryTarget] call GAIT_fnc_ownedNativeLateralSprint};
+    if (_nativeLateralSprint && {(_input select 0) > 0.05} && {_phase isEqualTo "active"} &&
+        {[_family] call GAIT_fnc_slopeFamilyAvailable}) exitWith {
+        // This also handles W arriving during the last frame of a blend.
+        // beginLocomotionEntry latches entering, so this cannot reissue.
+        [_unit, _family, _input, _animation] call GAIT_fnc_beginLocomotionEntry;
+    };
     // Live locks win before any input redirect, even if the scheduled request
     // was published before an injury or mission restriction took effect.
     if (_requested && {_eligible} && {[_unit, _input, _gaitIntent] call GAIT_fnc_redirectLocomotionEntryDirection}) exitWith {};
@@ -1089,7 +1097,8 @@ GAIT_fnc_tickLocomotion = {
     // to the same weapon family, or held Turbo would replay the redirect.
     private _sprintStillInJog = [_phase, _animation, _entryTarget]
         call GAIT_fnc_locomotionEntryStillInJog;
-    private _insideTarget = _activeFamily isNotEqualTo "" && {!_sprintStillInJog};
+    private _insideTarget = (_activeFamily isNotEqualTo "" && {!_sprintStillInJog}) ||
+        {_nativeLateralSprint && {(_input select 0) <= 0.05}};
     private _compatibleBlend = _activeFamily isEqualTo "" && {_requested} && {_phase in ["active", "entering"]} &&
         {[_unit, _animation] call GAIT_fnc_locomotionMayFinishMoveBlend};
     private _action = [_phase, _requested, _eligible, _insideTarget, _expectedBlend,
@@ -1097,9 +1106,7 @@ GAIT_fnc_tickLocomotion = {
         call GAIT_fnc_locomotionDecision;
     switch (_action) do {
         case "release": {
-            private _keepRelease = _enabled && {!_locked} && {_eligible} && {!_nativeWalk} &&
-                {!_turbo} && {(_input select 0) > 0.05};
-            [_unit, _input, false, _keepRelease] call GAIT_fnc_releaseSlopeLocomotion;
+            [_unit, _input] call GAIT_fnc_releaseSlopeLocomotion;
             // Ordinary key release cancels body intent, not the still-valid
             // movement-context envelope needed for a render-frame re-press.
             if (_enabled && {!_locked} && {_eligible}) then {

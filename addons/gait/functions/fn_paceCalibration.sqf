@@ -1,13 +1,10 @@
 /*
-    Passive, session-local animation pace measurements and release handoffs.
+    Passive, session-local animation pace measurements.
     References are observed metres/second per applied animation coefficient,
     scoped to exact clip/config, weapon, surface and a narrow grade band.
-    No guessed speeds, persisted cross-mod profiles, velocity or input writes.
-    Missing evidence keeps the alpha10 release path.
 
-    getUnitMovesInfo indices 0 (normalized phase), 3 (move blend factor):
+    getUnitMovesInfo index 3 is the move blend factor:
     https://community.bistudio.com/wiki/getUnitMovesInfo
-    Blend compensation is a two-clip root-motion model, not velocity feedback.
 */
 GAIT_fnc_paceObservationStep = {
     params ["_state", "_key", "_now", "_reference", "_coefficient", "_valid"];
@@ -35,27 +32,6 @@ GAIT_fnc_paceObservationStep = {
         };
     };
     [[_key, _start, _now, _reference, _coefficient, _samples, _blockStart], _accepted]
-};
-
-GAIT_fnc_measuredReleaseTarget = {
-    params ["_speed", "_applied", "_ordinary", "_destinationReference"];
-    if (_speed <= 0.05 || {_applied <= 0.05} ||
-        {_ordinary <= 0.05} || {_destinationReference <= 0.1 || {_destinationReference >= 25}}) exitWith {[]};
-    private _sourceReference = _speed / _applied;
-    private _ratio = _destinationReference / _sourceReference;
-    // Refuse implausible/contaminated measurements, including collision stalls.
-    if (_ratio < 0.25 || {_ratio > 1.25}) exitWith {[]};
-    private _targetMS = (_ordinary * _destinationReference) min _speed;
-    [_targetMS / _sourceReference, _sourceReference, _targetMS]
-};
-
-GAIT_fnc_paceBlendCoefficient = {
-    params ["_sourceReference", "_destinationReference", "_physicalTarget", "_weight"];
-    if (!(_sourceReference > 0.1 && {_sourceReference < 25}) ||
-        {!(_destinationReference > 0.1 && {_destinationReference < 25})} ||
-        {!(_physicalTarget >= 0 && {_physicalTarget < 100})} ||
-        {!(_weight >= 0 && {_weight <= 1})}) exitWith {-1};
-    _physicalTarget / (_sourceReference + ((_destinationReference - _sourceReference) * _weight))
 };
 
 GAIT_fnc_paceReferenceKey = {
@@ -95,8 +71,6 @@ GAIT_fnc_observePaceCalibration = {
         {(_info param [3, 0]) >= 0.99} && {_speed > 0.3} &&
         {abs (((_heading - _priorHeading + 540) mod 360) - 180) < 2} &&
         {(["reload", "melee", "throw"] findIf {(_gesture find _x) >= 0}) < 0} &&
-        {!(_unit getVariable ["GAIT_releaseMomentumActive", false])} &&
-        {(_unit getVariable ["GAIT_paceHandoff", []]) isEqualTo []} &&
         {!(missionNamespace getVariable ["GAIT_braceActive", false])} &&
         {(missionNamespace getVariable ["GAIT_vegDragFactor", 0]) < 0.01} &&
         {damage _unit < 0.01} && {abs _grade < 70};
@@ -170,135 +144,4 @@ GAIT_fnc_resolveMovingPaceReference = {
     };
     if (_passiveReference > 0.1 && {_passiveReference < 25}) exitWith {_passiveReference};
     -1
-};
-
-GAIT_fnc_releasePaceMatch = {
-    params ["_unit", "_animation", "_family", "_direction", "_speed", "_applied", "_ordinary"];
-    private _target = toLower ([_family, _direction, false] call GAIT_fnc_nativeOrdinaryMoveName);
-    private _key = [_unit, _target] call GAIT_fnc_paceReferenceKey;
-    private _grade = missionNamespace getVariable ["GAIT_smoothedSlopeDegrees", 0];
-    private _now = diag_tickTime;
-    private _cache = _unit getVariable ["GAIT_paceMeasurements", []];
-    private _measured = [_cache, _key, _grade, _now] call GAIT_fnc_lookupPaceReference;
-    if (damage _unit >= 0.01) exitWith {[]};
-    private _profile = [missionNamespace getVariable ["GAIT_locomotionPaceProfiles", []], _family, _direction,
-        "jog"] call GAIT_fnc_locomotionPaceReferences;
-    private _reference = (_profile param [1, _measured]) * (1 - (missionNamespace getVariable ["GAIT_vegDragFactor", 0]));
-    private _resolved = [_speed, _applied, _ordinary, _reference]
-        call GAIT_fnc_releasePaceEndpoint;
-    if (_resolved isEqualTo []) exitWith {[]};
-    [_resolved select 0, [toLower _animation, _target, _resolved select 1,
-        _resolved select 3, _resolved select 2, currentWeapon _unit, _direction, _key select 5, _grade]]
-};
-
-GAIT_fnc_releasePaceEndpoint = {
-    params ["_speed", "_applied", "_ordinary", "_reference"];
-    // First use follows the same jog ratio as the uphill pace floor.
-    if (_reference < 0 && {_applied > 0.05}) then {
-        _reference = 0.75 * _speed / _applied;
-    };
-    private _resolved = [_speed, _applied, _ordinary, _reference] call GAIT_fnc_measuredReleaseTarget;
-    if (_resolved isEqualTo []) exitWith {[]};
-    _resolved + [_reference]
-};
-
-GAIT_fnc_beginPaceHandoff = {
-    params ["_unit", "_source", "_target"];
-    private _candidate = _unit getVariable ["GAIT_paceHandoffCandidate", []];
-    _unit setVariable ["GAIT_paceHandoffCandidate", []];
-    if ((count _candidate) != 2 || {diag_tickTime > (_candidate select 1)}) exitWith {};
-    private _match = _candidate select 0;
-    if ((_match select 0) isNotEqualTo toLower _source ||
-        {(_match select 1) isNotEqualTo toLower _target}) exitWith {};
-    private _release = _unit getVariable ["GAIT_releaseMomentumState", []];
-    private _plan = _release param [0, []];
-    private _deadline = diag_tickTime + 0.5;
-    if (_plan isNotEqualTo []) then {
-        _deadline = _deadline max ((_plan select 0) + (_plan select 1) + 0.05);
-    };
-    _unit setVariable ["GAIT_paceHandoff", [_match, _deadline, _plan, 0, diag_tickTime]];
-};
-
-GAIT_fnc_clearPaceHandoff = {
-    params ["_unit"];
-    if (!isNull _unit) then {
-        if ((_unit getVariable ["GAIT_paceHandoff", []]) isNotEqualTo []) then {
-            _unit setVariable ["GAIT_releaseMomentumState", []];
-            _unit setVariable ["GAIT_releaseMomentumActive", false];
-            missionNamespace setVariable ["GAIT_releaseMomentumActive", false];
-            missionNamespace setVariable ["GAIT_shiftReleaseRunTaperActive", false];
-            missionNamespace setVariable ["GAIT_shiftReleaseRunTaperKeep", 0];
-        };
-        _unit setVariable ["GAIT_paceHandoff", []];
-        _unit setVariable ["GAIT_paceHandoffCandidate", []];
-        _unit setVariable ["GAIT_releaseResume", []];
-    };
-};
-
-GAIT_fnc_paceHandoffContext = {
-    params ["_unit", "_match", "_deadline"];
-    _match params ["_source", "_target", "_sourceReference", "_targetReference", "_targetMS", "_weapon", "_direction", "_surface", "_grade"];
-    private _input = [] call GAIT_fnc_getMovementInput;
-    private _safe = diag_tickTime <= _deadline && {call GAIT_fnc_modeAllowsMovement} &&
-        {missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true]} &&
-        {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]} &&
-        {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]} &&
-        {(_input select 0) > 0.05} &&
-        {!([_unit, _input select 2] call GAIT_fnc_nativeWalkRequested)} &&
-        {([_input select 0, _input select 1] call GAIT_fnc_slopeDirection) isEqualTo _direction} &&
-        {currentWeapon _unit isEqualTo _weapon} && {isTouchingGround _unit} &&
-        {isSprintAllowed _unit} && {!isForcedWalk _unit} &&
-        {(_unit getVariable ["ace_common_effect_blockSprint", 0]) <= 0} &&
-        {(_unit getVariable ["ace_common_effect_forceWalk", 0]) <= 0} &&
-        {[_unit, false] call GAIT_fnc_nativeMovementEligible} &&
-        {_unit isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull])} &&
-        {abs (getAnimSpeedCoef _unit - (missionNamespace getVariable ["GAIT_nativeLastWritten", -1])) < 0.001} &&
-        {(surfaceType (getPosATL _unit)) isEqualTo _surface} &&
-        {abs ((missionNamespace getVariable ["GAIT_smoothedSlopeDegrees", 0]) - _grade) <= 2};
-    [_safe, _input select 2, toLower animationState _unit, [_unit] call GAIT_fnc_readPaceMoveInfo]
-};
-
-GAIT_fnc_paceHandoffWeight = {
-    params ["_animation", "_source", "_target", "_info"];
-    if (_animation isEqualTo _source) exitWith {1 - (_info param [3, 1])};
-    if (_animation isEqualTo _target) exitWith {_info param [3, 1]};
-    // Explicit transition clips report their own phase.
-    if (_animation isEqualTo (_source + "_" + _target)) exitWith {_info param [0, -1]};
-    if (_animation isEqualTo (_target + "_" + _source)) exitWith {1 - (_info param [0, -1])};
-    -1
-};
-
-GAIT_fnc_samplePaceHandoff = {
-    params ["_unit", "_coefficient", ["_now", diag_tickTime, [0]]];
-    private _state = _unit getVariable ["GAIT_paceHandoff", []];
-    if ((count _state) isNotEqualTo 5) exitWith {_coefficient};
-    _state params ["_match", "_deadline", "_plan", "_lastWeight", "_issuedAt"];
-    _match params ["_source", "_target", "_sourceReference", "_targetReference", "_targetMS"];
-    private _context = [_unit, _match, _deadline] call GAIT_fnc_paceHandoffContext;
-    _context params ["_safe", "_turbo", "_animation", "_info"];
-    if (!_safe) exitWith {[_unit] call GAIT_fnc_clearPaceHandoff; _coefficient};
-    private _weight = [_animation, _source, _target, _info] call GAIT_fnc_paceHandoffWeight;
-    if (_weight < 0 || {_weight > 1}) exitWith {[_unit] call GAIT_fnc_clearPaceHandoff; _coefficient};
-    private _sample = [_targetMS / _sourceReference, _targetMS, 0, false];
-    if (_plan isNotEqualTo []) then {_sample = [_plan, _now] call GAIT_fnc_releaseMomentumSample;};
-    if (_turbo) exitWith {
-        [_unit] call GAIT_fnc_clearPaceHandoff;
-        _unit setVariable ["GAIT_releaseResume", [_sample select 0, _now]];
-        _coefficient
-    };
-    // The engine can report the old source for one frame after release was
-    // issued, before it exposes a blend. Apply at most one short sample in
-    // that sprint clip, then yield if the ordinary animation never appears.
-    if (_weight <= 0.001 && {_animation isEqualTo _source} && {_now > _issuedAt + 0.15}) exitWith {
-        [_unit] call GAIT_fnc_clearPaceHandoff;
-        _coefficient
-    };
-    _weight = _weight max _lastWeight;
-    _state set [3, _weight];
-    private _matched = [_sourceReference, _targetReference, _sample select 1, _weight] call GAIT_fnc_paceBlendCoefficient;
-    if (_matched < 0) exitWith {[_unit] call GAIT_fnc_clearPaceHandoff; _coefficient};
-    missionNamespace setVariable ["GAIT_shiftReleaseRunTaperKeep", _sample select 2];
-    missionNamespace setVariable ["GAIT_shiftReleaseRunTaperTargetKmh", (_sample select 1) * 3.6];
-    if (!(_sample select 3) && {_weight >= 0.999}) then {[_unit] call GAIT_fnc_clearPaceHandoff;};
-    _matched
 };

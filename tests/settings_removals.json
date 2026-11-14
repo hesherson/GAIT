@@ -1,5 +1,7 @@
 {
   "GAIT_ss_shiftReleaseRunTaperHoldDuration": "Inactive since alpha5; release starts immediately.",
+  "GAIT_ss_shiftReleaseRunTaperCurve": "Jog deceleration uses the common coefficient ramp.",
+  "GAIT_ss_uphillReleaseBraceEnabled": "Uphill sprint release uses the common jog deceleration ramp.",
   "GAIT_ss_downhillMomentumEasyTriggerDegrees": "Redundant second onset cap; use Downhill boost starts.",
   "GAIT_ss_resetOnRespawn": "Owned effects must always be cleaned up when the player changes or control is suspended.",
   "GAIT_ss_suspendInSpectator": "Camera and delegated-control safety checks are always active.",

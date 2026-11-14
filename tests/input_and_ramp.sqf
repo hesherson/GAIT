@@ -29,6 +29,27 @@ private _results = [];
 {[abs (_x - (_results select 0)) < 0.00001, "one-second ramp independent of update interval"] call _assert;} forEach _results;
 private _decel = [1.2,0.6,0.05,0.05] call GAIT_fnc_stepSpeedCoefficient;
 [_decel < 1.2 && {_decel > 0.6}, "deceleration is monotonic without overshoot"] call _assert;
+private _jogRamp = [1.15, true] call GAIT_fnc_jogDecelerationRamp;
+private _pace = 1.10;
+{
+    _x params ["_actions", "_direction", "_jogTarget"];
+    private _input = _actions call GAIT_fnc_resolveMovementInput;
+    [[_input select 0, _input select 1] isEqualTo _direction, "live direction reaches the engine on the current sample"] call _assert;
+    private _next = [_pace, _jogTarget, _jogRamp, 0.05] call GAIT_fnc_stepSpeedCoefficient;
+    [_next < _pace && {_next > _jogTarget}, "changed direction uses current scalar without restarting or snapping"] call _assert;
+    _pace = _next;
+} forEach [
+    [[1,0,0,0,0], [1,0], 0.86],
+    [[1,0,1,0,0], [sqrt 0.5,-sqrt 0.5], 0.86],
+    [[0,0,1,0,0], [0,-1], 0.82],
+    [[0,0,0,1,0], [0,1], 0.82],
+    [[0,1,0,0,0], [-1,0], 0.82]
+];
+private _settled = 1.10;
+for "_i" from 1 to 23 do {_settled = [_settled, 0.86, _jogRamp, 0.05] call GAIT_fnc_stepSpeedCoefficient;};
+[abs (_settled - (0.86 + (0.05 * (1.10 - 0.86)))) < 0.00001, "jog deceleration duration represents 95% convergence"] call _assert;
+private _direct = [1.15, false] call GAIT_fnc_jogDecelerationRamp;
+[([1.1,0.86,_direct,0.05] call GAIT_fnc_stepSpeedCoefficient) isEqualTo 0.86, "disabled smoothing uses the current jog target"] call _assert;
 private _stalled = [0.6,1.2,0.05,4] call GAIT_fnc_stepSpeedCoefficient;
 private _bounded = [0.6,1.2,0.05,0.2] call GAIT_fnc_stepSpeedCoefficient;
 [abs (_stalled - _bounded) < 0.00001, "scheduler stall cannot skip the full ramp"] call _assert;

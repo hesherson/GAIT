@@ -29,10 +29,10 @@ class LocomotionInvariants(unittest.TestCase):
         project = (ROOT / ".hemtt/project.toml").read_text()
         config = (ROOT / "addons/gait/config.cpp").read_text()
         mod = (ROOT / "mod.cpp").read_text()
-        self.assertIn("build = 24", project)
-        self.assertIn('versionStr = "1.8.0-alpha24";', config)
-        self.assertIn("versionAr[] = {1,8,0,24};", config)
-        self.assertIn('tooltip = "GAIT 1.8.0-alpha24";', mod)
+        self.assertIn("build = 25", project)
+        self.assertIn('versionStr = "1.8.0-alpha25";', config)
+        self.assertIn("versionAr[] = {1,8,0,25};", config)
+        self.assertIn('tooltip = "GAIT 1.8.0-alpha25";', mod)
 
     def test_graph_pose_and_no_walk_contract(self):
         text = GRAPH.read_text()
@@ -95,7 +95,6 @@ class LocomotionInvariants(unittest.TestCase):
 
     def test_locomotion_has_no_velocity_injection_or_animation_watchdog(self):
         for name in ("fn_slopeLocomotion.sqf", "fn_nativeController.sqf",
-                     "fn_releaseMomentum.sqf", "fn_uphillBrake.sqf",
                      "fn_braceMomentum.sqf", "fn_downhillPace.sqf"):
             code = executable(read(name))
             self.assertNotRegex(code, r"\bsetVelocity(?:ModelSpace)?\b", name)
@@ -120,8 +119,19 @@ class LocomotionInvariants(unittest.TestCase):
         self.assertIn('if (_nativeWalk && {!_allowCarry}) exitWith', native)
         self.assertIn('[player, _currentSpeed, false, true] call GAIT_fnc_applyNativeMovement', main)
         self.assertIn('[player] call GAIT_fnc_releaseNativeWalkPace', slope)
-        self.assertIn('if (!_nativeWalk &&', slope)
-        self.assertNotIn('_releaseHeld', slope)
+        self.assertIn('!_nativeWalk', slope)
+
+    def test_deceleration_uses_only_the_common_speed_ramp(self):
+        main = read("fn_initSprintSystem.sqf")
+        start = main.index('call GAIT_fnc_jogDecelerationRamp;')
+        end = main.index('call GAIT_fnc_applyNativeMovement;', start)
+        self.assertIn('call GAIT_fnc_stepSpeedCoefficient;', main[start:end])
+        self.assertFalse((FUNCTIONS / "fn_releaseMomentum.sqf").exists())
+        self.assertFalse((FUNCTIONS / "fn_uphillBrake.sqf").exists())
+        slope = read("fn_slopeLocomotion.sqf")
+        self.assertNotIn('GAIT_fnc_applyNativeMovement', slope)
+        self.assertNotIn('GAIT_ss_shiftReleaseRunTaper', slope)
+        self.assertNotIn('GAIT_paceHandoff', slope)
 
     def test_locality_and_reset_contract(self):
         helper = read("fn_traversalHelpers.sqf")

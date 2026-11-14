@@ -101,6 +101,17 @@ private _lowExpectedLaunch = [_lowLaunchBlend, _loweredRun, _pistolLowSprint] ca
 private _lowDecision = ["entering", true, _lowExpectedLaunch, false, _lowExpectedLaunch, true, true] call GAIT_fnc_locomotionDecision;
 if (_lowDecision isNotEqualTo "hold") then {_failures pushBack "Lowered pistol same-pose launch released ownership before its sprint blend completed";};
 
+private _releaseBridge = _loweredRun + "_GAITRelease";
+if !([_pistolLowSprint + "_" + _releaseBridge, _pistolLowSprint, _releaseBridge] call GAIT_fnc_isLocomotionHandoffBlend) then {
+    _failures pushBack "Expected sprint-to-bridge transition was not allowed";
+};
+if !([_releaseBridge + "_" + _pistolLowSprint, _releaseBridge, _pistolLowSprint] call GAIT_fnc_isLocomotionHandoffBlend) then {
+    _failures pushBack "Retapping from an already observed bridge failed blend validation";
+};
+if ([_pistolLowSprint + "_" + _loweredRun, _pistolLowSprint, _releaseBridge] call GAIT_fnc_isLocomotionHandoffBlend) then {
+    _failures pushBack "Native destination was mistaken for exact queued bridge";
+};
+
 if (_failures isEqualTo []) then {
     diag_log "GAIT cleanup and blend tests PASS: inherited arguments, coefficient-only cleanup, expected/unsafe transitions and strict native _ver2 brace handoffs.";
 } else {

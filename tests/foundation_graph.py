@@ -49,6 +49,7 @@ class FoundationGraph(unittest.TestCase):
         cls.states = {name: (base, body) for name, base, body in blocks
                       if name.endswith("_GAIT") or name.endswith("_GAITSprint")}
         cls.stops = {name: (base, body) for name, base, body in blocks if name.endswith("_GAITStop")}
+        cls.releases = {name: (base, body) for name, base, body in blocks if name.endswith("_GAITRelease")}
         cls.actions = {name: (base, body) for name, base, body in blocks if name.startswith("GAIT_Slope")}
 
     def test_real_native_clip_parents_and_controller_markers(self):
@@ -85,7 +86,7 @@ class FoundationGraph(unittest.TestCase):
                 self.assertNotRegex(body, r"\b(?:file|speed|duty|stamina|disableWeapons|headBobStrength)\s*=")
         self.assertEqual(counts, {"idle": 5, "sprint": 15, "run": 65})
 
-    def test_default_stop_turn_and_every_direction_remain_in_family(self):
+    def test_sprint_preserves_forward_and_exposes_native_lateral_release(self):
         self.assertEqual(len(self.actions), 15)
         for family, (neutral_actions, jog_actions, sprint_actions, native_actions) in FAMILIES.items():
             idle = f"AmovPercMstp{family}Dnon_GAIT"
@@ -109,6 +110,8 @@ class FoundationGraph(unittest.TestCase):
                             sprinting = pace in ("Fast", "PlayerFast")
                         expected_pace = "Meva" if sprinting and direction in FORWARD else "Mrun"
                         suffix = "_GAITSprint" if sprinting and direction not in FORWARD else "_GAIT"
+                        if policy == "sprint" and direction not in FORWARD and pace not in ("Fast", "PlayerFast"):
+                            suffix = ""
                         self.assertEqual(p[pace + selector], f"AmovPerc{expected_pace}{family}{direction}{suffix}")
                 # Medical, stance, weapon and vehicle selectors remain inherited.
                 self.assertEqual(len(p), 71)
@@ -130,6 +133,27 @@ class FoundationGraph(unittest.TestCase):
                 self.assertIn(stop, dict(edges(move_body, "InterpolateFrom")))
                 self.assertIn(name, dict(edges(body, "InterpolateTo")))
                 self.assertIn(name, dict(edges(body, "InterpolateFrom")))
+
+    def test_release_bridges_use_native_gaits_with_direct_direction_routes(self):
+        self.assertEqual(len(self.releases), 40)
+        for family, (_, _, _, native_actions) in FAMILIES.items():
+            native_jogs = {f"AmovPercMrun{family}{direction}" for direction in DIRECTIONS}
+            native_stop = f"AmovPercMstp{family}Dnon_GAITStop"
+            sprint_entries = {f"AmovPercMeva{family}{direction}_GAIT" for direction in FORWARD}
+            for native_jog in native_jogs:
+                target = native_jog + "_GAITRelease"
+                parent, body = self.releases[target]
+                self.assertEqual(parent, native_jog)
+                self.assertEqual(properties(body)["actions"], native_actions)
+                self.assertRegex(body, r"\binterpolationSpeed\s*=\s*8;")
+                self.assertRegex(body, r"\bGAIT_releaseBridge\s*=\s*1;")
+                self.assertNotRegex(body, r"\b(?:speed|file|GAIT_slopeState|GAIT_slopeFamily)\s*=")
+                incoming = dict(edges(body, "InterpolateFrom"))
+                outgoing = dict(edges(body, "InterpolateTo"))
+                self.assertTrue(sprint_entries <= incoming.keys())
+                self.assertTrue(native_jogs | sprint_entries | {native_stop} <= outgoing.keys())
+                for source in sprint_entries:
+                    self.assertIn(target, dict(edges(self.states[source][1], "InterpolateTo")))
 
     def test_idle_recovery_and_direction_reversals_have_direct_edges(self):
         for family in FAMILIES:

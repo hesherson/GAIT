@@ -1,12 +1,12 @@
-# GAIT 1.8.0-alpha24 settings reference
+# GAIT 1.8.0-alpha25 settings reference
 
-This reference covers the 109 current CBA registrations. The table shows registration defaults. Presets and mission or server overrides can change effective values. Select Custom to keep individual tuning.
+This reference covers the 107 current CBA registrations. The table shows registration defaults. Presets and mission or server overrides can change effective values. Select Custom to keep individual tuning.
 
 ## Current cleanup and compatibility behavior
 
 Removed the inactive release sustain timer, redundant downhill onset cap, and three switches that allowed lifecycle cleanup to be disabled. Cleanup on player replacement, spectator/control changes and unconsciousness is now unconditional. Movement only is the default. Saved numeric values 0 and 1 enable movement, and the old effects-only modes resolve to Disabled.
 
-The Downhill boost starts control now defaults to 0.5°. Exhausted sprint tapers in the last 20% of the stamina bar, and uphill sprint has a jog-relative floor. The release curve slider exposes its effective 1–3 range and HUD interval starts at 0.05 seconds.
+The Downhill boost starts control now defaults to 0.5°. Exhausted sprint tapers in the last 20% of the stamina bar, and uphill sprint has a jog-relative floor. Jog deceleration uses the common speed ramp in every direction.
 
 ACE supplies fatigue feedback. Stable same-clip measurements may automatically calibrate sprint pace, and complete manual pace profiles are optional.
 
@@ -42,9 +42,8 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Fallback reserve recovery (`GAIT_ss_sprintRecoverTime`) | 10 | 1–60 | Seconds at rest to recover the GAIT fallback reserve. |
 | Speed ramp smoothness (`GAIT_ss_speedLerp`) | 0.05 | 0.01–1 | Base smoothing rate for movement speed changes. Flat sprint acceleration uses 70% of this rate and reaches about 95% of target in 4.1 seconds before the carried-load adjustment. Hills have their own entry response. |
 | W-release zero-momentum delay (`GAIT_ss_wReleaseZeroMomentumDelay`) | 0.5 | 0–20 | Seconds after releasing forward movement before the next sprint start is treated as zero momentum. Lower values make brace return sooner. Default: 0.50. |
-| Smooth sprint release (`GAIT_ss_shiftReleaseRunTaperEnabled`) | true | on / off | Releases the sprint gait immediately and tapers pace while continuing forward in a jog. Walk, stop, direction changes and medical restrictions take effect immediately. |
-| Sprint release duration scale (`GAIT_ss_shiftReleaseRunTaperDuration`) | 1.15 | 0.05–4 | Sets the release window, scaled by load and bounded to 0.35–1.20 seconds. The taper eases current speed into jog following immediate sprint release. |
-| Sprint release curve (`GAIT_ss_shiftReleaseRunTaperCurve`) | 1.45 | 1–3 | Shapes the finite slowdown. Higher values lose pace sooner. Effective range: 1-3. Does not add a hold or extend the deadline. Default: 1.45. |
+| Smooth jog deceleration (`GAIT_ss_shiftReleaseRunTaperEnabled`) | true | on / off | Eases speed toward the live jog target in every direction. Turning and strafing use native input. |
+| Jog deceleration time (`GAIT_ss_shiftReleaseRunTaperDuration`) | 1.15 | 0.05–4 s | Time for the coefficient to cover 95% of the gap to a steady jog target. |
 | Unarmed sprint normalizer (`GAIT_ss_unarmedSprintNormalizer`) | 0.725 | 0.3–1.2 | Multiplier applied when sprinting with no weapon out so holstering does not create an unrealistic speed boost. Default: 0.725. |
 ### Carry
 
@@ -74,7 +73,7 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Control / variable | Default | Allowed values | Implemented behavior |
 | --- | --- | --- | --- |
 | Enable start brace step (`GAIT_ss_sprintStartBraceEnabled`) | true | on / off | Enables the small weight-scaled first step when beginning ordinary forward movement from rest and the stronger sprint-start brace. |
-| Sprint brace duration (`GAIT_ss_sprintStartBraceDuration`) | 0.15 | 0–1 | Base duration for the sprint launch and uphill release brake. Sprint launch uses 92% of the assembled duration. |
+| Sprint brace duration (`GAIT_ss_sprintStartBraceDuration`) | 0.15 | 0–1 | Base duration for the sprint launch. Sprint launch uses 92% of the assembled duration. |
 | Sprint brace speed (`GAIT_ss_sprintStartBraceSpeed`) | 0.44 | 0.10–1.20 | Animation speed target during the sprint-start brace. Lower values deepen the dip. |
 | Sprint brace snap (`GAIT_ss_sprintStartBraceLerp`) | 0.575 | 0.01–1 | How abruptly speed moves into the sprint-start brace. The walk-start step uses a deterministic smooth finite recovery instead. |
 | Brace settle time (`GAIT_ss_braceRequiredWalkTime`) | 2 | 0–10 | Non-sprint settle interval used by normal brace readiness and momentum recovery. A true stop can independently rearm the brace; a moving sprint retap is protected. Default: 2 seconds. |
@@ -88,7 +87,6 @@ ACE supplies fatigue feedback. Stable same-clip measurements may automatically c
 | Slope brace extra duration (`GAIT_ss_slopeStopBraceExtraDuration`) | 0.18 | 0–2 | Base extra duration for slope bracing. Zero-momentum uphill launches exponentially amplify this value to roughly 3x at the reference angle; momentum-protected starts bypass it. Default: 0.18 sec. |
 | Slope brace extra dip (`GAIT_ss_slopeStopBraceExtraDip`) | 0.28 | 0–0.9 | Base slope-induced brace speed dip. Zero-momentum uphill launches exponentially amplify it; retained momentum bypasses the added uphill burden. Default: 0.28. |
 | Slope brace memory (`GAIT_ss_slopeStopBraceMemoryTime`) | 2.5 | 0–10 | Seconds after stopping sprint on an incline where the next sprint start still uses the slope brace. Default: 2.5 sec. |
-| Uphill sprint-release brake (`GAIT_ss_uphillReleaseBraceEnabled`) | false | on / off | Optional uphill dig-in brake that takes priority over the ordinary release taper when enabled. |
 ### Slope
 
 | Control / variable | Default | Allowed values | Implemented behavior |

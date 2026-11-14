@@ -86,9 +86,8 @@ private _addList = {
 ["GAIT_ss_sprintRecoverTime", "Fallback reserve recovery", "Seconds at rest to recover the GAIT fallback reserve. Default: 10 seconds.", _categoryMove, 1.00, 60.00, 10.00, 0] call _addSlider;
 ["GAIT_ss_speedLerp", "Speed ramp smoothness", "Base smoothing rate for movement speed changes. Lower is smoother/slower; higher is snappier. Upward sprint acceleration intentionally uses 70% of this rate so reaching maximum sprint speed takes longer, while braking/release timing stays unchanged. Default: 0.05.", _categoryMove, 0.01, 1.00, 0.05, 2] call _addSlider;
 ["GAIT_ss_wReleaseZeroMomentumDelay", "W-release zero-momentum delay", "Seconds after releasing forward movement before the next sprint start is treated as zero momentum. Lower values make brace return sooner. Default: 0.50.", _categoryMove, 0.00, 20.00, 0.50, 2] call _addSlider;
-["GAIT_ss_shiftReleaseRunTaperEnabled", "Smooth sprint release", "Switches immediately to the live movement gait on Shift release. With forward jog held, only pace tapers. Walk, stop, direction changes and medical restrictions take effect immediately. Default: enabled.", _categoryMove, true] call _addCheckbox;
-["GAIT_ss_shiftReleaseRunTaperDuration", "Sprint release duration scale", "Sets the Shift-release window, scaled by carried load and bounded to 0.35-1.20 seconds. The taper eases current speed into jog following immediate sprint release. Default: 1.15 seconds.", _categoryMove, 0.05, 4.00, 1.15, 2] call _addSlider;
-["GAIT_ss_shiftReleaseRunTaperCurve", "Sprint release curve", "Shapes the finite slowdown. Higher values lose pace sooner. Effective range: 1-3. Does not add a hold or extend the deadline. Default: 1.45.", _categoryMove, 1.00, 3.00, 1.45, 2] call _addSlider;
+["GAIT_ss_shiftReleaseRunTaperEnabled", "Smooth jog deceleration", "Smooths deceleration after sprint release and other jog speed changes. Direction and strafing respond to live input. Default: enabled.", _categoryMove, true] call _addCheckbox;
+["GAIT_ss_shiftReleaseRunTaperDuration", "Jog deceleration time", "Seconds to ease 95% of the way toward the current jog pace. Applies in every movement direction. Default: 1.15 seconds.", _categoryMove, 0.05, 4.00, 1.15, 2] call _addSlider;
 ["GAIT_ss_unarmedSprintNormalizer", "Unarmed sprint normalizer", "Multiplier applied when sprinting with no weapon out so holstering does not create an unrealistic speed boost. Default: 0.725.", _categoryMove, 0.30, 1.20, 0.725, 3] call _addSlider;
 
 // -----------------------------------------------------
@@ -132,7 +131,6 @@ private _addList = {
 ["GAIT_ss_slopeStopBraceExtraDuration", "Slope brace extra duration", "Base extra duration for slope bracing. Zero-momentum uphill launches exponentially amplify this value, up to roughly 3x at the reference angle; momentum-protected starts do not. Default: 0.18 sec.", _categoryBrace, 0.00, 2.00, 0.18, 2] call _addSlider;
 ["GAIT_ss_slopeStopBraceExtraDip", "Slope brace extra dip", "Base slope-induced brace speed dip. Zero-momentum uphill launches exponentially amplify this value, while retained momentum bypasses the added uphill burden. Default: 0.28.", _categoryBrace, 0.00, 0.90, 0.28, 2] call _addSlider;
 ["GAIT_ss_slopeStopBraceMemoryTime", "Slope brace memory", "Seconds after stopping sprint on an incline where the next sprint start still uses the slope brace. Default: 2.5 sec.", _categoryBrace, 0.00, 10.00, 2.50, 1] call _addSlider;
-["GAIT_ss_uphillReleaseBraceEnabled", "Uphill sprint-release brake", "Brief dig-in braking when releasing a moving uphill sprint. Uses the slope brace angles, duration and dip and takes priority over the ordinary release ramp. Releasing forward movement cancels its animation hold. Default: disabled.", _categoryBrace, false] call _addCheckbox;
 
 // -----------------------------------------------------
 // Weapon handling is left to ACE/native systems; no GAIT sway controls.

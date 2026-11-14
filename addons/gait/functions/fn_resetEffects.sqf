@@ -23,12 +23,7 @@ if (!isNil "GAIT_fnc_releaseNativeMovement") then {
 };
 
 missionNamespace setVariable ["GAIT_resetRequested", time];
-missionNamespace setVariable ["GAIT_coastUnit", objNull];
-missionNamespace setVariable ["GAIT_coastActive", false];
-missionNamespace setVariable ["GAIT_coastReadyUntil", -1];
 missionNamespace setVariable ["GAIT_exhaustionLevel", 0];
-missionNamespace setVariable ["GAIT_shiftHeld", false];
-missionNamespace setVariable ["GAIT_lastShiftRelease", time];
 missionNamespace setVariable ["GAIT_slopeDegrees", 0];
 missionNamespace setVariable ["GAIT_slopeSpeedMultiplier", 1];
 missionNamespace setVariable ["GAIT_lastTripTime", -999];
@@ -36,12 +31,6 @@ missionNamespace setVariable ["GAIT_lastTripTime", -999];
 // Movement transients must not survive a manual/Zeus/player-context reset.
 missionNamespace setVariable ["GAIT_braceActive", false];
 missionNamespace setVariable ["GAIT_braceEndTime", -1];
-missionNamespace setVariable ["GAIT_uphillBrakeActive", false];
-missionNamespace setVariable ["GAIT_uphillBrakeEndTime", -1];
-missionNamespace setVariable ["GAIT_uphillBrakeReadyUntil", -1];
-missionNamespace setVariable ["GAIT_uphillBrakeUnit", objNull];
-missionNamespace setVariable ["GAIT_uphillBrakeSeverity", 0];
-missionNamespace setVariable ["GAIT_uphillBrakeTarget", 0];
 missionNamespace setVariable ["GAIT_slopeJogOverride", false];
 missionNamespace setVariable ["GAIT_downhillMomentum", 0];
 missionNamespace setVariable ["GAIT_walkStartBraceActive", false];

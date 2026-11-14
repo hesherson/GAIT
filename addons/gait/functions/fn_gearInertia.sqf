@@ -1,10 +1,6 @@
 /*
-    Live carried mass controls acceleration and release inertia.
-    A released sprint has one short forward-only taper, with no hold and no
-    secondary exponential tail. The separate uphill brake has priority.
-
-    Returns [accelerationScale, decelerationScale, coastScale,
-             launchDurationScale, braceRelief].
+    Live carried mass controls acceleration and launch brace relief.
+    Returns [accelerationScale, braceRelief].
 */
 GAIT_fnc_gearWeightAnchors = {
     params ["_thresholds"];
@@ -25,7 +21,6 @@ GAIT_fnc_gearInertia = {
     private _heavyAnchor = _landmarks select 3;
     _landmarks append [_heavyAnchor + 25, _heavyAnchor + 50];
     private _acceleration = [1.12, 1.02, 0.93, 0.84, 0.77, 0.72];
-    private _coast = [0.90, 0.95, 1, 1.05, 1.10, 1.15];
     private _load = _gearLbs max 0 min (_landmarks select 5);
     private _segment = 0;
     for "_i" from 1 to 4 do {
@@ -33,10 +28,9 @@ GAIT_fnc_gearInertia = {
     };
     private _fraction = (_load - (_landmarks select _segment)) / ((_landmarks select (_segment + 1)) - (_landmarks select _segment));
     private _accelerationScale = (_acceleration select _segment) + (((_acceleration select (_segment + 1)) - (_acceleration select _segment)) * _fraction);
-    private _coastScale = (_coast select _segment) + (((_coast select (_segment + 1)) - (_coast select _segment)) * _fraction);
     private _reliefFrom = (_braceRelief param [_segment min 3, 0, [0]]) max 0 min 1;
     private _reliefTo = (_braceRelief param [(_segment + 1) min 3, 0, [0]]) max 0 min 1;
-    [_accelerationScale, 1, _coastScale, 1, _reliefFrom + ((_reliefTo - _reliefFrom) * _fraction)]
+    [_accelerationScale, _reliefFrom + ((_reliefTo - _reliefFrom) * _fraction)]
 };
 
 GAIT_fnc_scaleInertiaRamp = {
@@ -57,62 +51,4 @@ GAIT_fnc_sprintAccelerationRamp = {
     ];
     [_baseLerp, (_gearScale max 0.05 min 3) * (_sprintScale max 0.25 min 1)]
         call GAIT_fnc_scaleInertiaRamp
-};
-
-// Keep the stored hold argument for compatibility, but never apply it. Saved
-// alpha4 hold settings must not reintroduce input lag. The duration setting is
-// a scale: default .85 resolves to about .765-.978 seconds across default load tiers.
-// The release planner then uses measured excess velocity to consume 75-100% of
-// that window, so every tier inherits current sprint pace before easing to jog.
-GAIT_fnc_gearCoastWindow = {
-    params [["_holdSeconds", 0, [0]], ["_taperSeconds", 0.85, [0]], ["_durationScale", 1, [0]]];
-    [0, ((_taperSeconds max 0.05 min 4) * 1.00 * (_durationScale max 0.9 min 1.15)) max 0.35 min 1.20]
-};
-
-// Finite curve applied directly to the coefficient, not filtered a second
-// time. Output never exceeds the release value. The caller also limits it
-// to the current coefficient, so a rising live walk target cannot add speed.
-GAIT_fnc_forwardCoastPace = {
-    params ["_start", "_walk", "_elapsed", "_duration", ["_curve", 1.45, [0]]];
-    _start = _start max 0;
-    _walk = (_walk max 0) min _start;
-    private _t = (_elapsed / (_duration max 0.05)) max 0 min 1;
-    private _ease = _t * _t * (3 - (2 * _t));
-    private _keep = (1 - _ease) ^ (_curve max 1 min 3);
-    [_walk + ((_start - _walk) * _keep), _keep, _t < 1]
-};
-
-// Capture/consume one rendered release, in the pre-vegetation coefficient
-// space used by the feature loop. The measured velocity labels that instant;
-// it is never divided by a guessed clip speed or fed back against collision.
-GAIT_fnc_releasePaceSnapshot = {
-    params ["_snapshot", "_now", "_fallbackCoefficient", "_fallbackMS", ["_maximumAge", 0.25, [0]]];
-    if ((count _snapshot) isNotEqualTo 4) exitWith {[_now, _fallbackCoefficient, _fallbackMS]};
-    _snapshot params ["_capturedAt", "_appliedCoefficient", "_speedMS", "_drag"];
-    if (_capturedAt > _now || {_now - _capturedAt > _maximumAge} ||
-        {_appliedCoefficient <= 0} || {_speedMS < 0}) exitWith {[_now, _fallbackCoefficient, _fallbackMS]};
-    private _coefficient = _appliedCoefficient / (1 - (_drag max 0 min 0.75));
-    [_capturedAt, _coefficient min _fallbackCoefficient, _speedMS]
-};
-
-// A release during the brace can be below ordinary movement pace. There is
-// no excess speed to dissipate then: resume the normal smooth ramp at once.
-GAIT_fnc_hasReleaseExcess = {
-    params ["_start", "_ordinaryTarget"];
-    _start > (_ordinaryTarget + 0.00001)
-};
-
-// Keep numeric coast only for the finite curve while W stays held.
-// W+A/D are valid forward movement; pure strafe/back/stop are not coasting.
-// Compatibility arguments retain old call sites without any residual tail.
-GAIT_fnc_gearCoastActive = {
-    params [
-        ["_enabled", false, [false]], ["_sprinting", false, [false]],
-        ["_forward", false, [false]], ["_lateral", false, [false]],
-        ["_protected", false, [false]], ["_moving", false, [false]],
-        ["_currentCoef", 1, [0]], ["_walkCoef", 1, [0]],
-        ["_now", 0, [0]], ["_taperUntil", -999, [0]], ["_taperActive", false, [false]]
-    ];
-    _enabled && {!_sprinting} && {_forward} && {_moving} &&
-    {_taperActive} && {_taperUntil >= 0} && {_now < _taperUntil}
 };

@@ -165,6 +165,19 @@ if ((["AmovPercMevaSrasWrflDf_GAIT_AmovPercMwlkSlowWrflDf_ver2", "SrasWrfl"]
     call GAIT_fnc_locomotionExitBlendPose) isNotEqualTo "SlowWrfl") then {
     _failures pushBack "Sprint release reversed the target pose of an ongoing weapon-lower blend";
 };
+{
+    _x params ["_phase", "_animation", "_entry", "_expected"];
+    if (([_phase, _animation, "SrasWrfl", _entry] call GAIT_fnc_ownedNativeLateralSprint) isNotEqualTo _expected) then {
+        _failures pushBack format ["Wrong native side/back sprint fallback for %1 in %2", _animation, _phase];
+    };
+} forEach [
+    ["active", "AmovPercMrunSrasWrflDl", "AmovPercMevaSrasWrflDf_GAIT", true],
+    ["entering", "AmovPercMrunSrasWrflDr", "AmovPercMrunSrasWrflDr_GAITSprint", true],
+    ["active", "AmovPercMrunSrasWrflDl", "AmovPercMrunSrasWrflDl_GAIT", false],
+    ["active", "AmovPercMrunSrasWpstDl", "AmovPercMevaSrasWrflDf_GAIT", false],
+    ["active", "AmovPercMrunSrasWrflDl_GAITRelease", "AmovPercMevaSrasWrflDf_GAIT", false],
+    ["blocked", "AmovPercMrunSrasWrflDl", "AmovPercMevaSrasWrflDf_GAIT", false]
+];
 
 // An uphill graph escape can be repaired once, only from a supported native
 // animation. Hard locks and unrelated movement keep their original authority.

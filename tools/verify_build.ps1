@@ -81,9 +81,8 @@ if (-not $Core.Files.ContainsKey('acm_heartbeat\config.bin')) {
 $RequiredScripts = @(
     'fn_aceHeartbeatVolume.sqf', 'fn_aceSprintReserveHook.sqf', 'fn_applyPreset.sqf', 'fn_braceMomentum.sqf', 'fn_downhillPace.sqf', 'fn_gearInertia.sqf',
     'fn_initSprintSystem.sqf', 'fn_locomotionPace.sqf', 'fn_moduleResetEffects.sqf',
-    'fn_nativeController.sqf', 'fn_redirectAceStartup.sqf', 'fn_registerSettings.sqf', 'fn_releaseMomentum.sqf', 'fn_paceCalibration.sqf', 'fn_resetEffects.sqf',
-    'fn_slopeLocomotion.sqf', 'fn_slopePaceModel.sqf', 'fn_sprintReserve.sqf', 'fn_traversalHelpers.sqf',
-    'fn_uphillBrake.sqf'
+    'fn_nativeController.sqf', 'fn_redirectAceStartup.sqf', 'fn_registerSettings.sqf', 'fn_paceCalibration.sqf', 'fn_resetEffects.sqf',
+    'fn_slopeLocomotion.sqf', 'fn_slopePaceModel.sqf', 'fn_sprintReserve.sqf', 'fn_traversalHelpers.sqf'
 )
 $ExpectedScriptPaths = @($RequiredScripts | ForEach-Object { 'functions\' + $_.ToLowerInvariant() })
 $BuiltScriptPaths = @($Core.Files.Keys | Where-Object { $_ -like 'functions\*.sqf' })

@@ -9,6 +9,7 @@ private _assert = {
 // The target is updated by the actual service before returning, so holding
 // the same direction cannot issue a second request on subsequent frames.
 private _stopTarget = "AmovPercMstpSrasWrflDnon_GAITStop";
+private _jogBridge = "AmovPercMrunSrasWrflDf_GAITRelease";
 [[true,true,true,true,true] call GAIT_fnc_nativeStopDecision,"fresh owned native jogging stop gets short blend"] call _assert;
 for "_gate" from 0 to 4 do {
     private _gates = [true,true,true,true,true];
@@ -33,8 +34,14 @@ for "_gate" from 0 to 4 do {
     ["AmovPercMrunSrasWrflDf","Df",false],["AmovPercMrunSrasWrflDf","Dnon",true],
     ["AmovPercMrunSrasWrflDl","Dr",true],["AmovPercMrunSrasWrflDr","Dr",false],["","Df",false]
 ];
-// This pure policy handles Turbo intent only. The dispatcher separately
-// retains an eligible finite release clip; release_runtime covers that owner.
+// Once native actions are queued, W+A, W+D or a pure strafe may use their
+// regular selectors without restarting the previous destination.
+{
+    [!([_jogBridge, _x, false] call GAIT_fnc_locomotionExitRedirect), "native bridge lets the engine own direction"] call _assert;
+} forEach ["Df", "Dfl", "Dfr", "Dl", "Dr", "Db"];
+[[_jogBridge, "Dnon", false] call GAIT_fnc_locomotionExitRedirect, "a stop can interrupt a queued jog bridge"] call _assert;
+[[_jogBridge, "Df", true] call GAIT_fnc_locomotionExitRedirect, "deliberate walk can interrupt a queued jog bridge"] call _assert;
+// This pure policy handles Turbo intent irrespective of the speed ramp.
 {
     _x params ["_args", "_expected", "_label"];
     [(_args call GAIT_fnc_locomotionIntent) isEqualTo _expected, _label] call _assert;
@@ -78,8 +85,6 @@ private _resumes = 0;
     [[false,false,false,true,true],false,"issued exit observed at source completes cleanup"]
 ];
 // Exercise the real render dispatcher with exit service deliberately deferred.
-// The finite release observer is a boundary stub here; release_runtime
-// executes its actual implementation and common coefficient writer.
 // A new fresh sprint submission cannot reach entry handling while cleanup
 // owns an unobserved entry. Read-only input observation must still record W
 // and Turbo edges during that safe deferral.
@@ -95,7 +100,6 @@ private _actualNativeWalkRequested = missionNamespace getVariable ["GAIT_fnc_nat
 private _actualDecision = GAIT_fnc_locomotionDecision;
 private _exitCalls = 0;
 GAIT_fnc_serviceLocomotionExit = {_exitCalls = _exitCalls + 1; false};
-GAIT_fnc_observeReleaseMomentum = {false};
 GAIT_fnc_getMovementInput = {[0,0,false]};
 GAIT_fnc_getStanceInput = {false};
 GAIT_fnc_readLocomotionAnimation = {"AmovPercMrunSrasWrflDf_GAIT"};

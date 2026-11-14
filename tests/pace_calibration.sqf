@@ -31,22 +31,4 @@ for "_i" from 0 to 5 do {
     _changed set [_i,"changed"];
     [([_cache,_changed,0,11] call GAIT_fnc_lookupPaceReference) < 0,"clip/config/character/weapon/surface changes cannot reuse reference"] call _assert;
 };
-private _r = [7.2,1.2,0.86,4] call GAIT_fnc_measuredReleaseTarget;
-[abs ((_r select 0) - (3.44/6)) < 0.00001, "sprint endpoint is converted from measured destination speed"] call _assert;
-[abs ((_r select 2) - 3.44) < 0.00001, "physical endpoint equals native jog reference times ordinary coefficient"] call _assert;
-for "_i" from 0 to 100 do {
-    private _weight = _i / 100;
-    private _coefficient = [6,4,3.44,_weight] call GAIT_fnc_paceBlendCoefficient;
-    [abs (_coefficient * (6 * (1-_weight) + 4 * _weight) - 3.44) < 0.00001,
-        "blend compensation keeps physical target through unequal clip references"] call _assert;
-};
-[abs (([6,4,3.44,0] call GAIT_fnc_paceBlendCoefficient) - (_r select 0)) < 0.00001,"release and handoff meet at same source coefficient"] call _assert;
-[abs (([6,4,3.44,1] call GAIT_fnc_paceBlendCoefficient) - 0.86) < 0.00001,"handoff meets unchanged ordinary coefficient"] call _assert;
-[( [2,0.5,0.86,4] call GAIT_fnc_measuredReleaseTarget select 2) <= 2,"partial release cannot invent higher physical speed"] call _assert;
-[([0,1,1,4] call GAIT_fnc_measuredReleaseTarget) isEqualTo [],"standing speed cannot calibrate release"] call _assert;
-[([7.2,1.2,0.86,0.3] call GAIT_fnc_measuredReleaseTarget) isEqualTo [],"collision-contaminated ratio is rejected"] call _assert;
-[([6,4,3.44,1.1] call GAIT_fnc_paceBlendCoefficient) < 0,"invalid blend factor is rejected"] call _assert;
-private _uncalibratedJog = [7.2,1.2,0.86,-1] call GAIT_fnc_releasePaceEndpoint;
-[abs ((_uncalibratedJog select 0) - (0.86 * 0.75)) < 0.00001,
-    "first jog release uses the same root-motion estimate as sprint floor"] call _assert;
-diag_log "GAIT TEST PASS: passive pace reference stability; destination physical endpoint; unequal-clip blend continuity; partial releases and invalid samples.";
+diag_log "GAIT TEST PASS: passive pace reference stability, validity, scope and moving pace resolution.";

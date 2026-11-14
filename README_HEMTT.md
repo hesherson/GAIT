@@ -1,4 +1,4 @@
-# GAIT 1.8.0-alpha24 build and deployment
+# GAIT 1.8.0-alpha25 build and deployment
 
 Requires Arma 3 2.18+, CBA_A3, ACE3 with Medical Feedback, Git, and HEMTT. Close Arma before building and deploying so the ACE and ACM startup hooks reload on launch.
 
@@ -40,4 +40,4 @@ python .\tests\ace_sprint_reserve_hook.py
 python .\tools\run_regressions.py --sqfvm 'C:\path\to\sqfvm.exe'
 ```
 
-The deploy script verifies the single `gait_gait.pbo`, its `gait` prefix and checksum, and all 20 embedded runtime SQF files, and the optional ACM heartbeat config. The 22 SQF-VM suites exercise the movement model and ownership logic. See [in-game checks](README_TEST_BUILD.md) for physical pace and animation validation.
+The deploy script verifies the single `gait_gait.pbo`, its `gait` prefix and checksum, and all 18 embedded runtime SQF files, and the optional ACM heartbeat config. The SQF-VM suites exercise the movement model and ownership logic. See [in-game checks](README_TEST_BUILD.md) for physical pace and animation validation.

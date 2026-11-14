@@ -46,6 +46,13 @@ GAIT_fnc_stepSpeedCoefficient = {
     _current + ((_target - _current) * _alpha)
 };
 
+GAIT_fnc_jogDecelerationRamp = {
+    params ["_duration", "_smooth"];
+    if (!_smooth) exitWith {1};
+    // Remove 95% of the gap over the selected time at any update rate.
+    1 - (0.05 ^ (0.05 / (_duration max 0.05)))
+};
+
 GAIT_fnc_isSuspendedContext = {
     if (isNull player || {!local player} || {!alive player}) exitWith {true};
     if (player getVariable ["ACE_isUnconscious", false]) exitWith {true};
@@ -73,7 +80,7 @@ GAIT_fnc_isStandingLocomotionBlend = {
         if ((count _parts) < 1 || {(count _parts) > 2}) exitWith {""};
         private _base = _parts select 0;
         private _suffix = _parts param [1, ""];
-        if !(_suffix in ["", "gait", "gaitsprint", "gaitstop", "ver2"]) exitWith {""};
+        if !(_suffix in ["", "gait", "gaitsprint", "gaitstop", "gaitrelease", "ver2"]) exitWith {""};
         if ((_base select [0, 8]) isNotEqualTo "amovperc" ||
             {!((_base select [8, 4]) in ["mstp", "mwlk", "mrun", "mtac", "meva", "mspr"])} ||
             {!((_base select [12, 8]) in ["sraswrfl", "slowwrfl", "sraswpst", "slowwpst", "snonwnon"])} ||
@@ -82,6 +89,9 @@ GAIT_fnc_isStandingLocomotionBlend = {
         // suffix handling below accepts its native and GAIT states identically.
         if (_suffix isEqualTo "gaitstop") exitWith {
             if ((_base select [8, 4]) isEqualTo "mstp" && {(_base select [20]) isEqualTo "dnon"}) then {_base + "_gaitstop"} else {""}
+        };
+        if (_suffix isEqualTo "gaitrelease") exitWith {
+            if ((_base select [8, 4]) isEqualTo "mrun" && {(_base select [20]) isNotEqualTo "dnon"}) then {_base + "_gaitrelease"} else {""}
         };
         if (_suffix isEqualTo "ver2") exitWith {
             if ((_base select [12, 8]) isEqualTo "slowwrfl" &&

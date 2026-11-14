@@ -19,7 +19,6 @@ GAIT_fnc_nativeWalkRequested = {
 // Coefficient ownership can change during an ordinary animation blend.
 // Acquiring it must not issue a second body-animation release.
 GAIT_fnc_releaseSpeedCoefficient = {
-    if (!isNil "GAIT_fnc_clearPaceHandoff") then {[missionNamespace getVariable ["GAIT_nativeOwner", objNull]] call GAIT_fnc_clearPaceHandoff;};
     private _owner = missionNamespace getVariable ["GAIT_nativeOwner", objNull];
     private _written = missionNamespace getVariable ["GAIT_nativeLastWritten", -1];
     if (!isNull _owner && {[_owner] call GAIT_fnc_nativeCoefficientLocal} && {_written >= 0}) then {
@@ -38,8 +37,6 @@ GAIT_fnc_releaseSpeedCoefficient = {
 };
 
 GAIT_fnc_releaseNativeMovement = {
-    if (!isNil "GAIT_fnc_clearPaceHandoff") then {[missionNamespace getVariable ["GAIT_nativeOwner", objNull]] call GAIT_fnc_clearPaceHandoff;};
-    if (!isNil "GAIT_fnc_clearReleaseMomentum") then {[] call GAIT_fnc_clearReleaseMomentum;};
     // Empty arguments prevent inheriting [unit, coefficient, carry] from the
     // speed writer. The release helper expects an input array in slot two.
     if (!isNil "GAIT_fnc_releaseSlopeLocomotion") then {[] call GAIT_fnc_releaseSlopeLocomotion;};
@@ -52,8 +49,6 @@ GAIT_fnc_releaseNativeWalkPace = {
     // Drop only the coefficient and the transient speed leases here.
     _unit setVariable ["GAIT_nativeStopPaceLease", []];
     _unit setVariable ["GAIT_stanceCarryCoefficient", []];
-    if (!isNil "GAIT_fnc_clearReleaseMomentum") then {[_unit] call GAIT_fnc_clearReleaseMomentum;};
-    if (!isNil "GAIT_fnc_clearPaceHandoff") then {[_unit] call GAIT_fnc_clearPaceHandoff;};
     if (_unit isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull])) then {
         [] call GAIT_fnc_releaseSpeedCoefficient;
     };
@@ -212,11 +207,6 @@ GAIT_fnc_applyNativeMovement = {
         missionNamespace setVariable ["GAIT_nativeOwner", _unit];
         missionNamespace setVariable ["GAIT_nativePreviousCoef", [_unit] call GAIT_fnc_readNativeCoefficient];
     };
-
-    // The finite release has one speed writer. Rendering and the feature loop
-    // both use it, so a delayed feature tick cannot replace a newer sample.
-    _coefficient = [_unit, _coefficient] call GAIT_fnc_sampleReleaseCoefficient;
-    if (!isNil "GAIT_fnc_samplePaceHandoff") then {_coefficient = [_unit, _coefficient] call GAIT_fnc_samplePaceHandoff;};
 
     // Vegetation contributes to this same write, never a second speed loop.
     private _drag = 0;

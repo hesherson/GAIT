@@ -25,7 +25,7 @@ def read_settings():
     return rows
 class SettingsAudit(unittest.TestCase):
     def test_registry_unique_and_valid(self):
-        rows=read_settings();self.assertEqual(len(rows),109);self.assertEqual(len({r['name'] for r in rows}),len(rows))
+        rows=read_settings();self.assertEqual(len(rows),107);self.assertEqual(len({r['name'] for r in rows}),len(rows))
         for r in rows:
             if r['kind']=='Slider':self.assertTrue(r['min']<=r['default']<=r['max'],r['name'])
             if r['kind']=='List':self.assertEqual(len(r['values']),len(r['labels']))
@@ -46,14 +46,14 @@ class SettingsAudit(unittest.TestCase):
             if r['kind']=='Slider':self.assertTrue(r['min']<=float(value)<=r['max'],name)
     def test_effective_ranges_and_modes(self):
         rows={r['name']:r for r in read_settings()}
-        self.assertEqual((rows['GAIT_ss_shiftReleaseRunTaperCurve']['min'],rows['GAIT_ss_shiftReleaseRunTaperCurve']['max']),(1,3))
+        self.assertTrue(rows['GAIT_ss_shiftReleaseRunTaperEnabled']['default'])
+        self.assertEqual(rows['GAIT_ss_shiftReleaseRunTaperDuration']['default'],1.15)
         self.assertEqual(rows['GAIT_ss_debugHudInterval']['min'],0.05)
         self.assertEqual(rows['GAIT_ss_exhaustedRunPace']['default'],0.70)
         self.assertEqual(rows['GAIT_ss_sprintFullSpeed']['default'],1.00)
         self.assertEqual(rows['GAIT_ss_flatSprintPeak']['default'],1.10)
         self.assertEqual(rows['GAIT_ss_sprintReserveMax']['default'],40)
         self.assertEqual(rows['GAIT_ss_aceHeartbeatVolume']['default'],10)
-        self.assertFalse(rows['GAIT_ss_uphillReleaseBraceEnabled']['default'])
         self.assertEqual(rows['GAIT_ss_downhillSprintCapKmh']['default'],30)
         self.assertEqual(rows['GAIT_ss_downhillJogCapKmh']['default'],18)
         self.assertEqual(rows['GAIT_ss_downhillMomentumBuildSeconds']['default'],4.5)
@@ -62,7 +62,7 @@ class SettingsAudit(unittest.TestCase):
         self.assertEqual(rows['GAIT_ss_compatibilityMode']['default'],1)
         release_desc=rows['GAIT_ss_shiftReleaseRunTaperDuration']['description']
         self.assertIn('1.15',release_desc)
-        self.assertIn('0.35-1.20',release_desc)
+        self.assertIn('every movement direction',release_desc)
     def test_cleanup_cannot_be_disabled(self):
         main=(FUNCTIONS/'fn_initSprintSystem.sqf').read_text()
         helper=(FUNCTIONS/'fn_traversalHelpers.sqf').read_text()

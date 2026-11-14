@@ -80,26 +80,6 @@ GAIT_fnc_aceAdvancedFatigueActive = {
     {missionNamespace getVariable ["ace_advanced_fatigue_enabled", false]}
 };
 
-GAIT_fnc_animLooksLikeJog = {
-    params [
-        ["_animState", "", [""]]
-    ];
-
-    private _a = toLower _animState;
-    ((_a find "mrun") >= 0) || {((_a find "meva") >= 0) || {((_a find "mtac") >= 0)}}
-};
-
-GAIT_fnc_animLooksLikeRaisedCombat = {
-    params [
-        ["_animState", "", [""]]
-    ];
-
-    private _a = toLower _animState;
-    // Sras means weapon raised. If the player started sprinting from a raised
-    // combat stance, preserve that intent and do not force a post-run correction.
-    (_a find "sras") >= 0
-};
-
 // Arma 2.18+ engine boundary. Portable tests substitute this read only.
 GAIT_fnc_readPaceMoveInfo = {params ["_unit"]; getUnitMovesInfo _unit};
 
@@ -111,9 +91,7 @@ call compile preprocessFileLineNumbers "\gait\functions\fn_locomotionPace.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_braceMomentum.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_gearInertia.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_downhillPace.sqf";
-call compile preprocessFileLineNumbers "\gait\functions\fn_uphillBrake.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_paceCalibration.sqf";
-call compile preprocessFileLineNumbers "\gait\functions\fn_releaseMomentum.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_slopeLocomotion.sqf";
 call compile preprocessFileLineNumbers "\gait\functions\fn_nativeController.sqf";
 [] call GAIT_fnc_installLocomotionController;
@@ -214,7 +192,7 @@ GAIT_fnc_tripPlayer = {
                         systemChat "GAIT: Multiplayer CBA settings may be controlled by the server or mission.";
                     };
 
-missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
+missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha25"];
 [format ["Initialized v%1. Preset=%2 | Mode=%3 | ACE_AF=%4", missionNamespace getVariable ["GAIT_versionString", "?"], missionNamespace getVariable ["GAIT_ss_preset", "Balanced"], call GAIT_fnc_compatModeName, call GAIT_fnc_aceAdvancedFatigueActive]] call GAIT_fnc_log;
 
                 };
@@ -241,9 +219,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
     // SETTINGS
     // =====================================================
 
-    missionNamespace setVariable ["GAIT_shiftHeld", false];
-    missionNamespace setVariable ["GAIT_lastShiftRelease", -999];
-    missionNamespace setVariable ["GAIT_lastForwardKeyRelease", -999];
     missionNamespace setVariable ["GAIT_slopeDegrees", 0];
     missionNamespace setVariable ["GAIT_slopeSpeedMultiplier", 1];
     missionNamespace setVariable ["GAIT_lastTripTime", -999];
@@ -372,9 +347,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
     private _downhillTripGetUpSpeedKmh = missionNamespace getVariable ["GAIT_ss_downhillTripGetUpSpeedKmh", 7.0];
     private _downhillTripMaxRagdollDuration = missionNamespace getVariable ["GAIT_ss_downhillTripMaxRagdollDuration", 6.0];
         _masterTripFrequency = missionNamespace getVariable ["GAIT_ss_masterTripFrequency", 1.00];
-        _shiftReleaseRunTaperEnabled = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true];
-        _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 1.15];
-        _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
         _debugHudEnabled = missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false];
         _debugHudInterval = missionNamespace getVariable ["GAIT_ss_debugHudInterval", 0.10];
 
@@ -397,7 +369,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
     private _lastSprintStopSlopeDegrees = 0;
     private _lastSprintStopTime = -999;
     private _masterTripFrequency = missionNamespace getVariable ["GAIT_ss_masterTripFrequency", 1.00];
-    private _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
     private _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 1.15];
     private _shiftReleaseRunTaperEnabled = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true];
     private _lastForwardReleaseSerial = -1;
@@ -417,10 +388,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
     private _deadSprintElapsed = -1;
     private _deadSprintIntentHeld = false;
     private _deadSprintReady = true;
-    private _lastNonSprintAnimation = "";
-    private _preSprintAnimation = "";
-    private _preSprintWasJog = false;
-    private _preSprintWasRaisedCombat = false;
     private _sprintBraceEndTime = -1;
     private _walkingStartTime = -1;
     private _lastSprintEndTime = -999;
@@ -431,7 +398,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
     private _lastResetRequestHandled = -1;
     private _braceMomentumState = [false, -999, 0, 0];
     private _downhillMomentum = 0;
-    private _uphillBrakeState = [];
 
     while {true} do {
         private _now = time;
@@ -444,11 +410,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
             _deadSprintReady = true;
         };
 
-        // Per-tick W-release coast state.
-        // These are intentionally refreshed from missionNamespace every tick so
-        // malformed/older CBA-saved states or branch skips cannot leave the
-        // runtime loop with an undefined local variable.
-
         private _selectedPreset = missionNamespace getVariable ["GAIT_ss_preset", "Balanced"];
         private _lastPresetApplied = missionNamespace getVariable ["GAIT_lastPresetApplied", ""];
         if (_selectedPreset isNotEqualTo _lastPresetApplied) then {
@@ -458,14 +419,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
         private _resetRequest = missionNamespace getVariable ["GAIT_resetRequested", -1];
         if (_resetRequest > _lastResetRequestHandled) then {
             _lastResetRequestHandled = _resetRequest;
-            _uphillBrakeState = [];
-            missionNamespace setVariable ["GAIT_uphillBrakeActive", false];
-            missionNamespace setVariable ["GAIT_uphillBrakeEndTime", -1];
-            missionNamespace setVariable ["GAIT_uphillBrakeReadyUntil", -1];
-            missionNamespace setVariable ["GAIT_uphillBrakeUnit", objNull];
-            missionNamespace setVariable ["GAIT_coastUnit", objNull];
-            missionNamespace setVariable ["GAIT_coastActive", false];
-            missionNamespace setVariable ["GAIT_coastReadyUntil", -1];
             _braceMomentumState = [false, -999, 0, 0];
             _downhillMomentum = 0;
             missionNamespace setVariable ["GAIT_braceActive", false];
@@ -508,7 +461,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
         _hillWalkSlowdownStartDegrees = missionNamespace getVariable ["GAIT_ss_hillWalkSlowdownStartDegrees", 15.0];
         _hillWalkUphillMaxPenalty = missionNamespace getVariable ["GAIT_ss_hillWalkUphillMaxPenalty", 0.32];
         _masterTripFrequency = missionNamespace getVariable ["GAIT_ss_masterTripFrequency", 1.00];
-        _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
         _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 1.15];
         _shiftReleaseRunTaperEnabled = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true];
         _uphillFatigueDrainEnabled = missionNamespace getVariable ["GAIT_ss_uphillFatigueDrainEnabled", true];
@@ -536,8 +488,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
         _tickRate = missionNamespace getVariable ["GAIT_ss_tickRate", 0.05];
         _speedLerp = missionNamespace getVariable ["GAIT_ss_speedLerp", 0.05];
         _wReleaseZeroMomentumDelay = missionNamespace getVariable ["GAIT_ss_wReleaseZeroMomentumDelay", 0.50];
-        // v1.1.32 migration: old v1.1.31 defaults coasted a little too far.
-        // Treat unchanged legacy defaults as the shorter new feel, while still allowing custom values.
         _sprintStartBraceEnabled = missionNamespace getVariable ["GAIT_ss_sprintStartBraceEnabled", true];
         _sprintStartBraceDuration = missionNamespace getVariable ["GAIT_ss_sprintStartBraceDuration", 0.15];
         _sprintStartBraceSpeed = missionNamespace getVariable ["GAIT_ss_sprintStartBraceSpeed", 0.44];
@@ -590,9 +540,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
         _downhillTripGetUpSpeedKmh = missionNamespace getVariable ["GAIT_ss_downhillTripGetUpSpeedKmh", 7.0];
         _downhillTripMaxRagdollDuration = missionNamespace getVariable ["GAIT_ss_downhillTripMaxRagdollDuration", 6.0];
         _masterTripFrequency = missionNamespace getVariable ["GAIT_ss_masterTripFrequency", 1.00];
-        _shiftReleaseRunTaperEnabled = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true];
-        _shiftReleaseRunTaperDuration = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperDuration", 1.15];
-        _shiftReleaseRunTaperCurve = missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45];
         _debugHudEnabled = missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false];
         _debugHudInterval = missionNamespace getVariable ["GAIT_ss_debugHudInterval", 0.10];
 
@@ -647,26 +594,10 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                 [player] call GAIT_fnc_clearACEAdvancedFatigueMovementLocks;
                 private _nativeWalk = !_isAceCarrying && {[player, _turboHeld] call GAIT_fnc_nativeWalkRequested};
                 private _stanceYieldActive = [player] call GAIT_fnc_stanceYieldActive;
-                // A render-observed stance request owns this transition. Never
-                // reassert release/handoff speed during its short native lease.
-                if (!_stanceYieldActive && {!_nativeWalk}) then {
-                    [player, _movementInput] call GAIT_fnc_observeReleaseMomentum;
-                };
-                if (_stanceYieldActive && {!_nativeWalk}) then {
-                    [player] call GAIT_fnc_clearReleaseMomentum;
-                    // Keep the currently applied coefficient through the native
-                    // running-to-crouch/prone bend. No writer runs here; the
-                    // value simply remains untouched until the lease ends.
-                };
-                private _releaseResume = player getVariable ["GAIT_releaseResume", []];
-                player setVariable ["GAIT_releaseResume", []];
-                private _releaseResumed = (count _releaseResume) isEqualTo 2 &&
-                    {diag_tickTime - (_releaseResume select 1) <= 0.25};
                 if (player isEqualTo (missionNamespace getVariable ["GAIT_nativeOwner", objNull]) &&
                     {abs ((getAnimSpeedCoef player) - (missionNamespace getVariable ["GAIT_nativeLastWritten", -1])) < 0.001}) then {
                     _currentSpeed = missionNamespace getVariable ["GAIT_nativeLastPreVegetation", _currentSpeed];
                 };
-                if (_releaseResumed) then {_currentSpeed = _releaseResume select 0;};
                 private _isForwardHeld = (_movementInput select 0) > 0.05;
                 private _externalSprintLock = !(isSprintAllowed player) || {(player getVariable ["ace_common_effect_blockSprint", 0]) > 0};
                 private _externalWalkLock = isForcedWalk player || {(player getVariable ["ace_common_effect_forceWalk", 0]) > 0};
@@ -691,17 +622,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                 private _isLateralHeld = abs (_movementInput select 1) > 0.05;
 
                 private _onGroundNow = isTouchingGround player;
-                // Track the last pre-sprint animation so post-run correction can be
-                // intent-aware. If the player was already jogging or in a raised
-                // combat stance before sprinting, do not force a stance correction
-                // after sprint release.
-                if (!_isSprinting && {_isOnFoot}) then {
-                    _lastNonSprintAnimation = animationState player;
-                };
-
-                // Store the last real horizontal movement state.
-                // W-release coasting must be based on player momentum, not on the W key itself.
-                // This sample is refreshed only while the unit actually has horizontal velocity.
+                // Actual horizontal movement drives the brace and trip checks.
                 private _velSample = velocity player;
                 private _horizontalSpeedMS = sqrt (((_velSample select 0) * (_velSample select 0)) + (((_velSample select 1) * (_velSample select 1))));
                 private _actualSpeedKmh = _horizontalSpeedMS * 3.6;
@@ -742,11 +663,10 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                     [_lightBraceRelief, _mediumBraceRelief, _moderateBraceRelief, _heavyBraceRelief],
                     _loadAnchors] call GAIT_fnc_gearInertia;
                 private _effectiveNormalSpeed = _normalSpeed * _weightSpeedMult;
-                private _effectiveBraceRelief = (_gearInertia select 4) * 0.20;
+                private _effectiveBraceRelief = (_gearInertia select 1) * 0.20;
                 private _effectiveBraceSpeed = (_sprintStartBraceSpeed + ((_normalSpeed - _sprintStartBraceSpeed) * _effectiveBraceRelief)) * _weightSpeedMult;
 
                 private _accelerationScale = _gearInertia select 0;
-                private _coastScale = _gearInertia select 2;
                 missionNamespace setVariable ["GAIT_gearInertia", _gearInertia];
                 private _forwardReleaseSerial = player getVariable ["GAIT_forwardReleaseSerial", 0];
                 private _forwardReleasedSinceTick = _forwardReleaseSerial isNotEqualTo _lastForwardReleaseSerial;
@@ -916,15 +836,13 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                 private _slopeJogOverride = _slopeJogWanted && {_movementEligible};
                 missionNamespace setVariable ["GAIT_slopeJogOverride", _slopeJogOverride];
 
-                private _inputReleasePace = _effectiveNormalSpeed * _hillWalkSlowdownMultiplier;
+                private _idlePace = _effectiveNormalSpeed * _hillWalkSlowdownMultiplier;
                 if (_isAceCarrying && {!isNull _carriedObject}) then {
-                    _inputReleasePace = _carryWalkSpeed * _weightSpeedMult * _hillWalkSlowdownMultiplier;
+                    _idlePace = _carryWalkSpeed * _weightSpeedMult * _hillWalkSlowdownMultiplier;
                 };
-                // A forward release cancels scalar coast even if W was pressed
-                // again between scheduled updates. History may suppress a second
-                // launch dip, but cannot restore the cancelled speed or hill bonus.
+                // Losing forward input clears downhill buildup independently
+                // of the speed coefficient used in the next direction.
                 if (!_isForwardHeld || {_forwardReleasedSinceTick}) then {
-                    _currentSpeed = _inputReleasePace;
                     _downhillMomentum = 0;
                 };
 
@@ -964,7 +882,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                     time, _dt, _braceRecentSprintCooldown, _braceRequiredWalkTime, _braceNoMomentumThreshold]
                     call GAIT_fnc_stepBraceMomentum;
                 _braceMomentumState = _motion select 0;
-                private _hasRetainedSprintMomentum = (_motion select 1) || {_releaseResumed};
+                private _hasRetainedSprintMomentum = _motion select 1;
                 missionNamespace setVariable ["GAIT_braceMomentumProtected", _hasRetainedSprintMomentum];
 
                 private _downhillMovementContext = _slopeHandlingEnabled &&
@@ -1004,31 +922,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                 };
                 missionNamespace setVariable ["GAIT_slopeSpeedMultiplier", _slopeSpeedMultiplier];
 
-                // A deliberate uphill release is a braking event, separate
-                // from launch-brace eligibility and retained-momentum vetoes.
-                private _uphillBrakeEnabled = _slopeHandlingEnabled && {!_nativeWalk} && {_slopeStopBraceEnabled} &&
-                    {missionNamespace getVariable ["GAIT_ss_uphillReleaseBraceEnabled", false]};
-                private _uphillBrakeContext = _momentumContextOk && {_movementEligible} && {_gaitStanceOk} && {_isForwardHeld} && {!_forwardReleasedSinceTick} && {isTouchingGround player};
-                if ((missionNamespace getVariable ["GAIT_uphillBrakeUnit", objNull]) isNotEqualTo player) then {_uphillBrakeState = [];};
-                private _uphillBrake = [_uphillBrakeState, _turboHeld && {_isForwardHeld},
-                    _isSprinting && {_sprintBraceEndTime <= time}, _isForwardHeld,
-                    _uphillBrakeContext, _horizontalSpeedMS, _slopeDegrees, _currentSpeed,
-                    _effectiveNormalSpeed * _hillWalkSlowdownMultiplier, time, _uphillBrakeEnabled && {_sprintBraceEndTime <= time},
-                    [_slopeStopBraceStartDegrees, _slopeStopBraceMaxDegrees, _sprintStartBraceDuration,
-                     _slopeStopBraceExtraDuration, _slopeStopBraceExtraDip, _speedLerp, _sprintStartBraceLerp]]
-                    call GAIT_fnc_stepUphillBrake;
-                _uphillBrakeState = _uphillBrake select 0;
-                private _uphillBrakeActive = _uphillBrake select 1;
-                private _uphillBrakeStarted = _uphillBrake select 2;
-                private _uphillBrakeSeverity = _uphillBrake select 3;
-                private _uphillBrakeTarget = _uphillBrake select 4;
-                private _uphillBrakeRamp = _uphillBrake select 5;
-                private _uphillBrakeResumed = _uphillBrake select 8;
-                if (_uphillBrakeStarted) then {
-                    _downhillMomentum = _downhillMomentum * (1 - _uphillBrakeSeverity);
-                    missionNamespace setVariable ["GAIT_downhillMomentum", _downhillMomentum];
-                };
-
                 // Brace readiness:
                 // Standing still or slow deliberate movement for long enough arms the next brace.
                 // Active crouch also arms the brace, but this checks real stance only, not the crouch key.
@@ -1055,17 +948,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
 
                 if (_isSprinting && {!_wasSprinting}) then {
                     _wasSprinting = true;
-                    player setVariable ["GAIT_sprintReleaseHandled", false];
-
-                    _preSprintAnimation = _lastNonSprintAnimation;
-                    if (_preSprintAnimation isEqualTo "") then {
-                        _preSprintAnimation = animationState player;
-                    };
-                    _preSprintWasJog = [_preSprintAnimation] call GAIT_fnc_animLooksLikeJog;
-                    _preSprintWasRaisedCombat = [_preSprintAnimation] call GAIT_fnc_animLooksLikeRaisedCombat;
-                    missionNamespace setVariable ["GAIT_preSprintAnimation", _preSprintAnimation];
-                    missionNamespace setVariable ["GAIT_preSprintWasJog", _preSprintWasJog];
-                    missionNamespace setVariable ["GAIT_preSprintWasRaisedCombat", _preSprintWasRaisedCombat];
 
                     private _reserveRatioForBrace = if (_sprintReserveMax > 0) then {
                         _sprintReserve / _sprintReserveMax
@@ -1119,8 +1001,8 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                     };
                     private _slopeBraceReady = _slopeStopBraceEnabled && {_slopeBraceFactor > 0} && {_recentSlopeStop || {_normalBraceReady} || {_zeroMomentumBraceReady}};
 
-                    private _momentumProtectedForBrace = _hasRetainedSprintMomentum || {_uphillBrakeResumed};
-                    private _canBrace = [_sprintStartBraceEnabled, _momentumProtectedForBrace,
+
+                    private _canBrace = [_sprintStartBraceEnabled, _hasRetainedSprintMomentum,
                         _isCrouched, _braceArmedFromCrouch, _normalBraceReady, _zeroMomentumBraceReady, _slopeBraceReady]
                         call GAIT_fnc_shouldBrace;
 
@@ -1130,7 +1012,7 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                     // uphill launch contribution. Retained momentum bypasses it.
                     private _uphillLaunchBraceFactor = 0;
                     if (_canBrace && {_slopeStopBraceEnabled}) then {
-                        _uphillLaunchBraceFactor = [_slopeDegrees, _momentumProtectedForBrace,
+                        _uphillLaunchBraceFactor = [_slopeDegrees, _hasRetainedSprintMomentum,
                             _slopeStopBraceMaxDegrees] call GAIT_fnc_uphillLaunchBraceFactor;
                     };
                     private _linearDurationExtra = ((_slopeStopBraceExtraDuration max 0) min 2.0) * _slopeBraceFactor;
@@ -1162,18 +1044,11 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                 if (!_isSprinting && {!_sprintIntent || {_wasSprinting && {!([player] call GAIT_fnc_fatigueMovementContextEligible)}}}) then {
                     if (_wasSprinting || {_renderReleasedSinceTick}) then {
                         _lastSprintEndTime = time;
-                        player setVariable ["GAIT_sprintReleaseHandled", true];
 
-                        // The shared finite controller already sampled actual
-                        // velocity and applied pace before either scheduler wrote.
                         _lastSprintStopSlopeDegrees = _slopeDegrees;
                         _lastSprintStopTime = time;
 
-                        // v1.1.60: never arm a post-run animation correction. Speed taper stays,
-                        // but stance/weapon posture is left to the engine and player input.
-
                         missionNamespace setVariable ["GAIT_lastSprintStopSlopeDegrees", _lastSprintStopSlopeDegrees];
-                        missionNamespace setVariable ["GAIT_postRunJogTransitionArmed", false];
                     };
 
                     _wasSprinting = false;
@@ -1265,26 +1140,22 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                 private _freshSprintPace = _flatSprintPace * _slopeSpeedMultiplier;
                 private _pacePair = [_walkPace, _freshSprintPace];
                 private _targetSpeed = _walkPace;
-                private _ordinaryReleaseTarget = _walkPace;
                 private _jogFlatCoefficient = _normalSpeed * 1.06;
                 private _profiles = missionNamespace getVariable ["GAIT_locomotionPaceProfiles", []];
                 private _slopeJogTargetMS = -1;
                 private _slopeJogCalibrated = false;
 
-                if (_ordinarySlopeJog && {_movementEligible}) then {
+                if (_slopeJogOverride) then {
                     private _familyJog = [player] call GAIT_fnc_slopeWeaponFamily;
                     private _directionJog = [_movementInput select 0, _movementInput select 1] call GAIT_fnc_slopeDirection;
                     private _jogResolved = [_normalSpeed, _jogFlatCoefficient,
                         _hillWalkSlowdownMultiplier, _hillWalkSlowdownMultiplier * _downhillJogMultiplier,
                         _weightSpeedMult, 1.06, _profiles, _familyJog, _directionJog, "jog"]
                         call GAIT_fnc_locomotionPaceTargets;
-                    _ordinaryReleaseTarget = _jogResolved select 1;
-                    if (_slopeJogOverride) then {
-                        _pacePair = _jogResolved select [0, 2];
-                        _targetSpeed = _ordinaryReleaseTarget;
-                        _slopeJogTargetMS = _jogResolved select 3;
-                        _slopeJogCalibrated = _jogResolved select 4;
-                    };
+                    _pacePair = _jogResolved select [0, 2];
+                    _targetSpeed = _jogResolved select 1;
+                    _slopeJogTargetMS = _jogResolved select 3;
+                    _slopeJogCalibrated = _jogResolved select 4;
                     if (_downhillJog) then {
                         private _jogReference = -1;
                         if (_slopeJogCalibrated) then {
@@ -1298,7 +1169,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                             call GAIT_fnc_capDownhillPace;
                         if (_jogReference > 0) then {_slopeJogTargetMS = _targetSpeed * _jogReference;};
                         _pacePair set [1, _targetSpeed];
-                        _ordinaryReleaseTarget = _targetSpeed;
                     };
                 };
                 missionNamespace setVariable ["GAIT_slopeJogTargetMS", _slopeJogTargetMS];
@@ -1384,21 +1254,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                 missionNamespace setVariable ["GAIT_sprintPaceTarget", _pacePair select 1];
                 missionNamespace setVariable ["GAIT_loadPaceMultiplier", _weightSpeedMult];
 
-                // Publish a fresh ordinary target for the next raw release.
-                // Inventory/grade changes cannot restart an existing finite plan.
-                private _releaseWindow = [0, _shiftReleaseRunTaperDuration, _coastScale] call GAIT_fnc_gearCoastWindow;
-                private _releasePermission = _momentumContextOk && {!_nativeWalk} && {_movementEligible} && {_gaitStanceOk} &&
-                    {_slopeHandlingEnabled} && {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]};
-                missionNamespace setVariable ["GAIT_releaseMomentumRequest", [player, _ordinaryReleaseTarget,
-                    _releaseWindow select 1, _shiftReleaseRunTaperCurve, _releasePermission,
-                    diag_tickTime + ((4 * _tickRate) max 0.15 min 0.50)]];
-                // Brake priority is published before the common writer, so a
-                // render-started plan cannot override this tick's uphill brake.
-                missionNamespace setVariable ["GAIT_uphillBrakeUnit", player];
-                missionNamespace setVariable ["GAIT_uphillBrakeActive", _uphillBrakeActive];
-                missionNamespace setVariable ["GAIT_uphillBrakeEndTime", if (_uphillBrakeActive) then {_uphillBrakeState select 3} else {-1}];
-                if (!_nativeWalk) then {[player, _movementInput] call GAIT_fnc_observeReleaseMomentum;};
-
                 private _walkStartBraceFactor = 1;
                 private _walkStartBraceActive = false;
                 private _walkStartBraceTier = -1;
@@ -1420,17 +1275,14 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                         _currentSpeed = [player, _currentSpeed, false, true] call GAIT_fnc_applyNativeMovement;
                     };
                     case (_gaitMovementEnabled && {_movementEligible} && {_gaitStanceOk} && {_hasMovementInput}): {
-                        private _ramp = if (_uphillBrakeActive) then {_uphillBrakeRamp} else {
-                            if (_isSprinting && {_sprintBraceEndTime > time}) then {_sprintStartBraceLerp} else {
-                                [_speedLerp, 1] select _walkStartBraceActive
-                            }
+                        private _startingSprint = _isSprinting && {_sprintBraceEndTime > time};
+                        private _ramp = if (_startingSprint) then {_sprintStartBraceLerp} else {
+                            [_speedLerp, 1] select _walkStartBraceActive
                         };
-                        private _rampTarget = if (_uphillBrakeActive) then {_uphillBrakeTarget min _currentSpeed} else {
-                            if (_isSprinting && {_sprintBraceEndTime > time}) then {_activeBraceSpeed min _targetSpeed} else {
-                                if (_walkStartBraceActive) then {_targetSpeed * _walkStartBraceFactor} else {_targetSpeed}
-                            }
+                        private _rampTarget = if (_startingSprint) then {_activeBraceSpeed min _targetSpeed} else {
+                            if (_walkStartBraceActive) then {_targetSpeed * _walkStartBraceFactor} else {_targetSpeed}
                         };
-                        if (!_isAceCarrying && {_isSprinting} && {!_uphillBrakeActive} && {_sprintBraceEndTime <= time}) then {
+                        if (!_isAceCarrying && {_isSprinting} && {!_startingSprint}) then {
                             private _speedIncreasing = _rampTarget > _currentSpeed;
                             if (_speedIncreasing) then {
                                 _ramp = [_ramp, _accelerationScale] call GAIT_fnc_sprintAccelerationRamp;
@@ -1444,10 +1296,16 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                                 _ramp = _ramp min 0.045;
                             };
                         };
+                        if (!_turboHeld && {!_isAceCarrying} && {!_locomotionExternalLock} &&
+                            {!_walkStartBraceActive} && {_rampTarget < _currentSpeed}) then {
+                            // The same scalar decays toward the current jog
+                            // target for every direction. Input has no timer.
+                            _ramp = [_shiftReleaseRunTaperDuration, _shiftReleaseRunTaperEnabled]
+                                call GAIT_fnc_jogDecelerationRamp;
+                        };
                         _currentSpeed = [_currentSpeed, _rampTarget, _ramp, _dt] call GAIT_fnc_stepSpeedCoefficient;
-                        // Honor walk/injury locks and avoid carrying a sprint boost sideways.
                         private _coef = _currentSpeed;
-                        if (!_isForwardHeld || {_externalSprintLock} || {_externalWalkLock}) then {
+                        if (_locomotionExternalLock || {_turboHeld && {!_isForwardHeld}}) then {
                             _coef = _coef min _effectiveNormalSpeed;
                         };
                         _currentSpeed = [player, _coef, _isAceCarrying] call GAIT_fnc_applyNativeMovement;
@@ -1468,9 +1326,9 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                                 {([player, animationState player] call GAIT_fnc_locomotionMayFinishMoveBlend) ||
                                 {[player, _movementInput, _locomotionExternalLock] call GAIT_fnc_uphillSprintContactPending}};
                             if (!_keepMovingBlend) then {
-                                // No commanded forward movement means no scalar momentum.
+                                // No commanded movement means no scalar momentum.
                                 // The engine handles the stop blend and current side/back input.
-                                _currentSpeed = _inputReleasePace;
+                                _currentSpeed = _idlePace;
                                 // Speed ownership must not slow the native stop blend.
                                 // Render input chooses the body exit independently.
                                 if (_gaitMovementEnabled && {!_hasMovementInput} && {_gaitStanceOk} && {_movementEligible} &&
@@ -1496,29 +1354,16 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                 // same graph without changing reserve/brace or sideways caps.
                 // Publish permission, not a scheduled snapshot of Turbo.
                 private _fastMoveIntent = _gaitMovementEnabled && {_gaitStanceOk} && {!_isAceCarrying};
-                private _brakePrearm = _uphillBrakeEnabled && {_uphillBrakeContext} && {_isSprinting} &&
-                    {_sprintBraceEndTime <= time} && {_horizontalSpeedMS > 0.25} && {_slopeDegrees > _slopeStopBraceStartDegrees};
-                // Publish the render-controller request and its brake stage
-                // atomically. The bounded prearm covers an earlier raw release.
                 isNil {
-                    missionNamespace setVariable ["GAIT_coastUnit", player];
-                    missionNamespace setVariable ["GAIT_coastActive", player getVariable ["GAIT_releaseMomentumActive", false]];
-                    missionNamespace setVariable ["GAIT_coastReadyUntil", -1];
-                    missionNamespace setVariable ["GAIT_uphillBrakeUnit", player];
-                    missionNamespace setVariable ["GAIT_uphillBrakeActive", _uphillBrakeActive];
-                    missionNamespace setVariable ["GAIT_uphillBrakeEndTime", if (_uphillBrakeActive) then {_uphillBrakeState select 3} else {-1}];
-                    missionNamespace setVariable ["GAIT_uphillBrakeReadyUntil", if (_brakePrearm) then {diag_tickTime + ((3 * _tickRate) max 0.15 min 0.50)} else {-1}];
-                    missionNamespace setVariable ["GAIT_uphillBrakeSeverity", _uphillBrakeSeverity];
-                    missionNamespace setVariable ["GAIT_uphillBrakeTarget", _uphillBrakeTarget];
-                    missionNamespace setVariable ["GAIT_braceActive", _uphillBrakeActive || {_isSprinting && {_sprintBraceEndTime > time}}];
-                    missionNamespace setVariable ["GAIT_braceEndTime", if (_uphillBrakeActive) then {_uphillBrakeState select 3} else {_sprintBraceEndTime}];
+                    missionNamespace setVariable ["GAIT_braceActive", _isSprinting && {_sprintBraceEndTime > time}];
+                    missionNamespace setVariable ["GAIT_braceEndTime", _sprintBraceEndTime];
                     [player, _fastMoveIntent, _movementInput, _locomotionExternalLock] call GAIT_fnc_updateSlopeLocomotion;
                 };
                 if (_debugHudEnabled && {(time - _lastDebugHudTime) >= ((_debugHudInterval max 0.05) min 1)}) then {
                     _lastDebugHudTime = time;
                     private _debugFamily = [player] call GAIT_fnc_slopeWeaponFamily;
                     hintSilent parseText format [
-                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha24<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Family: %11 | Active: %12 | Jog / sprint target: %13 / %14<br/>Foundation: %15 | Sprint ref: %16 | Full profile: %17<br/>Carried load: %18 lb</t>",
+                        "<t align='left' size='0.82'>GAIT 1.8.0-alpha25<br/>Travel grade: %1 degrees | Speed: %2 km/h<br/>Input F/R: %3 / %4<br/>Coefficient: %5 | ACE reserve: %6%%<br/>Animation: %7<br/>ACE bridge: %8 | Block sprint / walk: %9 / %10<br/>Family: %11 | Active: %12 | Jog / sprint target: %13 / %14<br/>Foundation: %15 | Sprint ref: %16 | Full profile: %17<br/>Carried load: %18 lb</t>",
                         _slopeDegrees toFixed 1, _actualSpeedKmh toFixed 1,
                         (_movementInput select 0) toFixed 2, (_movementInput select 1) toFixed 2,
                         (getAnimSpeedCoef player) toFixed 2, (_reserveRatio * 100) toFixed 0,
@@ -1544,14 +1389,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
                 missionNamespace setVariable ["GAIT_uphillPaceMultiplier", 1];
                 _downhillTripSprintStartTime = -1;
                 _downhillTripHighSpeedStartTime = -1;
-                _uphillBrakeState = [];
-                missionNamespace setVariable ["GAIT_uphillBrakeActive", false];
-                missionNamespace setVariable ["GAIT_uphillBrakeEndTime", -1];
-                missionNamespace setVariable ["GAIT_uphillBrakeReadyUntil", -1];
-                missionNamespace setVariable ["GAIT_uphillBrakeUnit", objNull];
-            missionNamespace setVariable ["GAIT_coastUnit", objNull];
-            missionNamespace setVariable ["GAIT_coastActive", false];
-            missionNamespace setVariable ["GAIT_coastReadyUntil", -1];
                 _braceMomentumState = [false, -999, 0, 0];
                 _downhillMomentum = 0;
                 missionNamespace setVariable ["GAIT_braceActive", false];
@@ -1562,14 +1399,6 @@ missionNamespace setVariable ["GAIT_versionString", "1.8.0-alpha24"];
         } else {
             _downhillTripSprintStartTime = -1;
             _downhillTripHighSpeedStartTime = -1;
-            _uphillBrakeState = [];
-            missionNamespace setVariable ["GAIT_uphillBrakeActive", false];
-            missionNamespace setVariable ["GAIT_uphillBrakeEndTime", -1];
-            missionNamespace setVariable ["GAIT_uphillBrakeReadyUntil", -1];
-            missionNamespace setVariable ["GAIT_uphillBrakeUnit", objNull];
-            missionNamespace setVariable ["GAIT_coastUnit", objNull];
-            missionNamespace setVariable ["GAIT_coastActive", false];
-            missionNamespace setVariable ["GAIT_coastReadyUntil", -1];
             _braceMomentumState = [false, -999, 0, 0];
             _downhillMomentum = 0;
             missionNamespace setVariable ["GAIT_braceActive", false];

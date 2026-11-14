@@ -101,18 +101,12 @@ if !(_testUnit getVariable ["GAIT_directionChangedThisFrame",false]) then {
 if (_testUnit getVariable ["GAIT_directionChangedThisFrame",true]) then {
     _failures pushBack "Held W+A repeated its direction edge";
 };
-// If the feature loop handled release before this render frame, observation
-// must not restart it. A fresh press rearms this latch for the next release.
-_testUnit setVariable ["GAIT_sprintReleaseHandled",true];
+// The release edge is information only and remains latched until the
+// feature loop consumes it. Releasing W with held Turbo is separate.
+_testUnit setVariable ["GAIT_releaseSinceFeatureTick",false];
 _testUnit setVariable ["GAIT_turboInputHeld",true];
-[_testUnit,[1,0,false]] call GAIT_fnc_observeLocomotionInput;
-if !(_testUnit getVariable ["GAIT_sprintReleaseHandled",false]) then {_failures pushBack "Render release forgot prior feature consumption";};
-[_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput;
-if (_testUnit getVariable ["GAIT_sprintReleaseHandled",true]) then {_failures pushBack "New Turbo press did not rearm release capture";};
-_testUnit setVariable ["GAIT_sprintReleaseHandled",true];
 [_testUnit,[0,0,true]] call GAIT_fnc_observeLocomotionInput;
-[_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput;
-if (_testUnit getVariable ["GAIT_sprintReleaseHandled",true]) then {_failures pushBack "W re-press with held Turbo did not rearm release capture";};
+if (_testUnit getVariable ["GAIT_releaseSinceFeatureTick",false]) then {_failures pushBack "W release faked a Turbo release edge";};
 
 // Central reset helper must retire transient input/stance ownership without
 // changing monotonic press/release serial counters used by the feature loop.
@@ -138,13 +132,12 @@ private _savedGlobals = [];
 {
     _x params ["_name", "_default"];
     _savedGlobals pushBack [_name, missionNamespace getVariable [_name, _default]];
-} forEach [["GAIT_braceActive",false], ["GAIT_braceEndTime",-1], ["GAIT_uphillBrakeActive",false], ["GAIT_uphillBrakeEndTime",-1], ["GAIT_uphillBrakeUnit",objNull]];
+} forEach [["GAIT_braceActive",false], ["GAIT_braceEndTime",-1]];
 _testUnit setVariable ["GAIT_forwardReleaseSerial", 0];
 _testUnit setVariable ["GAIT_forwardInputHeld", true];
 _testUnit setVariable ["GAIT_slopeCanceledBraceEndTime", -2];
 missionNamespace setVariable ["GAIT_braceActive", true];
 missionNamespace setVariable ["GAIT_braceEndTime", time + 10];
-missionNamespace setVariable ["GAIT_uphillBrakeActive", false];
 {
     _x params ["_input", "_expected", "_serial", "_label"];
     private _actual = [_testUnit, _input] call GAIT_fnc_observeLocomotionInput;
@@ -166,14 +159,12 @@ if !([_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput) then {_failure
 if ([_testUnit,[1,0,false]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Released Turbo retained launch coefficient dip";};
 if ([_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Raw Turbo re-tap revived stale launch";};
 
-private _brakeEnd = time + 12;
-missionNamespace setVariable ["GAIT_braceEndTime", _brakeEnd];
-missionNamespace setVariable ["GAIT_uphillBrakeEndTime", _brakeEnd];
-missionNamespace setVariable ["GAIT_uphillBrakeActive", true];
-missionNamespace setVariable ["GAIT_uphillBrakeUnit", _testUnit];
-if !([_testUnit,[1,0,false]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Forward uphill brake lost its numerical braking step";};
-if ([_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Turbo re-tap retained stale uphill braking step";};
-if ([_testUnit,[1,0,false]] call GAIT_fnc_observeLocomotionInput) then {_failures pushBack "Released Turbo revived consumed uphill step";};
+_testUnit setVariable ["GAIT_releaseSinceFeatureTick", false];
+[_testUnit,[1,0,false]] call GAIT_fnc_observeLocomotionInput;
+[_testUnit,[1,0,true]] call GAIT_fnc_observeLocomotionInput;
+if !(_testUnit getVariable ["GAIT_releaseSinceFeatureTick", false]) then {
+    _failures pushBack "A complete Turbo release/re-tap between feature ticks lost its release edge";
+};
 
 {missionNamespace setVariable [_x select 0, _x select 1];} forEach _savedGlobals;
 

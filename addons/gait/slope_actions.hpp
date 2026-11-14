@@ -7,7 +7,9 @@
  * Mrun directional clips. Ordinary slope movement uses
  * Mrun even when the engine requests Walk/Slow. Moving states use pace-locked
  * action maps: a jog state maps every forward pace selector back to Mrun and
- * a sprint state maps every forward pace selector back to Meva. Therefore an
+ * a sprint state maps every forward pace selector back to Meva. Other sprint
+ * directions keep GAIT ownership on Fast and use native movement on ordinary
+ * pace requests. Therefore a forward
  * engine pace-selector threshold cannot switch the body halfway through GAIT's
  * numerical acceleration. Shift input and the controller's single graph request
  * own the jog/sprint handoff instead. The original numerical brace acts inside
@@ -16,9 +18,8 @@
  * its idle as a conservative fallback: no guessed native turn class is used.
  * The engine still controls orientation; in-place foot turning needs testing.
  *
- * All ordinary pace selectors point to custom movement states, including Walk
- * requests on slopes. This is an intended state-selection policy, not proof
- * that the engine permits sprint root motion on every terrain inclination.
+ * Forward Walk requests still point to custom movement on slopes. This policy
+ * does not require overwriting Arma's inherited native action maps.
  *
  * Preserve the inherited Actions destinations for stance, weapon, injury,
  * medical, vault and vehicle actions. Preserve native transition arrays too:
@@ -34,7 +35,9 @@
  * captured native value 4 to 8. They shorten the outgoing run blend without
  * scaling its clip playback or adding forward movement. They do not belong
  * to the sprint family and accept new movement immediately through native
- * actions. In-game distance reduction still depends on engine blending.
+ * actions. Moving release targets use the native jog clips and native action
+ * maps, with the same faster blend. Their selectors accept direction changes
+ * directly without restarting the queued release on every A/D input.
  * Transition weights are graph costs, not fixed blend durations in seconds.
  *
  * Sources for native names/selectors and preserving explicit action exits:
@@ -211,35 +214,35 @@ class CfgMovesBasic
             TurnRRelaxed = "AmovPercMstpSrasWrflDnon_GAIT";
             WalkF = "AmovPercMevaSrasWrflDf_GAIT";
             WalkLF = "AmovPercMevaSrasWrflDfl_GAIT";
-            WalkL = "AmovPercMrunSrasWrflDl_GAITSprint";
-            WalkLB = "AmovPercMrunSrasWrflDbl_GAITSprint";
-            WalkB = "AmovPercMrunSrasWrflDb_GAITSprint";
-            WalkRB = "AmovPercMrunSrasWrflDbr_GAITSprint";
-            WalkR = "AmovPercMrunSrasWrflDr_GAITSprint";
+            WalkL = "AmovPercMrunSrasWrflDl";
+            WalkLB = "AmovPercMrunSrasWrflDbl";
+            WalkB = "AmovPercMrunSrasWrflDb";
+            WalkRB = "AmovPercMrunSrasWrflDbr";
+            WalkR = "AmovPercMrunSrasWrflDr";
             WalkRF = "AmovPercMevaSrasWrflDfr_GAIT";
             PlayerWalkF = "AmovPercMevaSrasWrflDf_GAIT";
             PlayerWalkLF = "AmovPercMevaSrasWrflDfl_GAIT";
-            PlayerWalkL = "AmovPercMrunSrasWrflDl_GAITSprint";
-            PlayerWalkLB = "AmovPercMrunSrasWrflDbl_GAITSprint";
-            PlayerWalkB = "AmovPercMrunSrasWrflDb_GAITSprint";
-            PlayerWalkRB = "AmovPercMrunSrasWrflDbr_GAITSprint";
-            PlayerWalkR = "AmovPercMrunSrasWrflDr_GAITSprint";
+            PlayerWalkL = "AmovPercMrunSrasWrflDl";
+            PlayerWalkLB = "AmovPercMrunSrasWrflDbl";
+            PlayerWalkB = "AmovPercMrunSrasWrflDb";
+            PlayerWalkRB = "AmovPercMrunSrasWrflDbr";
+            PlayerWalkR = "AmovPercMrunSrasWrflDr";
             PlayerWalkRF = "AmovPercMevaSrasWrflDfr_GAIT";
             SlowF = "AmovPercMevaSrasWrflDf_GAIT";
             SlowLF = "AmovPercMevaSrasWrflDfl_GAIT";
-            SlowL = "AmovPercMrunSrasWrflDl_GAITSprint";
-            SlowLB = "AmovPercMrunSrasWrflDbl_GAITSprint";
-            SlowB = "AmovPercMrunSrasWrflDb_GAITSprint";
-            SlowRB = "AmovPercMrunSrasWrflDbr_GAITSprint";
-            SlowR = "AmovPercMrunSrasWrflDr_GAITSprint";
+            SlowL = "AmovPercMrunSrasWrflDl";
+            SlowLB = "AmovPercMrunSrasWrflDbl";
+            SlowB = "AmovPercMrunSrasWrflDb";
+            SlowRB = "AmovPercMrunSrasWrflDbr";
+            SlowR = "AmovPercMrunSrasWrflDr";
             SlowRF = "AmovPercMevaSrasWrflDfr_GAIT";
             PlayerSlowF = "AmovPercMevaSrasWrflDf_GAIT";
             PlayerSlowLF = "AmovPercMevaSrasWrflDfl_GAIT";
-            PlayerSlowL = "AmovPercMrunSrasWrflDl_GAITSprint";
-            PlayerSlowLB = "AmovPercMrunSrasWrflDbl_GAITSprint";
-            PlayerSlowB = "AmovPercMrunSrasWrflDb_GAITSprint";
-            PlayerSlowRB = "AmovPercMrunSrasWrflDbr_GAITSprint";
-            PlayerSlowR = "AmovPercMrunSrasWrflDr_GAITSprint";
+            PlayerSlowL = "AmovPercMrunSrasWrflDl";
+            PlayerSlowLB = "AmovPercMrunSrasWrflDbl";
+            PlayerSlowB = "AmovPercMrunSrasWrflDb";
+            PlayerSlowRB = "AmovPercMrunSrasWrflDbr";
+            PlayerSlowR = "AmovPercMrunSrasWrflDr";
             PlayerSlowRF = "AmovPercMevaSrasWrflDfr_GAIT";
             FastF = "AmovPercMevaSrasWrflDf_GAIT";
             FastLF = "AmovPercMevaSrasWrflDfl_GAIT";
@@ -259,19 +262,19 @@ class CfgMovesBasic
             PlayerFastRF = "AmovPercMevaSrasWrflDfr_GAIT";
             TactF = "AmovPercMevaSrasWrflDf_GAIT";
             TactLF = "AmovPercMevaSrasWrflDfl_GAIT";
-            TactL = "AmovPercMrunSrasWrflDl_GAITSprint";
-            TactLB = "AmovPercMrunSrasWrflDbl_GAITSprint";
-            TactB = "AmovPercMrunSrasWrflDb_GAITSprint";
-            TactRB = "AmovPercMrunSrasWrflDbr_GAITSprint";
-            TactR = "AmovPercMrunSrasWrflDr_GAITSprint";
+            TactL = "AmovPercMrunSrasWrflDl";
+            TactLB = "AmovPercMrunSrasWrflDbl";
+            TactB = "AmovPercMrunSrasWrflDb";
+            TactRB = "AmovPercMrunSrasWrflDbr";
+            TactR = "AmovPercMrunSrasWrflDr";
             TactRF = "AmovPercMevaSrasWrflDfr_GAIT";
             PlayerTactF = "AmovPercMevaSrasWrflDf_GAIT";
             PlayerTactLF = "AmovPercMevaSrasWrflDfl_GAIT";
-            PlayerTactL = "AmovPercMrunSrasWrflDl_GAITSprint";
-            PlayerTactLB = "AmovPercMrunSrasWrflDbl_GAITSprint";
-            PlayerTactB = "AmovPercMrunSrasWrflDb_GAITSprint";
-            PlayerTactRB = "AmovPercMrunSrasWrflDbr_GAITSprint";
-            PlayerTactR = "AmovPercMrunSrasWrflDr_GAITSprint";
+            PlayerTactL = "AmovPercMrunSrasWrflDl";
+            PlayerTactLB = "AmovPercMrunSrasWrflDbl";
+            PlayerTactB = "AmovPercMrunSrasWrflDb";
+            PlayerTactRB = "AmovPercMrunSrasWrflDbr";
+            PlayerTactR = "AmovPercMrunSrasWrflDr";
             PlayerTactRF = "AmovPercMevaSrasWrflDfr_GAIT";
         };
 
@@ -440,35 +443,35 @@ class CfgMovesBasic
             TurnRRelaxed = "AmovPercMstpSlowWrflDnon_GAIT";
             WalkF = "AmovPercMevaSlowWrflDf_GAIT";
             WalkLF = "AmovPercMevaSlowWrflDfl_GAIT";
-            WalkL = "AmovPercMrunSlowWrflDl_GAITSprint";
-            WalkLB = "AmovPercMrunSlowWrflDbl_GAITSprint";
-            WalkB = "AmovPercMrunSlowWrflDb_GAITSprint";
-            WalkRB = "AmovPercMrunSlowWrflDbr_GAITSprint";
-            WalkR = "AmovPercMrunSlowWrflDr_GAITSprint";
+            WalkL = "AmovPercMrunSlowWrflDl";
+            WalkLB = "AmovPercMrunSlowWrflDbl";
+            WalkB = "AmovPercMrunSlowWrflDb";
+            WalkRB = "AmovPercMrunSlowWrflDbr";
+            WalkR = "AmovPercMrunSlowWrflDr";
             WalkRF = "AmovPercMevaSlowWrflDfr_GAIT";
             PlayerWalkF = "AmovPercMevaSlowWrflDf_GAIT";
             PlayerWalkLF = "AmovPercMevaSlowWrflDfl_GAIT";
-            PlayerWalkL = "AmovPercMrunSlowWrflDl_GAITSprint";
-            PlayerWalkLB = "AmovPercMrunSlowWrflDbl_GAITSprint";
-            PlayerWalkB = "AmovPercMrunSlowWrflDb_GAITSprint";
-            PlayerWalkRB = "AmovPercMrunSlowWrflDbr_GAITSprint";
-            PlayerWalkR = "AmovPercMrunSlowWrflDr_GAITSprint";
+            PlayerWalkL = "AmovPercMrunSlowWrflDl";
+            PlayerWalkLB = "AmovPercMrunSlowWrflDbl";
+            PlayerWalkB = "AmovPercMrunSlowWrflDb";
+            PlayerWalkRB = "AmovPercMrunSlowWrflDbr";
+            PlayerWalkR = "AmovPercMrunSlowWrflDr";
             PlayerWalkRF = "AmovPercMevaSlowWrflDfr_GAIT";
             SlowF = "AmovPercMevaSlowWrflDf_GAIT";
             SlowLF = "AmovPercMevaSlowWrflDfl_GAIT";
-            SlowL = "AmovPercMrunSlowWrflDl_GAITSprint";
-            SlowLB = "AmovPercMrunSlowWrflDbl_GAITSprint";
-            SlowB = "AmovPercMrunSlowWrflDb_GAITSprint";
-            SlowRB = "AmovPercMrunSlowWrflDbr_GAITSprint";
-            SlowR = "AmovPercMrunSlowWrflDr_GAITSprint";
+            SlowL = "AmovPercMrunSlowWrflDl";
+            SlowLB = "AmovPercMrunSlowWrflDbl";
+            SlowB = "AmovPercMrunSlowWrflDb";
+            SlowRB = "AmovPercMrunSlowWrflDbr";
+            SlowR = "AmovPercMrunSlowWrflDr";
             SlowRF = "AmovPercMevaSlowWrflDfr_GAIT";
             PlayerSlowF = "AmovPercMevaSlowWrflDf_GAIT";
             PlayerSlowLF = "AmovPercMevaSlowWrflDfl_GAIT";
-            PlayerSlowL = "AmovPercMrunSlowWrflDl_GAITSprint";
-            PlayerSlowLB = "AmovPercMrunSlowWrflDbl_GAITSprint";
-            PlayerSlowB = "AmovPercMrunSlowWrflDb_GAITSprint";
-            PlayerSlowRB = "AmovPercMrunSlowWrflDbr_GAITSprint";
-            PlayerSlowR = "AmovPercMrunSlowWrflDr_GAITSprint";
+            PlayerSlowL = "AmovPercMrunSlowWrflDl";
+            PlayerSlowLB = "AmovPercMrunSlowWrflDbl";
+            PlayerSlowB = "AmovPercMrunSlowWrflDb";
+            PlayerSlowRB = "AmovPercMrunSlowWrflDbr";
+            PlayerSlowR = "AmovPercMrunSlowWrflDr";
             PlayerSlowRF = "AmovPercMevaSlowWrflDfr_GAIT";
             FastF = "AmovPercMevaSlowWrflDf_GAIT";
             FastLF = "AmovPercMevaSlowWrflDfl_GAIT";
@@ -488,19 +491,19 @@ class CfgMovesBasic
             PlayerFastRF = "AmovPercMevaSlowWrflDfr_GAIT";
             TactF = "AmovPercMevaSlowWrflDf_GAIT";
             TactLF = "AmovPercMevaSlowWrflDfl_GAIT";
-            TactL = "AmovPercMrunSlowWrflDl_GAITSprint";
-            TactLB = "AmovPercMrunSlowWrflDbl_GAITSprint";
-            TactB = "AmovPercMrunSlowWrflDb_GAITSprint";
-            TactRB = "AmovPercMrunSlowWrflDbr_GAITSprint";
-            TactR = "AmovPercMrunSlowWrflDr_GAITSprint";
+            TactL = "AmovPercMrunSlowWrflDl";
+            TactLB = "AmovPercMrunSlowWrflDbl";
+            TactB = "AmovPercMrunSlowWrflDb";
+            TactRB = "AmovPercMrunSlowWrflDbr";
+            TactR = "AmovPercMrunSlowWrflDr";
             TactRF = "AmovPercMevaSlowWrflDfr_GAIT";
             PlayerTactF = "AmovPercMevaSlowWrflDf_GAIT";
             PlayerTactLF = "AmovPercMevaSlowWrflDfl_GAIT";
-            PlayerTactL = "AmovPercMrunSlowWrflDl_GAITSprint";
-            PlayerTactLB = "AmovPercMrunSlowWrflDbl_GAITSprint";
-            PlayerTactB = "AmovPercMrunSlowWrflDb_GAITSprint";
-            PlayerTactRB = "AmovPercMrunSlowWrflDbr_GAITSprint";
-            PlayerTactR = "AmovPercMrunSlowWrflDr_GAITSprint";
+            PlayerTactL = "AmovPercMrunSlowWrflDl";
+            PlayerTactLB = "AmovPercMrunSlowWrflDbl";
+            PlayerTactB = "AmovPercMrunSlowWrflDb";
+            PlayerTactRB = "AmovPercMrunSlowWrflDbr";
+            PlayerTactR = "AmovPercMrunSlowWrflDr";
             PlayerTactRF = "AmovPercMevaSlowWrflDfr_GAIT";
         };
 
@@ -669,35 +672,35 @@ class CfgMovesBasic
             TurnRRelaxed = "AmovPercMstpSrasWpstDnon_GAIT";
             WalkF = "AmovPercMevaSrasWpstDf_GAIT";
             WalkLF = "AmovPercMevaSrasWpstDfl_GAIT";
-            WalkL = "AmovPercMrunSrasWpstDl_GAITSprint";
-            WalkLB = "AmovPercMrunSrasWpstDbl_GAITSprint";
-            WalkB = "AmovPercMrunSrasWpstDb_GAITSprint";
-            WalkRB = "AmovPercMrunSrasWpstDbr_GAITSprint";
-            WalkR = "AmovPercMrunSrasWpstDr_GAITSprint";
+            WalkL = "AmovPercMrunSrasWpstDl";
+            WalkLB = "AmovPercMrunSrasWpstDbl";
+            WalkB = "AmovPercMrunSrasWpstDb";
+            WalkRB = "AmovPercMrunSrasWpstDbr";
+            WalkR = "AmovPercMrunSrasWpstDr";
             WalkRF = "AmovPercMevaSrasWpstDfr_GAIT";
             PlayerWalkF = "AmovPercMevaSrasWpstDf_GAIT";
             PlayerWalkLF = "AmovPercMevaSrasWpstDfl_GAIT";
-            PlayerWalkL = "AmovPercMrunSrasWpstDl_GAITSprint";
-            PlayerWalkLB = "AmovPercMrunSrasWpstDbl_GAITSprint";
-            PlayerWalkB = "AmovPercMrunSrasWpstDb_GAITSprint";
-            PlayerWalkRB = "AmovPercMrunSrasWpstDbr_GAITSprint";
-            PlayerWalkR = "AmovPercMrunSrasWpstDr_GAITSprint";
+            PlayerWalkL = "AmovPercMrunSrasWpstDl";
+            PlayerWalkLB = "AmovPercMrunSrasWpstDbl";
+            PlayerWalkB = "AmovPercMrunSrasWpstDb";
+            PlayerWalkRB = "AmovPercMrunSrasWpstDbr";
+            PlayerWalkR = "AmovPercMrunSrasWpstDr";
             PlayerWalkRF = "AmovPercMevaSrasWpstDfr_GAIT";
             SlowF = "AmovPercMevaSrasWpstDf_GAIT";
             SlowLF = "AmovPercMevaSrasWpstDfl_GAIT";
-            SlowL = "AmovPercMrunSrasWpstDl_GAITSprint";
-            SlowLB = "AmovPercMrunSrasWpstDbl_GAITSprint";
-            SlowB = "AmovPercMrunSrasWpstDb_GAITSprint";
-            SlowRB = "AmovPercMrunSrasWpstDbr_GAITSprint";
-            SlowR = "AmovPercMrunSrasWpstDr_GAITSprint";
+            SlowL = "AmovPercMrunSrasWpstDl";
+            SlowLB = "AmovPercMrunSrasWpstDbl";
+            SlowB = "AmovPercMrunSrasWpstDb";
+            SlowRB = "AmovPercMrunSrasWpstDbr";
+            SlowR = "AmovPercMrunSrasWpstDr";
             SlowRF = "AmovPercMevaSrasWpstDfr_GAIT";
             PlayerSlowF = "AmovPercMevaSrasWpstDf_GAIT";
             PlayerSlowLF = "AmovPercMevaSrasWpstDfl_GAIT";
-            PlayerSlowL = "AmovPercMrunSrasWpstDl_GAITSprint";
-            PlayerSlowLB = "AmovPercMrunSrasWpstDbl_GAITSprint";
-            PlayerSlowB = "AmovPercMrunSrasWpstDb_GAITSprint";
-            PlayerSlowRB = "AmovPercMrunSrasWpstDbr_GAITSprint";
-            PlayerSlowR = "AmovPercMrunSrasWpstDr_GAITSprint";
+            PlayerSlowL = "AmovPercMrunSrasWpstDl";
+            PlayerSlowLB = "AmovPercMrunSrasWpstDbl";
+            PlayerSlowB = "AmovPercMrunSrasWpstDb";
+            PlayerSlowRB = "AmovPercMrunSrasWpstDbr";
+            PlayerSlowR = "AmovPercMrunSrasWpstDr";
             PlayerSlowRF = "AmovPercMevaSrasWpstDfr_GAIT";
             FastF = "AmovPercMevaSrasWpstDf_GAIT";
             FastLF = "AmovPercMevaSrasWpstDfl_GAIT";
@@ -717,19 +720,19 @@ class CfgMovesBasic
             PlayerFastRF = "AmovPercMevaSrasWpstDfr_GAIT";
             TactF = "AmovPercMevaSrasWpstDf_GAIT";
             TactLF = "AmovPercMevaSrasWpstDfl_GAIT";
-            TactL = "AmovPercMrunSrasWpstDl_GAITSprint";
-            TactLB = "AmovPercMrunSrasWpstDbl_GAITSprint";
-            TactB = "AmovPercMrunSrasWpstDb_GAITSprint";
-            TactRB = "AmovPercMrunSrasWpstDbr_GAITSprint";
-            TactR = "AmovPercMrunSrasWpstDr_GAITSprint";
+            TactL = "AmovPercMrunSrasWpstDl";
+            TactLB = "AmovPercMrunSrasWpstDbl";
+            TactB = "AmovPercMrunSrasWpstDb";
+            TactRB = "AmovPercMrunSrasWpstDbr";
+            TactR = "AmovPercMrunSrasWpstDr";
             TactRF = "AmovPercMevaSrasWpstDfr_GAIT";
             PlayerTactF = "AmovPercMevaSrasWpstDf_GAIT";
             PlayerTactLF = "AmovPercMevaSrasWpstDfl_GAIT";
-            PlayerTactL = "AmovPercMrunSrasWpstDl_GAITSprint";
-            PlayerTactLB = "AmovPercMrunSrasWpstDbl_GAITSprint";
-            PlayerTactB = "AmovPercMrunSrasWpstDb_GAITSprint";
-            PlayerTactRB = "AmovPercMrunSrasWpstDbr_GAITSprint";
-            PlayerTactR = "AmovPercMrunSrasWpstDr_GAITSprint";
+            PlayerTactL = "AmovPercMrunSrasWpstDl";
+            PlayerTactLB = "AmovPercMrunSrasWpstDbl";
+            PlayerTactB = "AmovPercMrunSrasWpstDb";
+            PlayerTactRB = "AmovPercMrunSrasWpstDbr";
+            PlayerTactR = "AmovPercMrunSrasWpstDr";
             PlayerTactRF = "AmovPercMevaSrasWpstDfr_GAIT";
         };
 
@@ -898,35 +901,35 @@ class CfgMovesBasic
             TurnRRelaxed = "AmovPercMstpSlowWpstDnon_GAIT";
             WalkF = "AmovPercMevaSlowWpstDf_GAIT";
             WalkLF = "AmovPercMevaSlowWpstDfl_GAIT";
-            WalkL = "AmovPercMrunSlowWpstDl_GAITSprint";
-            WalkLB = "AmovPercMrunSlowWpstDbl_GAITSprint";
-            WalkB = "AmovPercMrunSlowWpstDb_GAITSprint";
-            WalkRB = "AmovPercMrunSlowWpstDbr_GAITSprint";
-            WalkR = "AmovPercMrunSlowWpstDr_GAITSprint";
+            WalkL = "AmovPercMrunSlowWpstDl";
+            WalkLB = "AmovPercMrunSlowWpstDbl";
+            WalkB = "AmovPercMrunSlowWpstDb";
+            WalkRB = "AmovPercMrunSlowWpstDbr";
+            WalkR = "AmovPercMrunSlowWpstDr";
             WalkRF = "AmovPercMevaSlowWpstDfr_GAIT";
             PlayerWalkF = "AmovPercMevaSlowWpstDf_GAIT";
             PlayerWalkLF = "AmovPercMevaSlowWpstDfl_GAIT";
-            PlayerWalkL = "AmovPercMrunSlowWpstDl_GAITSprint";
-            PlayerWalkLB = "AmovPercMrunSlowWpstDbl_GAITSprint";
-            PlayerWalkB = "AmovPercMrunSlowWpstDb_GAITSprint";
-            PlayerWalkRB = "AmovPercMrunSlowWpstDbr_GAITSprint";
-            PlayerWalkR = "AmovPercMrunSlowWpstDr_GAITSprint";
+            PlayerWalkL = "AmovPercMrunSlowWpstDl";
+            PlayerWalkLB = "AmovPercMrunSlowWpstDbl";
+            PlayerWalkB = "AmovPercMrunSlowWpstDb";
+            PlayerWalkRB = "AmovPercMrunSlowWpstDbr";
+            PlayerWalkR = "AmovPercMrunSlowWpstDr";
             PlayerWalkRF = "AmovPercMevaSlowWpstDfr_GAIT";
             SlowF = "AmovPercMevaSlowWpstDf_GAIT";
             SlowLF = "AmovPercMevaSlowWpstDfl_GAIT";
-            SlowL = "AmovPercMrunSlowWpstDl_GAITSprint";
-            SlowLB = "AmovPercMrunSlowWpstDbl_GAITSprint";
-            SlowB = "AmovPercMrunSlowWpstDb_GAITSprint";
-            SlowRB = "AmovPercMrunSlowWpstDbr_GAITSprint";
-            SlowR = "AmovPercMrunSlowWpstDr_GAITSprint";
+            SlowL = "AmovPercMrunSlowWpstDl";
+            SlowLB = "AmovPercMrunSlowWpstDbl";
+            SlowB = "AmovPercMrunSlowWpstDb";
+            SlowRB = "AmovPercMrunSlowWpstDbr";
+            SlowR = "AmovPercMrunSlowWpstDr";
             SlowRF = "AmovPercMevaSlowWpstDfr_GAIT";
             PlayerSlowF = "AmovPercMevaSlowWpstDf_GAIT";
             PlayerSlowLF = "AmovPercMevaSlowWpstDfl_GAIT";
-            PlayerSlowL = "AmovPercMrunSlowWpstDl_GAITSprint";
-            PlayerSlowLB = "AmovPercMrunSlowWpstDbl_GAITSprint";
-            PlayerSlowB = "AmovPercMrunSlowWpstDb_GAITSprint";
-            PlayerSlowRB = "AmovPercMrunSlowWpstDbr_GAITSprint";
-            PlayerSlowR = "AmovPercMrunSlowWpstDr_GAITSprint";
+            PlayerSlowL = "AmovPercMrunSlowWpstDl";
+            PlayerSlowLB = "AmovPercMrunSlowWpstDbl";
+            PlayerSlowB = "AmovPercMrunSlowWpstDb";
+            PlayerSlowRB = "AmovPercMrunSlowWpstDbr";
+            PlayerSlowR = "AmovPercMrunSlowWpstDr";
             PlayerSlowRF = "AmovPercMevaSlowWpstDfr_GAIT";
             FastF = "AmovPercMevaSlowWpstDf_GAIT";
             FastLF = "AmovPercMevaSlowWpstDfl_GAIT";
@@ -946,19 +949,19 @@ class CfgMovesBasic
             PlayerFastRF = "AmovPercMevaSlowWpstDfr_GAIT";
             TactF = "AmovPercMevaSlowWpstDf_GAIT";
             TactLF = "AmovPercMevaSlowWpstDfl_GAIT";
-            TactL = "AmovPercMrunSlowWpstDl_GAITSprint";
-            TactLB = "AmovPercMrunSlowWpstDbl_GAITSprint";
-            TactB = "AmovPercMrunSlowWpstDb_GAITSprint";
-            TactRB = "AmovPercMrunSlowWpstDbr_GAITSprint";
-            TactR = "AmovPercMrunSlowWpstDr_GAITSprint";
+            TactL = "AmovPercMrunSlowWpstDl";
+            TactLB = "AmovPercMrunSlowWpstDbl";
+            TactB = "AmovPercMrunSlowWpstDb";
+            TactRB = "AmovPercMrunSlowWpstDbr";
+            TactR = "AmovPercMrunSlowWpstDr";
             TactRF = "AmovPercMevaSlowWpstDfr_GAIT";
             PlayerTactF = "AmovPercMevaSlowWpstDf_GAIT";
             PlayerTactLF = "AmovPercMevaSlowWpstDfl_GAIT";
-            PlayerTactL = "AmovPercMrunSlowWpstDl_GAITSprint";
-            PlayerTactLB = "AmovPercMrunSlowWpstDbl_GAITSprint";
-            PlayerTactB = "AmovPercMrunSlowWpstDb_GAITSprint";
-            PlayerTactRB = "AmovPercMrunSlowWpstDbr_GAITSprint";
-            PlayerTactR = "AmovPercMrunSlowWpstDr_GAITSprint";
+            PlayerTactL = "AmovPercMrunSlowWpstDl";
+            PlayerTactLB = "AmovPercMrunSlowWpstDbl";
+            PlayerTactB = "AmovPercMrunSlowWpstDb";
+            PlayerTactRB = "AmovPercMrunSlowWpstDbr";
+            PlayerTactR = "AmovPercMrunSlowWpstDr";
             PlayerTactRF = "AmovPercMevaSlowWpstDfr_GAIT";
         };
 
@@ -1127,35 +1130,35 @@ class CfgMovesBasic
             TurnRRelaxed = "AmovPercMstpSnonWnonDnon_GAIT";
             WalkF = "AmovPercMevaSnonWnonDf_GAIT";
             WalkLF = "AmovPercMevaSnonWnonDfl_GAIT";
-            WalkL = "AmovPercMrunSnonWnonDl_GAITSprint";
-            WalkLB = "AmovPercMrunSnonWnonDbl_GAITSprint";
-            WalkB = "AmovPercMrunSnonWnonDb_GAITSprint";
-            WalkRB = "AmovPercMrunSnonWnonDbr_GAITSprint";
-            WalkR = "AmovPercMrunSnonWnonDr_GAITSprint";
+            WalkL = "AmovPercMrunSnonWnonDl";
+            WalkLB = "AmovPercMrunSnonWnonDbl";
+            WalkB = "AmovPercMrunSnonWnonDb";
+            WalkRB = "AmovPercMrunSnonWnonDbr";
+            WalkR = "AmovPercMrunSnonWnonDr";
             WalkRF = "AmovPercMevaSnonWnonDfr_GAIT";
             PlayerWalkF = "AmovPercMevaSnonWnonDf_GAIT";
             PlayerWalkLF = "AmovPercMevaSnonWnonDfl_GAIT";
-            PlayerWalkL = "AmovPercMrunSnonWnonDl_GAITSprint";
-            PlayerWalkLB = "AmovPercMrunSnonWnonDbl_GAITSprint";
-            PlayerWalkB = "AmovPercMrunSnonWnonDb_GAITSprint";
-            PlayerWalkRB = "AmovPercMrunSnonWnonDbr_GAITSprint";
-            PlayerWalkR = "AmovPercMrunSnonWnonDr_GAITSprint";
+            PlayerWalkL = "AmovPercMrunSnonWnonDl";
+            PlayerWalkLB = "AmovPercMrunSnonWnonDbl";
+            PlayerWalkB = "AmovPercMrunSnonWnonDb";
+            PlayerWalkRB = "AmovPercMrunSnonWnonDbr";
+            PlayerWalkR = "AmovPercMrunSnonWnonDr";
             PlayerWalkRF = "AmovPercMevaSnonWnonDfr_GAIT";
             SlowF = "AmovPercMevaSnonWnonDf_GAIT";
             SlowLF = "AmovPercMevaSnonWnonDfl_GAIT";
-            SlowL = "AmovPercMrunSnonWnonDl_GAITSprint";
-            SlowLB = "AmovPercMrunSnonWnonDbl_GAITSprint";
-            SlowB = "AmovPercMrunSnonWnonDb_GAITSprint";
-            SlowRB = "AmovPercMrunSnonWnonDbr_GAITSprint";
-            SlowR = "AmovPercMrunSnonWnonDr_GAITSprint";
+            SlowL = "AmovPercMrunSnonWnonDl";
+            SlowLB = "AmovPercMrunSnonWnonDbl";
+            SlowB = "AmovPercMrunSnonWnonDb";
+            SlowRB = "AmovPercMrunSnonWnonDbr";
+            SlowR = "AmovPercMrunSnonWnonDr";
             SlowRF = "AmovPercMevaSnonWnonDfr_GAIT";
             PlayerSlowF = "AmovPercMevaSnonWnonDf_GAIT";
             PlayerSlowLF = "AmovPercMevaSnonWnonDfl_GAIT";
-            PlayerSlowL = "AmovPercMrunSnonWnonDl_GAITSprint";
-            PlayerSlowLB = "AmovPercMrunSnonWnonDbl_GAITSprint";
-            PlayerSlowB = "AmovPercMrunSnonWnonDb_GAITSprint";
-            PlayerSlowRB = "AmovPercMrunSnonWnonDbr_GAITSprint";
-            PlayerSlowR = "AmovPercMrunSnonWnonDr_GAITSprint";
+            PlayerSlowL = "AmovPercMrunSnonWnonDl";
+            PlayerSlowLB = "AmovPercMrunSnonWnonDbl";
+            PlayerSlowB = "AmovPercMrunSnonWnonDb";
+            PlayerSlowRB = "AmovPercMrunSnonWnonDbr";
+            PlayerSlowR = "AmovPercMrunSnonWnonDr";
             PlayerSlowRF = "AmovPercMevaSnonWnonDfr_GAIT";
             FastF = "AmovPercMevaSnonWnonDf_GAIT";
             FastLF = "AmovPercMevaSnonWnonDfl_GAIT";
@@ -1175,19 +1178,19 @@ class CfgMovesBasic
             PlayerFastRF = "AmovPercMevaSnonWnonDfr_GAIT";
             TactF = "AmovPercMevaSnonWnonDf_GAIT";
             TactLF = "AmovPercMevaSnonWnonDfl_GAIT";
-            TactL = "AmovPercMrunSnonWnonDl_GAITSprint";
-            TactLB = "AmovPercMrunSnonWnonDbl_GAITSprint";
-            TactB = "AmovPercMrunSnonWnonDb_GAITSprint";
-            TactRB = "AmovPercMrunSnonWnonDbr_GAITSprint";
-            TactR = "AmovPercMrunSnonWnonDr_GAITSprint";
+            TactL = "AmovPercMrunSnonWnonDl";
+            TactLB = "AmovPercMrunSnonWnonDbl";
+            TactB = "AmovPercMrunSnonWnonDb";
+            TactRB = "AmovPercMrunSnonWnonDbr";
+            TactR = "AmovPercMrunSnonWnonDr";
             TactRF = "AmovPercMevaSnonWnonDfr_GAIT";
             PlayerTactF = "AmovPercMevaSnonWnonDf_GAIT";
             PlayerTactLF = "AmovPercMevaSnonWnonDfl_GAIT";
-            PlayerTactL = "AmovPercMrunSnonWnonDl_GAITSprint";
-            PlayerTactLB = "AmovPercMrunSnonWnonDbl_GAITSprint";
-            PlayerTactB = "AmovPercMrunSnonWnonDb_GAITSprint";
-            PlayerTactRB = "AmovPercMrunSnonWnonDbr_GAITSprint";
-            PlayerTactR = "AmovPercMrunSnonWnonDr_GAITSprint";
+            PlayerTactL = "AmovPercMrunSnonWnonDl";
+            PlayerTactLB = "AmovPercMrunSnonWnonDbl";
+            PlayerTactB = "AmovPercMrunSnonWnonDb";
+            PlayerTactRB = "AmovPercMrunSnonWnonDbr";
+            PlayerTactR = "AmovPercMrunSnonWnonDr";
             PlayerTactRF = "AmovPercMevaSnonWnonDfr_GAIT";
         };
 
@@ -1365,7 +1368,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -1444,7 +1455,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -1523,7 +1542,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -1602,7 +1629,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -1681,7 +1716,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -1760,7 +1803,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -1839,7 +1890,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -1918,7 +1977,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025,
-                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -2599,7 +2666,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWrflDfr", 0.02,
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
-                "AmovPercMevaSrasWrflDfr", 0.025
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMrunSrasWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWrflDfr_GAITRelease", 0.02
             };
             InterpolateTo[] +=
             {
@@ -2640,6 +2715,430 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWrflDf", 0.025,
                 "AmovPercMevaSrasWrflDfl", 0.025,
                 "AmovPercMevaSrasWrflDfr", 0.025
+            };
+        };
+
+        class AmovPercMrunSrasWrflDf_GAITRelease: AmovPercMrunSrasWrflDf
+        {
+            actions = "RifleStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWrflDnon", 0.02,
+                "AmovPercMrunSrasWrflDf", 0.02,
+                "AmovPercMrunSrasWrflDfl", 0.02,
+                "AmovPercMrunSrasWrflDl", 0.02,
+                "AmovPercMrunSrasWrflDbl", 0.02,
+                "AmovPercMrunSrasWrflDb", 0.02,
+                "AmovPercMrunSrasWrflDbr", 0.02,
+                "AmovPercMrunSrasWrflDr", 0.02,
+                "AmovPercMrunSrasWrflDfr", 0.02,
+                "AmovPercMwlkSrasWrflDf", 0.02,
+                "AmovPercMwlkSrasWrflDfl", 0.02,
+                "AmovPercMwlkSrasWrflDl", 0.02,
+                "AmovPercMwlkSrasWrflDbl", 0.02,
+                "AmovPercMwlkSrasWrflDb", 0.02,
+                "AmovPercMwlkSrasWrflDbr", 0.02,
+                "AmovPercMwlkSrasWrflDr", 0.02,
+                "AmovPercMwlkSrasWrflDfr", 0.02,
+                "AmovPercMevaSrasWrflDf", 0.025,
+                "AmovPercMevaSrasWrflDfl", 0.025,
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWrflDfl_GAITRelease: AmovPercMrunSrasWrflDfl
+        {
+            actions = "RifleStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWrflDnon", 0.02,
+                "AmovPercMrunSrasWrflDf", 0.02,
+                "AmovPercMrunSrasWrflDfl", 0.02,
+                "AmovPercMrunSrasWrflDl", 0.02,
+                "AmovPercMrunSrasWrflDbl", 0.02,
+                "AmovPercMrunSrasWrflDb", 0.02,
+                "AmovPercMrunSrasWrflDbr", 0.02,
+                "AmovPercMrunSrasWrflDr", 0.02,
+                "AmovPercMrunSrasWrflDfr", 0.02,
+                "AmovPercMwlkSrasWrflDf", 0.02,
+                "AmovPercMwlkSrasWrflDfl", 0.02,
+                "AmovPercMwlkSrasWrflDl", 0.02,
+                "AmovPercMwlkSrasWrflDbl", 0.02,
+                "AmovPercMwlkSrasWrflDb", 0.02,
+                "AmovPercMwlkSrasWrflDbr", 0.02,
+                "AmovPercMwlkSrasWrflDr", 0.02,
+                "AmovPercMwlkSrasWrflDfr", 0.02,
+                "AmovPercMevaSrasWrflDf", 0.025,
+                "AmovPercMevaSrasWrflDfl", 0.025,
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWrflDl_GAITRelease: AmovPercMrunSrasWrflDl
+        {
+            actions = "RifleStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWrflDnon", 0.02,
+                "AmovPercMrunSrasWrflDf", 0.02,
+                "AmovPercMrunSrasWrflDfl", 0.02,
+                "AmovPercMrunSrasWrflDl", 0.02,
+                "AmovPercMrunSrasWrflDbl", 0.02,
+                "AmovPercMrunSrasWrflDb", 0.02,
+                "AmovPercMrunSrasWrflDbr", 0.02,
+                "AmovPercMrunSrasWrflDr", 0.02,
+                "AmovPercMrunSrasWrflDfr", 0.02,
+                "AmovPercMwlkSrasWrflDf", 0.02,
+                "AmovPercMwlkSrasWrflDfl", 0.02,
+                "AmovPercMwlkSrasWrflDl", 0.02,
+                "AmovPercMwlkSrasWrflDbl", 0.02,
+                "AmovPercMwlkSrasWrflDb", 0.02,
+                "AmovPercMwlkSrasWrflDbr", 0.02,
+                "AmovPercMwlkSrasWrflDr", 0.02,
+                "AmovPercMwlkSrasWrflDfr", 0.02,
+                "AmovPercMevaSrasWrflDf", 0.025,
+                "AmovPercMevaSrasWrflDfl", 0.025,
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWrflDbl_GAITRelease: AmovPercMrunSrasWrflDbl
+        {
+            actions = "RifleStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWrflDnon", 0.02,
+                "AmovPercMrunSrasWrflDf", 0.02,
+                "AmovPercMrunSrasWrflDfl", 0.02,
+                "AmovPercMrunSrasWrflDl", 0.02,
+                "AmovPercMrunSrasWrflDbl", 0.02,
+                "AmovPercMrunSrasWrflDb", 0.02,
+                "AmovPercMrunSrasWrflDbr", 0.02,
+                "AmovPercMrunSrasWrflDr", 0.02,
+                "AmovPercMrunSrasWrflDfr", 0.02,
+                "AmovPercMwlkSrasWrflDf", 0.02,
+                "AmovPercMwlkSrasWrflDfl", 0.02,
+                "AmovPercMwlkSrasWrflDl", 0.02,
+                "AmovPercMwlkSrasWrflDbl", 0.02,
+                "AmovPercMwlkSrasWrflDb", 0.02,
+                "AmovPercMwlkSrasWrflDbr", 0.02,
+                "AmovPercMwlkSrasWrflDr", 0.02,
+                "AmovPercMwlkSrasWrflDfr", 0.02,
+                "AmovPercMevaSrasWrflDf", 0.025,
+                "AmovPercMevaSrasWrflDfl", 0.025,
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWrflDb_GAITRelease: AmovPercMrunSrasWrflDb
+        {
+            actions = "RifleStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWrflDnon", 0.02,
+                "AmovPercMrunSrasWrflDf", 0.02,
+                "AmovPercMrunSrasWrflDfl", 0.02,
+                "AmovPercMrunSrasWrflDl", 0.02,
+                "AmovPercMrunSrasWrflDbl", 0.02,
+                "AmovPercMrunSrasWrflDb", 0.02,
+                "AmovPercMrunSrasWrflDbr", 0.02,
+                "AmovPercMrunSrasWrflDr", 0.02,
+                "AmovPercMrunSrasWrflDfr", 0.02,
+                "AmovPercMwlkSrasWrflDf", 0.02,
+                "AmovPercMwlkSrasWrflDfl", 0.02,
+                "AmovPercMwlkSrasWrflDl", 0.02,
+                "AmovPercMwlkSrasWrflDbl", 0.02,
+                "AmovPercMwlkSrasWrflDb", 0.02,
+                "AmovPercMwlkSrasWrflDbr", 0.02,
+                "AmovPercMwlkSrasWrflDr", 0.02,
+                "AmovPercMwlkSrasWrflDfr", 0.02,
+                "AmovPercMevaSrasWrflDf", 0.025,
+                "AmovPercMevaSrasWrflDfl", 0.025,
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWrflDbr_GAITRelease: AmovPercMrunSrasWrflDbr
+        {
+            actions = "RifleStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWrflDnon", 0.02,
+                "AmovPercMrunSrasWrflDf", 0.02,
+                "AmovPercMrunSrasWrflDfl", 0.02,
+                "AmovPercMrunSrasWrflDl", 0.02,
+                "AmovPercMrunSrasWrflDbl", 0.02,
+                "AmovPercMrunSrasWrflDb", 0.02,
+                "AmovPercMrunSrasWrflDbr", 0.02,
+                "AmovPercMrunSrasWrflDr", 0.02,
+                "AmovPercMrunSrasWrflDfr", 0.02,
+                "AmovPercMwlkSrasWrflDf", 0.02,
+                "AmovPercMwlkSrasWrflDfl", 0.02,
+                "AmovPercMwlkSrasWrflDl", 0.02,
+                "AmovPercMwlkSrasWrflDbl", 0.02,
+                "AmovPercMwlkSrasWrflDb", 0.02,
+                "AmovPercMwlkSrasWrflDbr", 0.02,
+                "AmovPercMwlkSrasWrflDr", 0.02,
+                "AmovPercMwlkSrasWrflDfr", 0.02,
+                "AmovPercMevaSrasWrflDf", 0.025,
+                "AmovPercMevaSrasWrflDfl", 0.025,
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWrflDr_GAITRelease: AmovPercMrunSrasWrflDr
+        {
+            actions = "RifleStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWrflDnon", 0.02,
+                "AmovPercMrunSrasWrflDf", 0.02,
+                "AmovPercMrunSrasWrflDfl", 0.02,
+                "AmovPercMrunSrasWrflDl", 0.02,
+                "AmovPercMrunSrasWrflDbl", 0.02,
+                "AmovPercMrunSrasWrflDb", 0.02,
+                "AmovPercMrunSrasWrflDbr", 0.02,
+                "AmovPercMrunSrasWrflDr", 0.02,
+                "AmovPercMrunSrasWrflDfr", 0.02,
+                "AmovPercMwlkSrasWrflDf", 0.02,
+                "AmovPercMwlkSrasWrflDfl", 0.02,
+                "AmovPercMwlkSrasWrflDl", 0.02,
+                "AmovPercMwlkSrasWrflDbl", 0.02,
+                "AmovPercMwlkSrasWrflDb", 0.02,
+                "AmovPercMwlkSrasWrflDbr", 0.02,
+                "AmovPercMwlkSrasWrflDr", 0.02,
+                "AmovPercMwlkSrasWrflDfr", 0.02,
+                "AmovPercMevaSrasWrflDf", 0.025,
+                "AmovPercMevaSrasWrflDfl", 0.025,
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWrflDfr_GAITRelease: AmovPercMrunSrasWrflDfr
+        {
+            actions = "RifleStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWrflDf_GAIT", 0.025,
+                "AmovPercMevaSrasWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWrflDnon", 0.02,
+                "AmovPercMrunSrasWrflDf", 0.02,
+                "AmovPercMrunSrasWrflDfl", 0.02,
+                "AmovPercMrunSrasWrflDl", 0.02,
+                "AmovPercMrunSrasWrflDbl", 0.02,
+                "AmovPercMrunSrasWrflDb", 0.02,
+                "AmovPercMrunSrasWrflDbr", 0.02,
+                "AmovPercMrunSrasWrflDr", 0.02,
+                "AmovPercMrunSrasWrflDfr", 0.02,
+                "AmovPercMwlkSrasWrflDf", 0.02,
+                "AmovPercMwlkSrasWrflDfl", 0.02,
+                "AmovPercMwlkSrasWrflDl", 0.02,
+                "AmovPercMwlkSrasWrflDbl", 0.02,
+                "AmovPercMwlkSrasWrflDb", 0.02,
+                "AmovPercMwlkSrasWrflDbr", 0.02,
+                "AmovPercMwlkSrasWrflDr", 0.02,
+                "AmovPercMwlkSrasWrflDfr", 0.02,
+                "AmovPercMevaSrasWrflDf", 0.025,
+                "AmovPercMevaSrasWrflDfl", 0.025,
+                "AmovPercMevaSrasWrflDfr", 0.025,
+                "AmovPercMstpSrasWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -2874,7 +3373,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -2985,7 +3492,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -3096,7 +3611,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -3207,7 +3730,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -3318,7 +3849,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -3429,7 +3968,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -3540,7 +4087,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -3651,7 +4206,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02,
-                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
         };
 
@@ -4604,7 +5167,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDb_ver2", 0.02,
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
-                "AmovPercMtacSlowWrflDfr_ver2", 0.02
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMrunSlowWrflDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWrflDfr_GAITRelease", 0.02
             };
             InterpolateTo[] +=
             {
@@ -4661,6 +5232,558 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMtacSlowWrflDbr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDr_ver2", 0.02,
                 "AmovPercMtacSlowWrflDfr_ver2", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWrflDf_GAITRelease: AmovPercMrunSlowWrflDf
+        {
+            actions = "RifleLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWrflDnon", 0.02,
+                "AmovPercMrunSlowWrflDf", 0.02,
+                "AmovPercMrunSlowWrflDfl", 0.02,
+                "AmovPercMrunSlowWrflDl", 0.02,
+                "AmovPercMrunSlowWrflDbl", 0.02,
+                "AmovPercMrunSlowWrflDb", 0.02,
+                "AmovPercMrunSlowWrflDbr", 0.02,
+                "AmovPercMrunSlowWrflDr", 0.02,
+                "AmovPercMrunSlowWrflDfr", 0.02,
+                "AmovPercMwlkSlowWrflDf", 0.02,
+                "AmovPercMwlkSlowWrflDfl", 0.02,
+                "AmovPercMwlkSlowWrflDl", 0.02,
+                "AmovPercMwlkSlowWrflDbl", 0.02,
+                "AmovPercMwlkSlowWrflDb", 0.02,
+                "AmovPercMwlkSlowWrflDbr", 0.02,
+                "AmovPercMwlkSlowWrflDr", 0.02,
+                "AmovPercMwlkSlowWrflDfr", 0.02,
+                "AmovPercMevaSlowWrflDf", 0.025,
+                "AmovPercMevaSlowWrflDfl", 0.025,
+                "AmovPercMevaSlowWrflDfr", 0.025,
+                "AmovPercMwlkSlowWrflDf_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDb_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDf_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDb_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWrflDfl_GAITRelease: AmovPercMrunSlowWrflDfl
+        {
+            actions = "RifleLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWrflDnon", 0.02,
+                "AmovPercMrunSlowWrflDf", 0.02,
+                "AmovPercMrunSlowWrflDfl", 0.02,
+                "AmovPercMrunSlowWrflDl", 0.02,
+                "AmovPercMrunSlowWrflDbl", 0.02,
+                "AmovPercMrunSlowWrflDb", 0.02,
+                "AmovPercMrunSlowWrflDbr", 0.02,
+                "AmovPercMrunSlowWrflDr", 0.02,
+                "AmovPercMrunSlowWrflDfr", 0.02,
+                "AmovPercMwlkSlowWrflDf", 0.02,
+                "AmovPercMwlkSlowWrflDfl", 0.02,
+                "AmovPercMwlkSlowWrflDl", 0.02,
+                "AmovPercMwlkSlowWrflDbl", 0.02,
+                "AmovPercMwlkSlowWrflDb", 0.02,
+                "AmovPercMwlkSlowWrflDbr", 0.02,
+                "AmovPercMwlkSlowWrflDr", 0.02,
+                "AmovPercMwlkSlowWrflDfr", 0.02,
+                "AmovPercMevaSlowWrflDf", 0.025,
+                "AmovPercMevaSlowWrflDfl", 0.025,
+                "AmovPercMevaSlowWrflDfr", 0.025,
+                "AmovPercMwlkSlowWrflDf_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDb_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDf_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDb_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWrflDl_GAITRelease: AmovPercMrunSlowWrflDl
+        {
+            actions = "RifleLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWrflDnon", 0.02,
+                "AmovPercMrunSlowWrflDf", 0.02,
+                "AmovPercMrunSlowWrflDfl", 0.02,
+                "AmovPercMrunSlowWrflDl", 0.02,
+                "AmovPercMrunSlowWrflDbl", 0.02,
+                "AmovPercMrunSlowWrflDb", 0.02,
+                "AmovPercMrunSlowWrflDbr", 0.02,
+                "AmovPercMrunSlowWrflDr", 0.02,
+                "AmovPercMrunSlowWrflDfr", 0.02,
+                "AmovPercMwlkSlowWrflDf", 0.02,
+                "AmovPercMwlkSlowWrflDfl", 0.02,
+                "AmovPercMwlkSlowWrflDl", 0.02,
+                "AmovPercMwlkSlowWrflDbl", 0.02,
+                "AmovPercMwlkSlowWrflDb", 0.02,
+                "AmovPercMwlkSlowWrflDbr", 0.02,
+                "AmovPercMwlkSlowWrflDr", 0.02,
+                "AmovPercMwlkSlowWrflDfr", 0.02,
+                "AmovPercMevaSlowWrflDf", 0.025,
+                "AmovPercMevaSlowWrflDfl", 0.025,
+                "AmovPercMevaSlowWrflDfr", 0.025,
+                "AmovPercMwlkSlowWrflDf_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDb_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDf_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDb_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWrflDbl_GAITRelease: AmovPercMrunSlowWrflDbl
+        {
+            actions = "RifleLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWrflDnon", 0.02,
+                "AmovPercMrunSlowWrflDf", 0.02,
+                "AmovPercMrunSlowWrflDfl", 0.02,
+                "AmovPercMrunSlowWrflDl", 0.02,
+                "AmovPercMrunSlowWrflDbl", 0.02,
+                "AmovPercMrunSlowWrflDb", 0.02,
+                "AmovPercMrunSlowWrflDbr", 0.02,
+                "AmovPercMrunSlowWrflDr", 0.02,
+                "AmovPercMrunSlowWrflDfr", 0.02,
+                "AmovPercMwlkSlowWrflDf", 0.02,
+                "AmovPercMwlkSlowWrflDfl", 0.02,
+                "AmovPercMwlkSlowWrflDl", 0.02,
+                "AmovPercMwlkSlowWrflDbl", 0.02,
+                "AmovPercMwlkSlowWrflDb", 0.02,
+                "AmovPercMwlkSlowWrflDbr", 0.02,
+                "AmovPercMwlkSlowWrflDr", 0.02,
+                "AmovPercMwlkSlowWrflDfr", 0.02,
+                "AmovPercMevaSlowWrflDf", 0.025,
+                "AmovPercMevaSlowWrflDfl", 0.025,
+                "AmovPercMevaSlowWrflDfr", 0.025,
+                "AmovPercMwlkSlowWrflDf_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDb_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDf_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDb_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWrflDb_GAITRelease: AmovPercMrunSlowWrflDb
+        {
+            actions = "RifleLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWrflDnon", 0.02,
+                "AmovPercMrunSlowWrflDf", 0.02,
+                "AmovPercMrunSlowWrflDfl", 0.02,
+                "AmovPercMrunSlowWrflDl", 0.02,
+                "AmovPercMrunSlowWrflDbl", 0.02,
+                "AmovPercMrunSlowWrflDb", 0.02,
+                "AmovPercMrunSlowWrflDbr", 0.02,
+                "AmovPercMrunSlowWrflDr", 0.02,
+                "AmovPercMrunSlowWrflDfr", 0.02,
+                "AmovPercMwlkSlowWrflDf", 0.02,
+                "AmovPercMwlkSlowWrflDfl", 0.02,
+                "AmovPercMwlkSlowWrflDl", 0.02,
+                "AmovPercMwlkSlowWrflDbl", 0.02,
+                "AmovPercMwlkSlowWrflDb", 0.02,
+                "AmovPercMwlkSlowWrflDbr", 0.02,
+                "AmovPercMwlkSlowWrflDr", 0.02,
+                "AmovPercMwlkSlowWrflDfr", 0.02,
+                "AmovPercMevaSlowWrflDf", 0.025,
+                "AmovPercMevaSlowWrflDfl", 0.025,
+                "AmovPercMevaSlowWrflDfr", 0.025,
+                "AmovPercMwlkSlowWrflDf_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDb_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDf_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDb_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWrflDbr_GAITRelease: AmovPercMrunSlowWrflDbr
+        {
+            actions = "RifleLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWrflDnon", 0.02,
+                "AmovPercMrunSlowWrflDf", 0.02,
+                "AmovPercMrunSlowWrflDfl", 0.02,
+                "AmovPercMrunSlowWrflDl", 0.02,
+                "AmovPercMrunSlowWrflDbl", 0.02,
+                "AmovPercMrunSlowWrflDb", 0.02,
+                "AmovPercMrunSlowWrflDbr", 0.02,
+                "AmovPercMrunSlowWrflDr", 0.02,
+                "AmovPercMrunSlowWrflDfr", 0.02,
+                "AmovPercMwlkSlowWrflDf", 0.02,
+                "AmovPercMwlkSlowWrflDfl", 0.02,
+                "AmovPercMwlkSlowWrflDl", 0.02,
+                "AmovPercMwlkSlowWrflDbl", 0.02,
+                "AmovPercMwlkSlowWrflDb", 0.02,
+                "AmovPercMwlkSlowWrflDbr", 0.02,
+                "AmovPercMwlkSlowWrflDr", 0.02,
+                "AmovPercMwlkSlowWrflDfr", 0.02,
+                "AmovPercMevaSlowWrflDf", 0.025,
+                "AmovPercMevaSlowWrflDfl", 0.025,
+                "AmovPercMevaSlowWrflDfr", 0.025,
+                "AmovPercMwlkSlowWrflDf_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDb_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDf_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDb_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWrflDr_GAITRelease: AmovPercMrunSlowWrflDr
+        {
+            actions = "RifleLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWrflDnon", 0.02,
+                "AmovPercMrunSlowWrflDf", 0.02,
+                "AmovPercMrunSlowWrflDfl", 0.02,
+                "AmovPercMrunSlowWrflDl", 0.02,
+                "AmovPercMrunSlowWrflDbl", 0.02,
+                "AmovPercMrunSlowWrflDb", 0.02,
+                "AmovPercMrunSlowWrflDbr", 0.02,
+                "AmovPercMrunSlowWrflDr", 0.02,
+                "AmovPercMrunSlowWrflDfr", 0.02,
+                "AmovPercMwlkSlowWrflDf", 0.02,
+                "AmovPercMwlkSlowWrflDfl", 0.02,
+                "AmovPercMwlkSlowWrflDl", 0.02,
+                "AmovPercMwlkSlowWrflDbl", 0.02,
+                "AmovPercMwlkSlowWrflDb", 0.02,
+                "AmovPercMwlkSlowWrflDbr", 0.02,
+                "AmovPercMwlkSlowWrflDr", 0.02,
+                "AmovPercMwlkSlowWrflDfr", 0.02,
+                "AmovPercMevaSlowWrflDf", 0.025,
+                "AmovPercMevaSlowWrflDfl", 0.025,
+                "AmovPercMevaSlowWrflDfr", 0.025,
+                "AmovPercMwlkSlowWrflDf_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDb_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDf_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDb_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWrflDfr_GAITRelease: AmovPercMrunSlowWrflDfr
+        {
+            actions = "RifleLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWrflDf_GAIT", 0.025,
+                "AmovPercMevaSlowWrflDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWrflDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWrflDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWrflDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWrflDnon", 0.02,
+                "AmovPercMrunSlowWrflDf", 0.02,
+                "AmovPercMrunSlowWrflDfl", 0.02,
+                "AmovPercMrunSlowWrflDl", 0.02,
+                "AmovPercMrunSlowWrflDbl", 0.02,
+                "AmovPercMrunSlowWrflDb", 0.02,
+                "AmovPercMrunSlowWrflDbr", 0.02,
+                "AmovPercMrunSlowWrflDr", 0.02,
+                "AmovPercMrunSlowWrflDfr", 0.02,
+                "AmovPercMwlkSlowWrflDf", 0.02,
+                "AmovPercMwlkSlowWrflDfl", 0.02,
+                "AmovPercMwlkSlowWrflDl", 0.02,
+                "AmovPercMwlkSlowWrflDbl", 0.02,
+                "AmovPercMwlkSlowWrflDb", 0.02,
+                "AmovPercMwlkSlowWrflDbr", 0.02,
+                "AmovPercMwlkSlowWrflDr", 0.02,
+                "AmovPercMwlkSlowWrflDfr", 0.02,
+                "AmovPercMevaSlowWrflDf", 0.025,
+                "AmovPercMevaSlowWrflDfl", 0.025,
+                "AmovPercMevaSlowWrflDfr", 0.025,
+                "AmovPercMwlkSlowWrflDf_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbl_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDb_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDbr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDr_ver2", 0.02,
+                "AmovPercMwlkSlowWrflDfr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDf_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbl_ver2", 0.02,
+                "AmovPercMtacSlowWrflDb_ver2", 0.02,
+                "AmovPercMtacSlowWrflDbr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDr_ver2", 0.02,
+                "AmovPercMtacSlowWrflDfr_ver2", 0.02,
+                "AmovPercMstpSlowWrflDnon_GAITStop", 0.02
             };
         };
 
@@ -4831,7 +5954,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -4910,7 +6041,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -4989,7 +6128,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -5068,7 +6215,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -5147,7 +6302,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -5226,7 +6389,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -5305,7 +6476,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -5384,7 +6563,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025,
-                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -6065,7 +7252,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSrasWpstDfr", 0.02,
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
-                "AmovPercMevaSrasWpstDfr", 0.025
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMrunSrasWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSrasWpstDfr_GAITRelease", 0.02
             };
             InterpolateTo[] +=
             {
@@ -6106,6 +7301,430 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSrasWpstDf", 0.025,
                 "AmovPercMevaSrasWpstDfl", 0.025,
                 "AmovPercMevaSrasWpstDfr", 0.025
+            };
+        };
+
+        class AmovPercMrunSrasWpstDf_GAITRelease: AmovPercMrunSrasWpstDf
+        {
+            actions = "PistolStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWpstDnon", 0.02,
+                "AmovPercMrunSrasWpstDf", 0.02,
+                "AmovPercMrunSrasWpstDfl", 0.02,
+                "AmovPercMrunSrasWpstDl", 0.02,
+                "AmovPercMrunSrasWpstDbl", 0.02,
+                "AmovPercMrunSrasWpstDb", 0.02,
+                "AmovPercMrunSrasWpstDbr", 0.02,
+                "AmovPercMrunSrasWpstDr", 0.02,
+                "AmovPercMrunSrasWpstDfr", 0.02,
+                "AmovPercMwlkSrasWpstDf", 0.02,
+                "AmovPercMwlkSrasWpstDfl", 0.02,
+                "AmovPercMwlkSrasWpstDl", 0.02,
+                "AmovPercMwlkSrasWpstDbl", 0.02,
+                "AmovPercMwlkSrasWpstDb", 0.02,
+                "AmovPercMwlkSrasWpstDbr", 0.02,
+                "AmovPercMwlkSrasWpstDr", 0.02,
+                "AmovPercMwlkSrasWpstDfr", 0.02,
+                "AmovPercMevaSrasWpstDf", 0.025,
+                "AmovPercMevaSrasWpstDfl", 0.025,
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWpstDfl_GAITRelease: AmovPercMrunSrasWpstDfl
+        {
+            actions = "PistolStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWpstDnon", 0.02,
+                "AmovPercMrunSrasWpstDf", 0.02,
+                "AmovPercMrunSrasWpstDfl", 0.02,
+                "AmovPercMrunSrasWpstDl", 0.02,
+                "AmovPercMrunSrasWpstDbl", 0.02,
+                "AmovPercMrunSrasWpstDb", 0.02,
+                "AmovPercMrunSrasWpstDbr", 0.02,
+                "AmovPercMrunSrasWpstDr", 0.02,
+                "AmovPercMrunSrasWpstDfr", 0.02,
+                "AmovPercMwlkSrasWpstDf", 0.02,
+                "AmovPercMwlkSrasWpstDfl", 0.02,
+                "AmovPercMwlkSrasWpstDl", 0.02,
+                "AmovPercMwlkSrasWpstDbl", 0.02,
+                "AmovPercMwlkSrasWpstDb", 0.02,
+                "AmovPercMwlkSrasWpstDbr", 0.02,
+                "AmovPercMwlkSrasWpstDr", 0.02,
+                "AmovPercMwlkSrasWpstDfr", 0.02,
+                "AmovPercMevaSrasWpstDf", 0.025,
+                "AmovPercMevaSrasWpstDfl", 0.025,
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWpstDl_GAITRelease: AmovPercMrunSrasWpstDl
+        {
+            actions = "PistolStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWpstDnon", 0.02,
+                "AmovPercMrunSrasWpstDf", 0.02,
+                "AmovPercMrunSrasWpstDfl", 0.02,
+                "AmovPercMrunSrasWpstDl", 0.02,
+                "AmovPercMrunSrasWpstDbl", 0.02,
+                "AmovPercMrunSrasWpstDb", 0.02,
+                "AmovPercMrunSrasWpstDbr", 0.02,
+                "AmovPercMrunSrasWpstDr", 0.02,
+                "AmovPercMrunSrasWpstDfr", 0.02,
+                "AmovPercMwlkSrasWpstDf", 0.02,
+                "AmovPercMwlkSrasWpstDfl", 0.02,
+                "AmovPercMwlkSrasWpstDl", 0.02,
+                "AmovPercMwlkSrasWpstDbl", 0.02,
+                "AmovPercMwlkSrasWpstDb", 0.02,
+                "AmovPercMwlkSrasWpstDbr", 0.02,
+                "AmovPercMwlkSrasWpstDr", 0.02,
+                "AmovPercMwlkSrasWpstDfr", 0.02,
+                "AmovPercMevaSrasWpstDf", 0.025,
+                "AmovPercMevaSrasWpstDfl", 0.025,
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWpstDbl_GAITRelease: AmovPercMrunSrasWpstDbl
+        {
+            actions = "PistolStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWpstDnon", 0.02,
+                "AmovPercMrunSrasWpstDf", 0.02,
+                "AmovPercMrunSrasWpstDfl", 0.02,
+                "AmovPercMrunSrasWpstDl", 0.02,
+                "AmovPercMrunSrasWpstDbl", 0.02,
+                "AmovPercMrunSrasWpstDb", 0.02,
+                "AmovPercMrunSrasWpstDbr", 0.02,
+                "AmovPercMrunSrasWpstDr", 0.02,
+                "AmovPercMrunSrasWpstDfr", 0.02,
+                "AmovPercMwlkSrasWpstDf", 0.02,
+                "AmovPercMwlkSrasWpstDfl", 0.02,
+                "AmovPercMwlkSrasWpstDl", 0.02,
+                "AmovPercMwlkSrasWpstDbl", 0.02,
+                "AmovPercMwlkSrasWpstDb", 0.02,
+                "AmovPercMwlkSrasWpstDbr", 0.02,
+                "AmovPercMwlkSrasWpstDr", 0.02,
+                "AmovPercMwlkSrasWpstDfr", 0.02,
+                "AmovPercMevaSrasWpstDf", 0.025,
+                "AmovPercMevaSrasWpstDfl", 0.025,
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWpstDb_GAITRelease: AmovPercMrunSrasWpstDb
+        {
+            actions = "PistolStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWpstDnon", 0.02,
+                "AmovPercMrunSrasWpstDf", 0.02,
+                "AmovPercMrunSrasWpstDfl", 0.02,
+                "AmovPercMrunSrasWpstDl", 0.02,
+                "AmovPercMrunSrasWpstDbl", 0.02,
+                "AmovPercMrunSrasWpstDb", 0.02,
+                "AmovPercMrunSrasWpstDbr", 0.02,
+                "AmovPercMrunSrasWpstDr", 0.02,
+                "AmovPercMrunSrasWpstDfr", 0.02,
+                "AmovPercMwlkSrasWpstDf", 0.02,
+                "AmovPercMwlkSrasWpstDfl", 0.02,
+                "AmovPercMwlkSrasWpstDl", 0.02,
+                "AmovPercMwlkSrasWpstDbl", 0.02,
+                "AmovPercMwlkSrasWpstDb", 0.02,
+                "AmovPercMwlkSrasWpstDbr", 0.02,
+                "AmovPercMwlkSrasWpstDr", 0.02,
+                "AmovPercMwlkSrasWpstDfr", 0.02,
+                "AmovPercMevaSrasWpstDf", 0.025,
+                "AmovPercMevaSrasWpstDfl", 0.025,
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWpstDbr_GAITRelease: AmovPercMrunSrasWpstDbr
+        {
+            actions = "PistolStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWpstDnon", 0.02,
+                "AmovPercMrunSrasWpstDf", 0.02,
+                "AmovPercMrunSrasWpstDfl", 0.02,
+                "AmovPercMrunSrasWpstDl", 0.02,
+                "AmovPercMrunSrasWpstDbl", 0.02,
+                "AmovPercMrunSrasWpstDb", 0.02,
+                "AmovPercMrunSrasWpstDbr", 0.02,
+                "AmovPercMrunSrasWpstDr", 0.02,
+                "AmovPercMrunSrasWpstDfr", 0.02,
+                "AmovPercMwlkSrasWpstDf", 0.02,
+                "AmovPercMwlkSrasWpstDfl", 0.02,
+                "AmovPercMwlkSrasWpstDl", 0.02,
+                "AmovPercMwlkSrasWpstDbl", 0.02,
+                "AmovPercMwlkSrasWpstDb", 0.02,
+                "AmovPercMwlkSrasWpstDbr", 0.02,
+                "AmovPercMwlkSrasWpstDr", 0.02,
+                "AmovPercMwlkSrasWpstDfr", 0.02,
+                "AmovPercMevaSrasWpstDf", 0.025,
+                "AmovPercMevaSrasWpstDfl", 0.025,
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWpstDr_GAITRelease: AmovPercMrunSrasWpstDr
+        {
+            actions = "PistolStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWpstDnon", 0.02,
+                "AmovPercMrunSrasWpstDf", 0.02,
+                "AmovPercMrunSrasWpstDfl", 0.02,
+                "AmovPercMrunSrasWpstDl", 0.02,
+                "AmovPercMrunSrasWpstDbl", 0.02,
+                "AmovPercMrunSrasWpstDb", 0.02,
+                "AmovPercMrunSrasWpstDbr", 0.02,
+                "AmovPercMrunSrasWpstDr", 0.02,
+                "AmovPercMrunSrasWpstDfr", 0.02,
+                "AmovPercMwlkSrasWpstDf", 0.02,
+                "AmovPercMwlkSrasWpstDfl", 0.02,
+                "AmovPercMwlkSrasWpstDl", 0.02,
+                "AmovPercMwlkSrasWpstDbl", 0.02,
+                "AmovPercMwlkSrasWpstDb", 0.02,
+                "AmovPercMwlkSrasWpstDbr", 0.02,
+                "AmovPercMwlkSrasWpstDr", 0.02,
+                "AmovPercMwlkSrasWpstDfr", 0.02,
+                "AmovPercMevaSrasWpstDf", 0.025,
+                "AmovPercMevaSrasWpstDfl", 0.025,
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSrasWpstDfr_GAITRelease: AmovPercMrunSrasWpstDfr
+        {
+            actions = "PistolStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSrasWpstDf_GAIT", 0.025,
+                "AmovPercMevaSrasWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSrasWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSrasWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSrasWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSrasWpstDnon", 0.02,
+                "AmovPercMrunSrasWpstDf", 0.02,
+                "AmovPercMrunSrasWpstDfl", 0.02,
+                "AmovPercMrunSrasWpstDl", 0.02,
+                "AmovPercMrunSrasWpstDbl", 0.02,
+                "AmovPercMrunSrasWpstDb", 0.02,
+                "AmovPercMrunSrasWpstDbr", 0.02,
+                "AmovPercMrunSrasWpstDr", 0.02,
+                "AmovPercMrunSrasWpstDfr", 0.02,
+                "AmovPercMwlkSrasWpstDf", 0.02,
+                "AmovPercMwlkSrasWpstDfl", 0.02,
+                "AmovPercMwlkSrasWpstDl", 0.02,
+                "AmovPercMwlkSrasWpstDbl", 0.02,
+                "AmovPercMwlkSrasWpstDb", 0.02,
+                "AmovPercMwlkSrasWpstDbr", 0.02,
+                "AmovPercMwlkSrasWpstDr", 0.02,
+                "AmovPercMwlkSrasWpstDfr", 0.02,
+                "AmovPercMevaSrasWpstDf", 0.025,
+                "AmovPercMevaSrasWpstDfl", 0.025,
+                "AmovPercMevaSrasWpstDfr", 0.025,
+                "AmovPercMstpSrasWpstDnon_GAITStop", 0.02
             };
         };
 
@@ -6276,7 +7895,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -6355,7 +7982,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -6434,7 +8069,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -6513,7 +8156,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -6592,7 +8243,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -6671,7 +8330,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -6750,7 +8417,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -6829,7 +8504,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025,
-                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
         };
 
@@ -7510,7 +9193,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSlowWpstDfr", 0.02,
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
-                "AmovPercMevaSlowWpstDfr", 0.025
+                "AmovPercMevaSlowWpstDfr", 0.025,
+                "AmovPercMrunSlowWpstDf_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITRelease", 0.02,
+                "AmovPercMrunSlowWpstDfr_GAITRelease", 0.02
             };
             InterpolateTo[] +=
             {
@@ -7551,6 +9242,430 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSlowWpstDf", 0.025,
                 "AmovPercMevaSlowWpstDfl", 0.025,
                 "AmovPercMevaSlowWpstDfr", 0.025
+            };
+        };
+
+        class AmovPercMrunSlowWpstDf_GAITRelease: AmovPercMrunSlowWpstDf
+        {
+            actions = "PistolLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWpstDnon", 0.02,
+                "AmovPercMrunSlowWpstDf", 0.02,
+                "AmovPercMrunSlowWpstDfl", 0.02,
+                "AmovPercMrunSlowWpstDl", 0.02,
+                "AmovPercMrunSlowWpstDbl", 0.02,
+                "AmovPercMrunSlowWpstDb", 0.02,
+                "AmovPercMrunSlowWpstDbr", 0.02,
+                "AmovPercMrunSlowWpstDr", 0.02,
+                "AmovPercMrunSlowWpstDfr", 0.02,
+                "AmovPercMwlkSlowWpstDf", 0.02,
+                "AmovPercMwlkSlowWpstDfl", 0.02,
+                "AmovPercMwlkSlowWpstDl", 0.02,
+                "AmovPercMwlkSlowWpstDbl", 0.02,
+                "AmovPercMwlkSlowWpstDb", 0.02,
+                "AmovPercMwlkSlowWpstDbr", 0.02,
+                "AmovPercMwlkSlowWpstDr", 0.02,
+                "AmovPercMwlkSlowWpstDfr", 0.02,
+                "AmovPercMevaSlowWpstDf", 0.025,
+                "AmovPercMevaSlowWpstDfl", 0.025,
+                "AmovPercMevaSlowWpstDfr", 0.025,
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWpstDfl_GAITRelease: AmovPercMrunSlowWpstDfl
+        {
+            actions = "PistolLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWpstDnon", 0.02,
+                "AmovPercMrunSlowWpstDf", 0.02,
+                "AmovPercMrunSlowWpstDfl", 0.02,
+                "AmovPercMrunSlowWpstDl", 0.02,
+                "AmovPercMrunSlowWpstDbl", 0.02,
+                "AmovPercMrunSlowWpstDb", 0.02,
+                "AmovPercMrunSlowWpstDbr", 0.02,
+                "AmovPercMrunSlowWpstDr", 0.02,
+                "AmovPercMrunSlowWpstDfr", 0.02,
+                "AmovPercMwlkSlowWpstDf", 0.02,
+                "AmovPercMwlkSlowWpstDfl", 0.02,
+                "AmovPercMwlkSlowWpstDl", 0.02,
+                "AmovPercMwlkSlowWpstDbl", 0.02,
+                "AmovPercMwlkSlowWpstDb", 0.02,
+                "AmovPercMwlkSlowWpstDbr", 0.02,
+                "AmovPercMwlkSlowWpstDr", 0.02,
+                "AmovPercMwlkSlowWpstDfr", 0.02,
+                "AmovPercMevaSlowWpstDf", 0.025,
+                "AmovPercMevaSlowWpstDfl", 0.025,
+                "AmovPercMevaSlowWpstDfr", 0.025,
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWpstDl_GAITRelease: AmovPercMrunSlowWpstDl
+        {
+            actions = "PistolLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWpstDnon", 0.02,
+                "AmovPercMrunSlowWpstDf", 0.02,
+                "AmovPercMrunSlowWpstDfl", 0.02,
+                "AmovPercMrunSlowWpstDl", 0.02,
+                "AmovPercMrunSlowWpstDbl", 0.02,
+                "AmovPercMrunSlowWpstDb", 0.02,
+                "AmovPercMrunSlowWpstDbr", 0.02,
+                "AmovPercMrunSlowWpstDr", 0.02,
+                "AmovPercMrunSlowWpstDfr", 0.02,
+                "AmovPercMwlkSlowWpstDf", 0.02,
+                "AmovPercMwlkSlowWpstDfl", 0.02,
+                "AmovPercMwlkSlowWpstDl", 0.02,
+                "AmovPercMwlkSlowWpstDbl", 0.02,
+                "AmovPercMwlkSlowWpstDb", 0.02,
+                "AmovPercMwlkSlowWpstDbr", 0.02,
+                "AmovPercMwlkSlowWpstDr", 0.02,
+                "AmovPercMwlkSlowWpstDfr", 0.02,
+                "AmovPercMevaSlowWpstDf", 0.025,
+                "AmovPercMevaSlowWpstDfl", 0.025,
+                "AmovPercMevaSlowWpstDfr", 0.025,
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWpstDbl_GAITRelease: AmovPercMrunSlowWpstDbl
+        {
+            actions = "PistolLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWpstDnon", 0.02,
+                "AmovPercMrunSlowWpstDf", 0.02,
+                "AmovPercMrunSlowWpstDfl", 0.02,
+                "AmovPercMrunSlowWpstDl", 0.02,
+                "AmovPercMrunSlowWpstDbl", 0.02,
+                "AmovPercMrunSlowWpstDb", 0.02,
+                "AmovPercMrunSlowWpstDbr", 0.02,
+                "AmovPercMrunSlowWpstDr", 0.02,
+                "AmovPercMrunSlowWpstDfr", 0.02,
+                "AmovPercMwlkSlowWpstDf", 0.02,
+                "AmovPercMwlkSlowWpstDfl", 0.02,
+                "AmovPercMwlkSlowWpstDl", 0.02,
+                "AmovPercMwlkSlowWpstDbl", 0.02,
+                "AmovPercMwlkSlowWpstDb", 0.02,
+                "AmovPercMwlkSlowWpstDbr", 0.02,
+                "AmovPercMwlkSlowWpstDr", 0.02,
+                "AmovPercMwlkSlowWpstDfr", 0.02,
+                "AmovPercMevaSlowWpstDf", 0.025,
+                "AmovPercMevaSlowWpstDfl", 0.025,
+                "AmovPercMevaSlowWpstDfr", 0.025,
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWpstDb_GAITRelease: AmovPercMrunSlowWpstDb
+        {
+            actions = "PistolLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWpstDnon", 0.02,
+                "AmovPercMrunSlowWpstDf", 0.02,
+                "AmovPercMrunSlowWpstDfl", 0.02,
+                "AmovPercMrunSlowWpstDl", 0.02,
+                "AmovPercMrunSlowWpstDbl", 0.02,
+                "AmovPercMrunSlowWpstDb", 0.02,
+                "AmovPercMrunSlowWpstDbr", 0.02,
+                "AmovPercMrunSlowWpstDr", 0.02,
+                "AmovPercMrunSlowWpstDfr", 0.02,
+                "AmovPercMwlkSlowWpstDf", 0.02,
+                "AmovPercMwlkSlowWpstDfl", 0.02,
+                "AmovPercMwlkSlowWpstDl", 0.02,
+                "AmovPercMwlkSlowWpstDbl", 0.02,
+                "AmovPercMwlkSlowWpstDb", 0.02,
+                "AmovPercMwlkSlowWpstDbr", 0.02,
+                "AmovPercMwlkSlowWpstDr", 0.02,
+                "AmovPercMwlkSlowWpstDfr", 0.02,
+                "AmovPercMevaSlowWpstDf", 0.025,
+                "AmovPercMevaSlowWpstDfl", 0.025,
+                "AmovPercMevaSlowWpstDfr", 0.025,
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWpstDbr_GAITRelease: AmovPercMrunSlowWpstDbr
+        {
+            actions = "PistolLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWpstDnon", 0.02,
+                "AmovPercMrunSlowWpstDf", 0.02,
+                "AmovPercMrunSlowWpstDfl", 0.02,
+                "AmovPercMrunSlowWpstDl", 0.02,
+                "AmovPercMrunSlowWpstDbl", 0.02,
+                "AmovPercMrunSlowWpstDb", 0.02,
+                "AmovPercMrunSlowWpstDbr", 0.02,
+                "AmovPercMrunSlowWpstDr", 0.02,
+                "AmovPercMrunSlowWpstDfr", 0.02,
+                "AmovPercMwlkSlowWpstDf", 0.02,
+                "AmovPercMwlkSlowWpstDfl", 0.02,
+                "AmovPercMwlkSlowWpstDl", 0.02,
+                "AmovPercMwlkSlowWpstDbl", 0.02,
+                "AmovPercMwlkSlowWpstDb", 0.02,
+                "AmovPercMwlkSlowWpstDbr", 0.02,
+                "AmovPercMwlkSlowWpstDr", 0.02,
+                "AmovPercMwlkSlowWpstDfr", 0.02,
+                "AmovPercMevaSlowWpstDf", 0.025,
+                "AmovPercMevaSlowWpstDfl", 0.025,
+                "AmovPercMevaSlowWpstDfr", 0.025,
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWpstDr_GAITRelease: AmovPercMrunSlowWpstDr
+        {
+            actions = "PistolLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWpstDnon", 0.02,
+                "AmovPercMrunSlowWpstDf", 0.02,
+                "AmovPercMrunSlowWpstDfl", 0.02,
+                "AmovPercMrunSlowWpstDl", 0.02,
+                "AmovPercMrunSlowWpstDbl", 0.02,
+                "AmovPercMrunSlowWpstDb", 0.02,
+                "AmovPercMrunSlowWpstDbr", 0.02,
+                "AmovPercMrunSlowWpstDr", 0.02,
+                "AmovPercMrunSlowWpstDfr", 0.02,
+                "AmovPercMwlkSlowWpstDf", 0.02,
+                "AmovPercMwlkSlowWpstDfl", 0.02,
+                "AmovPercMwlkSlowWpstDl", 0.02,
+                "AmovPercMwlkSlowWpstDbl", 0.02,
+                "AmovPercMwlkSlowWpstDb", 0.02,
+                "AmovPercMwlkSlowWpstDbr", 0.02,
+                "AmovPercMwlkSlowWpstDr", 0.02,
+                "AmovPercMwlkSlowWpstDfr", 0.02,
+                "AmovPercMevaSlowWpstDf", 0.025,
+                "AmovPercMevaSlowWpstDfl", 0.025,
+                "AmovPercMevaSlowWpstDfr", 0.025,
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSlowWpstDfr_GAITRelease: AmovPercMrunSlowWpstDfr
+        {
+            actions = "PistolLowStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSlowWpstDf_GAIT", 0.025,
+                "AmovPercMevaSlowWpstDfl_GAIT", 0.025,
+                "AmovPercMrunSlowWpstDl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbl_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDb_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDbr_GAITSprint", 0.02,
+                "AmovPercMrunSlowWpstDr_GAITSprint", 0.02,
+                "AmovPercMevaSlowWpstDfr_GAIT", 0.025,
+                "AmovPercMstpSlowWpstDnon", 0.02,
+                "AmovPercMrunSlowWpstDf", 0.02,
+                "AmovPercMrunSlowWpstDfl", 0.02,
+                "AmovPercMrunSlowWpstDl", 0.02,
+                "AmovPercMrunSlowWpstDbl", 0.02,
+                "AmovPercMrunSlowWpstDb", 0.02,
+                "AmovPercMrunSlowWpstDbr", 0.02,
+                "AmovPercMrunSlowWpstDr", 0.02,
+                "AmovPercMrunSlowWpstDfr", 0.02,
+                "AmovPercMwlkSlowWpstDf", 0.02,
+                "AmovPercMwlkSlowWpstDfl", 0.02,
+                "AmovPercMwlkSlowWpstDl", 0.02,
+                "AmovPercMwlkSlowWpstDbl", 0.02,
+                "AmovPercMwlkSlowWpstDb", 0.02,
+                "AmovPercMwlkSlowWpstDbr", 0.02,
+                "AmovPercMwlkSlowWpstDr", 0.02,
+                "AmovPercMwlkSlowWpstDfr", 0.02,
+                "AmovPercMevaSlowWpstDf", 0.025,
+                "AmovPercMevaSlowWpstDfl", 0.025,
+                "AmovPercMevaSlowWpstDfr", 0.025,
+                "AmovPercMstpSlowWpstDnon_GAITStop", 0.02
             };
         };
 
@@ -7721,7 +9836,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -7800,7 +9923,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -7879,7 +10010,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -7958,7 +10097,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -8037,7 +10184,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -8116,7 +10271,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -8195,7 +10358,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -8274,7 +10445,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025,
-                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
         };
 
@@ -8955,7 +11134,15 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMwlkSnonWnonDfr", 0.02,
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
-                "AmovPercMevaSnonWnonDfr", 0.025
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMrunSnonWnonDf_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITRelease", 0.02,
+                "AmovPercMrunSnonWnonDfr_GAITRelease", 0.02
             };
             InterpolateTo[] +=
             {
@@ -8996,6 +11183,430 @@ class CfgMovesMaleSdr: CfgMovesBasic
                 "AmovPercMevaSnonWnonDf", 0.025,
                 "AmovPercMevaSnonWnonDfl", 0.025,
                 "AmovPercMevaSnonWnonDfr", 0.025
+            };
+        };
+
+        class AmovPercMrunSnonWnonDf_GAITRelease: AmovPercMrunSnonWnonDf
+        {
+            actions = "CivilStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025,
+                "AmovPercMstpSnonWnonDnon", 0.02,
+                "AmovPercMrunSnonWnonDf", 0.02,
+                "AmovPercMrunSnonWnonDfl", 0.02,
+                "AmovPercMrunSnonWnonDl", 0.02,
+                "AmovPercMrunSnonWnonDbl", 0.02,
+                "AmovPercMrunSnonWnonDb", 0.02,
+                "AmovPercMrunSnonWnonDbr", 0.02,
+                "AmovPercMrunSnonWnonDr", 0.02,
+                "AmovPercMrunSnonWnonDfr", 0.02,
+                "AmovPercMwlkSnonWnonDf", 0.02,
+                "AmovPercMwlkSnonWnonDfl", 0.02,
+                "AmovPercMwlkSnonWnonDl", 0.02,
+                "AmovPercMwlkSnonWnonDbl", 0.02,
+                "AmovPercMwlkSnonWnonDb", 0.02,
+                "AmovPercMwlkSnonWnonDbr", 0.02,
+                "AmovPercMwlkSnonWnonDr", 0.02,
+                "AmovPercMwlkSnonWnonDfr", 0.02,
+                "AmovPercMevaSnonWnonDf", 0.025,
+                "AmovPercMevaSnonWnonDfl", 0.025,
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSnonWnonDfl_GAITRelease: AmovPercMrunSnonWnonDfl
+        {
+            actions = "CivilStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025,
+                "AmovPercMstpSnonWnonDnon", 0.02,
+                "AmovPercMrunSnonWnonDf", 0.02,
+                "AmovPercMrunSnonWnonDfl", 0.02,
+                "AmovPercMrunSnonWnonDl", 0.02,
+                "AmovPercMrunSnonWnonDbl", 0.02,
+                "AmovPercMrunSnonWnonDb", 0.02,
+                "AmovPercMrunSnonWnonDbr", 0.02,
+                "AmovPercMrunSnonWnonDr", 0.02,
+                "AmovPercMrunSnonWnonDfr", 0.02,
+                "AmovPercMwlkSnonWnonDf", 0.02,
+                "AmovPercMwlkSnonWnonDfl", 0.02,
+                "AmovPercMwlkSnonWnonDl", 0.02,
+                "AmovPercMwlkSnonWnonDbl", 0.02,
+                "AmovPercMwlkSnonWnonDb", 0.02,
+                "AmovPercMwlkSnonWnonDbr", 0.02,
+                "AmovPercMwlkSnonWnonDr", 0.02,
+                "AmovPercMwlkSnonWnonDfr", 0.02,
+                "AmovPercMevaSnonWnonDf", 0.025,
+                "AmovPercMevaSnonWnonDfl", 0.025,
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSnonWnonDl_GAITRelease: AmovPercMrunSnonWnonDl
+        {
+            actions = "CivilStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025,
+                "AmovPercMstpSnonWnonDnon", 0.02,
+                "AmovPercMrunSnonWnonDf", 0.02,
+                "AmovPercMrunSnonWnonDfl", 0.02,
+                "AmovPercMrunSnonWnonDl", 0.02,
+                "AmovPercMrunSnonWnonDbl", 0.02,
+                "AmovPercMrunSnonWnonDb", 0.02,
+                "AmovPercMrunSnonWnonDbr", 0.02,
+                "AmovPercMrunSnonWnonDr", 0.02,
+                "AmovPercMrunSnonWnonDfr", 0.02,
+                "AmovPercMwlkSnonWnonDf", 0.02,
+                "AmovPercMwlkSnonWnonDfl", 0.02,
+                "AmovPercMwlkSnonWnonDl", 0.02,
+                "AmovPercMwlkSnonWnonDbl", 0.02,
+                "AmovPercMwlkSnonWnonDb", 0.02,
+                "AmovPercMwlkSnonWnonDbr", 0.02,
+                "AmovPercMwlkSnonWnonDr", 0.02,
+                "AmovPercMwlkSnonWnonDfr", 0.02,
+                "AmovPercMevaSnonWnonDf", 0.025,
+                "AmovPercMevaSnonWnonDfl", 0.025,
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSnonWnonDbl_GAITRelease: AmovPercMrunSnonWnonDbl
+        {
+            actions = "CivilStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025,
+                "AmovPercMstpSnonWnonDnon", 0.02,
+                "AmovPercMrunSnonWnonDf", 0.02,
+                "AmovPercMrunSnonWnonDfl", 0.02,
+                "AmovPercMrunSnonWnonDl", 0.02,
+                "AmovPercMrunSnonWnonDbl", 0.02,
+                "AmovPercMrunSnonWnonDb", 0.02,
+                "AmovPercMrunSnonWnonDbr", 0.02,
+                "AmovPercMrunSnonWnonDr", 0.02,
+                "AmovPercMrunSnonWnonDfr", 0.02,
+                "AmovPercMwlkSnonWnonDf", 0.02,
+                "AmovPercMwlkSnonWnonDfl", 0.02,
+                "AmovPercMwlkSnonWnonDl", 0.02,
+                "AmovPercMwlkSnonWnonDbl", 0.02,
+                "AmovPercMwlkSnonWnonDb", 0.02,
+                "AmovPercMwlkSnonWnonDbr", 0.02,
+                "AmovPercMwlkSnonWnonDr", 0.02,
+                "AmovPercMwlkSnonWnonDfr", 0.02,
+                "AmovPercMevaSnonWnonDf", 0.025,
+                "AmovPercMevaSnonWnonDfl", 0.025,
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSnonWnonDb_GAITRelease: AmovPercMrunSnonWnonDb
+        {
+            actions = "CivilStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025,
+                "AmovPercMstpSnonWnonDnon", 0.02,
+                "AmovPercMrunSnonWnonDf", 0.02,
+                "AmovPercMrunSnonWnonDfl", 0.02,
+                "AmovPercMrunSnonWnonDl", 0.02,
+                "AmovPercMrunSnonWnonDbl", 0.02,
+                "AmovPercMrunSnonWnonDb", 0.02,
+                "AmovPercMrunSnonWnonDbr", 0.02,
+                "AmovPercMrunSnonWnonDr", 0.02,
+                "AmovPercMrunSnonWnonDfr", 0.02,
+                "AmovPercMwlkSnonWnonDf", 0.02,
+                "AmovPercMwlkSnonWnonDfl", 0.02,
+                "AmovPercMwlkSnonWnonDl", 0.02,
+                "AmovPercMwlkSnonWnonDbl", 0.02,
+                "AmovPercMwlkSnonWnonDb", 0.02,
+                "AmovPercMwlkSnonWnonDbr", 0.02,
+                "AmovPercMwlkSnonWnonDr", 0.02,
+                "AmovPercMwlkSnonWnonDfr", 0.02,
+                "AmovPercMevaSnonWnonDf", 0.025,
+                "AmovPercMevaSnonWnonDfl", 0.025,
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSnonWnonDbr_GAITRelease: AmovPercMrunSnonWnonDbr
+        {
+            actions = "CivilStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025,
+                "AmovPercMstpSnonWnonDnon", 0.02,
+                "AmovPercMrunSnonWnonDf", 0.02,
+                "AmovPercMrunSnonWnonDfl", 0.02,
+                "AmovPercMrunSnonWnonDl", 0.02,
+                "AmovPercMrunSnonWnonDbl", 0.02,
+                "AmovPercMrunSnonWnonDb", 0.02,
+                "AmovPercMrunSnonWnonDbr", 0.02,
+                "AmovPercMrunSnonWnonDr", 0.02,
+                "AmovPercMrunSnonWnonDfr", 0.02,
+                "AmovPercMwlkSnonWnonDf", 0.02,
+                "AmovPercMwlkSnonWnonDfl", 0.02,
+                "AmovPercMwlkSnonWnonDl", 0.02,
+                "AmovPercMwlkSnonWnonDbl", 0.02,
+                "AmovPercMwlkSnonWnonDb", 0.02,
+                "AmovPercMwlkSnonWnonDbr", 0.02,
+                "AmovPercMwlkSnonWnonDr", 0.02,
+                "AmovPercMwlkSnonWnonDfr", 0.02,
+                "AmovPercMevaSnonWnonDf", 0.025,
+                "AmovPercMevaSnonWnonDfl", 0.025,
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSnonWnonDr_GAITRelease: AmovPercMrunSnonWnonDr
+        {
+            actions = "CivilStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025,
+                "AmovPercMstpSnonWnonDnon", 0.02,
+                "AmovPercMrunSnonWnonDf", 0.02,
+                "AmovPercMrunSnonWnonDfl", 0.02,
+                "AmovPercMrunSnonWnonDl", 0.02,
+                "AmovPercMrunSnonWnonDbl", 0.02,
+                "AmovPercMrunSnonWnonDb", 0.02,
+                "AmovPercMrunSnonWnonDbr", 0.02,
+                "AmovPercMrunSnonWnonDr", 0.02,
+                "AmovPercMrunSnonWnonDfr", 0.02,
+                "AmovPercMwlkSnonWnonDf", 0.02,
+                "AmovPercMwlkSnonWnonDfl", 0.02,
+                "AmovPercMwlkSnonWnonDl", 0.02,
+                "AmovPercMwlkSnonWnonDbl", 0.02,
+                "AmovPercMwlkSnonWnonDb", 0.02,
+                "AmovPercMwlkSnonWnonDbr", 0.02,
+                "AmovPercMwlkSnonWnonDr", 0.02,
+                "AmovPercMwlkSnonWnonDfr", 0.02,
+                "AmovPercMevaSnonWnonDf", 0.025,
+                "AmovPercMevaSnonWnonDfl", 0.025,
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
+            };
+        };
+
+        class AmovPercMrunSnonWnonDfr_GAITRelease: AmovPercMrunSnonWnonDfr
+        {
+            actions = "CivilStandActions";
+            interpolationSpeed = 8;
+            GAIT_releaseBridge = 1;
+            equivalentTo = "";
+            variantsPlayer[] = {};
+            variantsAI[] = {};
+            InterpolateFrom[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025
+            };
+            InterpolateTo[] +=
+            {
+                "AmovPercMevaSnonWnonDf_GAIT", 0.025,
+                "AmovPercMevaSnonWnonDfl_GAIT", 0.025,
+                "AmovPercMrunSnonWnonDl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbl_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDb_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDbr_GAITSprint", 0.02,
+                "AmovPercMrunSnonWnonDr_GAITSprint", 0.02,
+                "AmovPercMevaSnonWnonDfr_GAIT", 0.025,
+                "AmovPercMstpSnonWnonDnon", 0.02,
+                "AmovPercMrunSnonWnonDf", 0.02,
+                "AmovPercMrunSnonWnonDfl", 0.02,
+                "AmovPercMrunSnonWnonDl", 0.02,
+                "AmovPercMrunSnonWnonDbl", 0.02,
+                "AmovPercMrunSnonWnonDb", 0.02,
+                "AmovPercMrunSnonWnonDbr", 0.02,
+                "AmovPercMrunSnonWnonDr", 0.02,
+                "AmovPercMrunSnonWnonDfr", 0.02,
+                "AmovPercMwlkSnonWnonDf", 0.02,
+                "AmovPercMwlkSnonWnonDfl", 0.02,
+                "AmovPercMwlkSnonWnonDl", 0.02,
+                "AmovPercMwlkSnonWnonDbl", 0.02,
+                "AmovPercMwlkSnonWnonDb", 0.02,
+                "AmovPercMwlkSnonWnonDbr", 0.02,
+                "AmovPercMwlkSnonWnonDr", 0.02,
+                "AmovPercMwlkSnonWnonDfr", 0.02,
+                "AmovPercMevaSnonWnonDf", 0.025,
+                "AmovPercMevaSnonWnonDfl", 0.025,
+                "AmovPercMevaSnonWnonDfr", 0.025,
+                "AmovPercMstpSnonWnonDnon_GAITStop", 0.02
             };
         };
 

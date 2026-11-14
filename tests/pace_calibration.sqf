@@ -46,4 +46,12 @@ for "_i" from 0 to 100 do {
 [([0,1,1,4] call GAIT_fnc_measuredReleaseTarget) isEqualTo [],"standing speed cannot calibrate release"] call _assert;
 [([7.2,1.2,0.86,0.3] call GAIT_fnc_measuredReleaseTarget) isEqualTo [],"collision-contaminated ratio is rejected"] call _assert;
 [([6,4,3.44,1.1] call GAIT_fnc_paceBlendCoefficient) < 0,"invalid blend factor is rejected"] call _assert;
+private _walkEndpoint = [7.2,1.2,0.86,1.8,true] call GAIT_fnc_releasePaceEndpoint;
+[abs ((_walkEndpoint select 2) - (0.86 * 1.8)) < 0.00001,"walk release uses the selected walking reference"] call _assert;
+private _uncalibratedWalk = [7.2,1.2,0.86,-1,true] call GAIT_fnc_releasePaceEndpoint;
+[abs ((_uncalibratedWalk select 0) - (_walkEndpoint select 0)) < 0.00001,
+    "first walk release uses the same root-motion estimate as sprint floor"] call _assert;
+private _uncalibratedJog = [7.2,1.2,0.86,-1,false] call GAIT_fnc_releasePaceEndpoint;
+[abs ((_uncalibratedJog select 0) - (0.86 * 0.75)) < 0.00001,
+    "first jog release uses the same root-motion estimate as sprint floor"] call _assert;
 diag_log "GAIT TEST PASS: passive pace reference stability; destination physical endpoint; unequal-clip blend continuity; partial releases and invalid samples.";

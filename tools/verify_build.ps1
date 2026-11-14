@@ -76,7 +76,7 @@ if ($ActualPbos.Count -ne 1 -or $ActualPbos[0].Name -ne 'gait_gait.pbo') {
 }
 $Core = Read-VerifiedPbo (Join-Path $AddonPath 'gait_gait.pbo') 'gait'
 $RequiredScripts = @(
-    'fn_applyPreset.sqf', 'fn_braceMomentum.sqf', 'fn_downhillPace.sqf', 'fn_gearInertia.sqf',
+    'fn_aceHeartbeatVolume.sqf', 'fn_applyPreset.sqf', 'fn_braceMomentum.sqf', 'fn_downhillPace.sqf', 'fn_gearInertia.sqf',
     'fn_initSprintSystem.sqf', 'fn_locomotionPace.sqf', 'fn_moduleResetEffects.sqf',
     'fn_nativeController.sqf', 'fn_registerSettings.sqf', 'fn_releaseMomentum.sqf', 'fn_paceCalibration.sqf', 'fn_resetEffects.sqf',
     'fn_slopeLocomotion.sqf', 'fn_slopePaceModel.sqf', 'fn_traversalHelpers.sqf',

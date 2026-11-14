@@ -29,10 +29,10 @@ class LocomotionInvariants(unittest.TestCase):
         project = (ROOT / ".hemtt/project.toml").read_text()
         config = (ROOT / "addons/gait/config.cpp").read_text()
         mod = (ROOT / "mod.cpp").read_text()
-        self.assertIn("build = 21", project)
-        self.assertIn('versionStr = "1.8.0-alpha21";', config)
-        self.assertIn("versionAr[] = {1,8,0,21};", config)
-        self.assertIn('tooltip = "GAIT 1.8.0-alpha21";', mod)
+        self.assertIn("build = 22", project)
+        self.assertIn('versionStr = "1.8.0-alpha22";', config)
+        self.assertIn("versionAr[] = {1,8,0,22};", config)
+        self.assertIn('tooltip = "GAIT 1.8.0-alpha22";', mod)
 
     def test_graph_pose_and_no_walk_contract(self):
         text = GRAPH.read_text()
@@ -138,11 +138,14 @@ class LocomotionInvariants(unittest.TestCase):
         for path in FUNCTIONS.glob("*.sqf"):
             source = path.read_text(encoding="utf-8-sig")
             self.assertNotIn("ace_advanced_fatigue_ppeBlackout", source, path.name)
-            self.assertNotRegex(
-                executable(source),
-                r"\b(?:ppEffect\w+|ace_common_fnc_setHearingCapability|playSoundUI|playSound3D|addCamShake)\b",
-                path.name,
-            )
+            prohibited = r"ppEffect\w+|ace_common_fnc_setHearingCapability|playSound3D|addCamShake"
+            if path.name != "fn_aceHeartbeatVolume.sqf":
+                prohibited += r"|playSoundUI"
+            self.assertNotRegex(executable(source), rf"\b(?:{prohibited})\b", path.name)
+        heartbeat = read("fn_aceHeartbeatVolume.sqf")
+        self.assertIn("GAIT_ss_aceHeartbeatVolume", heartbeat)
+        self.assertIn("ace_medical_feedback_fnc_effectHeartBeat", heartbeat)
+
 
     def test_single_suspended_context_definition(self):
         count = 0

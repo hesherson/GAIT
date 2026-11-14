@@ -129,13 +129,17 @@ GAIT_fnc_locomotionPaceTargets = {
     [_walkCoefficient, _movingCoefficient, _walkMS, _movingMS, true]
 };
 
-// The reserve floor is based on the same kit's normal run, without downhill
-// momentum. Uphill, keep the settled sprint above the same-grade walk and jog.
+// Preserve the fresh target through the first 80% of reserve use, then taper
+// toward a load-scaled fraction of unboosted sprint pace. Uphill sprint keeps its floor.
 GAIT_fnc_sprintReservePace = {
-    params ["_fresh", "_normalRun", "_reserve", ["_exhaustedRatio", 0.85, [0]], ["_uphillMinimum", 0, [0]]];
-    private _floor = (_normalRun * (_exhaustedRatio max 0 min 1)) max _uphillMinimum;
+    params ["_fresh", "_normalRun", "_reserve", ["_gearLbs", 0, [0]],
+        ["_uphillMinimum", 0, [0]], ["_exhaustedRunPace", 0.70, [0]]];
+    private _loadFraction = (_gearLbs / 100) max 0 min 1;
+    private _exhaustedRatio = ((_exhaustedRunPace + 0.05) - (0.10 * _loadFraction)) max 0 min 1;
+    private _floor = (_normalRun * _exhaustedRatio) max _uphillMinimum;
     private _freshTarget = _fresh max _floor;
-    private _remaining = (_reserve / 0.45) max 0 min 1;
+    if (_reserve >= 0.20) exitWith {_freshTarget};
+    private _remaining = (_reserve / 0.20) max 0;
     private _effort = _remaining * _remaining * (3 - (2 * _remaining));
     _floor + ((_freshTarget - _floor) * _effort)
 };

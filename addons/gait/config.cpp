@@ -1,18 +1,27 @@
-// GAIT 1.8.0-alpha21: continuous load, terrain and sprint reserve
+// GAIT 1.8.0-alpha22: last-bar sprint pace and ACE heartbeat volume
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha21";
-        versionAr[] = {1,8,0,21};
+        versionStr = "1.8.0-alpha22";
+        versionAr[] = {1,8,0,22};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;
-        requiredAddons[] = {"A3_Functions_F", "A3_Modules_F", "A3_Characters_F", "A3_Anims_F", "cba_main", "cba_xeh", "cba_settings", "ace_common", "ace_advanced_fatigue"};
+        requiredAddons[] = {"A3_Functions_F", "A3_Modules_F", "A3_Characters_F", "A3_Anims_F", "cba_main", "cba_xeh", "cba_settings", "ace_common", "ace_advanced_fatigue", "ace_medical_feedback"};
         units[] = {"GAIT_ModuleResetEffects"};
         weapons[] = {};
+    };
+};
+
+class Extended_PreStart_EventHandlers
+{
+    class ace_medical_feedback
+    {
+        // Seed the one ACE cache entry before its original PREP runs.
+        init = "call compileScript ['\gait\functions\fn_aceHeartbeatVolume.sqf']; call compileScript ['\z\ace\addons\medical_feedback\XEH_preStart.sqf'];";
     };
 };
 

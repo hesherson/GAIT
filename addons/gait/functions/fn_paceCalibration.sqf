@@ -173,19 +173,35 @@ GAIT_fnc_resolveMovingPaceReference = {
 };
 
 GAIT_fnc_releasePaceMatch = {
-    params ["_unit", "_animation", "_family", "_direction", "_speed", "_applied", "_ordinary"];
-    private _target = toLower ("AmovPercMrun" + _family + _direction);
+    params ["_unit", "_animation", "_family", "_direction", "_speed", "_applied", "_ordinary",
+        ["_walkSelected", false, [false]]];
+    private _target = toLower ([_family, _direction, _walkSelected] call GAIT_fnc_nativeOrdinaryMoveName);
     private _key = [_unit, _target] call GAIT_fnc_paceReferenceKey;
     private _grade = missionNamespace getVariable ["GAIT_smoothedSlopeDegrees", 0];
     private _now = diag_tickTime;
     private _cache = _unit getVariable ["GAIT_paceMeasurements", []];
     private _measured = [_cache, _key, _grade, _now] call GAIT_fnc_lookupPaceReference;
-    if (_measured < 0 || {damage _unit >= 0.01}) exitWith {[]};
-    private _reference = _measured * (1 - (missionNamespace getVariable ["GAIT_vegDragFactor", 0]));
-    private _resolved = [_speed, _applied, _ordinary, _reference] call GAIT_fnc_measuredReleaseTarget;
+    if (damage _unit >= 0.01) exitWith {[]};
+    private _profile = [missionNamespace getVariable ["GAIT_locomotionPaceProfiles", []], _family, _direction,
+        ["jog", "walk"] select _walkSelected] call GAIT_fnc_locomotionPaceReferences;
+    private _reference = (_profile param [1, _measured]) * (1 - (missionNamespace getVariable ["GAIT_vegDragFactor", 0]));
+    private _resolved = [_speed, _applied, _ordinary, _reference, _walkSelected]
+        call GAIT_fnc_releasePaceEndpoint;
     if (_resolved isEqualTo []) exitWith {[]};
     [_resolved select 0, [toLower _animation, _target, _resolved select 1,
-        _reference, _resolved select 2, currentWeapon _unit, _direction, _key select 5, _grade]]
+        _resolved select 3, _resolved select 2, currentWeapon _unit, _direction, _key select 5, _grade]]
+};
+
+GAIT_fnc_releasePaceEndpoint = {
+    params ["_speed", "_applied", "_ordinary", "_reference", "_walkSelected"];
+    // First-use estimates follow the same gait ratios as the uphill pace
+    // floor. They are release endpoints, never live speed controllers.
+    if (_reference < 0 && {_applied > 0.05}) then {
+        _reference = ([0.75, 0.30] select _walkSelected) * _speed / _applied;
+    };
+    private _resolved = [_speed, _applied, _ordinary, _reference] call GAIT_fnc_measuredReleaseTarget;
+    if (_resolved isEqualTo []) exitWith {[]};
+    _resolved + [_reference]
 };
 
 GAIT_fnc_beginPaceHandoff = {
@@ -217,6 +233,7 @@ GAIT_fnc_paceHandoffContext = {
         {missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]} &&
         {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]} &&
         {(_input select 0) > 0.05} &&
+        {(_input select 2) || {((toLower _target) select [8, 4]) isEqualTo (["mrun", "mwlk"] select ([_unit] call GAIT_fnc_readLocomotionWalkToggle))}} &&
         {([_input select 0, _input select 1] call GAIT_fnc_slopeDirection) isEqualTo _direction} &&
         {currentWeapon _unit isEqualTo _weapon} && {isTouchingGround _unit} &&
         {isSprintAllowed _unit} && {!isForcedWalk _unit} &&

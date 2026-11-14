@@ -95,9 +95,6 @@ private _partialShallow = [_fullShallow,_uphillShallow] call GAIT_fnc_applyUphil
 [_partialShallow < 1 && {_partialShallow > _fullShallow}, "temporal uphill multiplier starts between flat and full penalty"] call _assert;
 private _quickUphillEntry = [0, 18, true, 0.20, 2, 35] call GAIT_fnc_stepUphillPaceExposure;
 [_quickUphillEntry > 0.45 && {_quickUphillEntry < 1}, "uphill sprint takes on a substantial penalty in its first 200 ms"] call _assert;
-private _lightClimb = [25, 2, 35, 0.40, 35] call GAIT_fnc_uphillSprintPaceMultiplier;
-private _heavyClimb = [25, 2, 35, 0.40, 150] call GAIT_fnc_uphillSprintPaceMultiplier;
-[_heavyClimb < _lightClimb && {_lightClimb < 1}, "actual carried mass amplifies uphill slowdown"] call _assert;
 private _flatRamp = [0.05, 0, true, 2, true] call GAIT_fnc_slopeSprintRamp;
 private _descentRamp = [0.05, -2, true, 2, true] call GAIT_fnc_slopeSprintRamp;
 private _climbRamp = [0.05, 18, false, 2, true] call GAIT_fnc_slopeSprintRamp;
@@ -154,4 +151,4 @@ private _capped = [0, 1, 0.20] call GAIT_fnc_stepDownhillMomentum;
 [([0.4, 1, 0] call GAIT_fnc_stepDownhillMomentum) isEqualTo 0.4, "zero delta cannot change momentum"] call _assert;
 [([0.4, 1, -1] call GAIT_fnc_stepDownhillMomentum) isEqualTo 0.4, "negative delta cannot change momentum"] call _assert;
 [([0.4, 1, 0.05, 0] call GAIT_fnc_stepDownhillMomentum) isEqualTo 1, "zero rise duration explicitly disables rise easing"] call _assert;
-diag_log format ["GAIT TEST PASS: responsive mass-dependent uphill pace, initial downhill pull, sustained heavy-kit descent and time-based momentum (%1 checks)", _checks];
+diag_log format ["GAIT TEST PASS: responsive uphill pace, initial downhill pull, sustained heavy-kit descent and time-based momentum (%1 checks)", _checks];

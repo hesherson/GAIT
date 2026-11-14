@@ -233,14 +233,16 @@ GAIT_fnc_observeReleaseMomentum = {
         _unit setVariable ["GAIT_releaseBrakeHold", []];
     };
     if (_release) then {_unit setVariable ["GAIT_releaseSinceFeatureTick", true];};
-    if (_release && {_live} && {_singleClip}) then {
+    if (_release && {_live} && {_singleClip} && {((toLower _animation) select [8, 4]) in ["meva", "mspr"]}) then {
         if (_brake) then {
             _unit setVariable ["GAIT_releaseBrakeHold", _identity];
         } else {
             if (missionNamespace getVariable ["GAIT_ss_shiftReleaseRunTaperEnabled", true]) then {
                 private _match = [];
                 if (!isNil "GAIT_fnc_releasePaceMatch") then {
-                    _match = [_unit, _animation, _family, _direction, _speed, _applied, _ordinary] call GAIT_fnc_releasePaceMatch;
+                    private _walkSelected = [_unit] call GAIT_fnc_readLocomotionWalkToggle;
+                    _match = [_unit, _animation, _family, _direction, _speed, _applied, _ordinary, _walkSelected]
+                        call GAIT_fnc_releasePaceMatch;
                 };
                 private _releaseTarget = if (_match isEqualTo []) then {_ordinary} else {_match select 0};
                 private _plan = [_now, _speed, _applied, _releaseTarget, _window, _curve] call GAIT_fnc_releaseMomentumPlan;
@@ -252,6 +254,13 @@ GAIT_fnc_observeReleaseMomentum = {
                     missionNamespace setVariable ["GAIT_releaseStartMS", _plan select 2];
                     missionNamespace setVariable ["GAIT_releaseTargetMS", _plan select 3];
                     missionNamespace setVariable ["GAIT_releaseDuration", _plan select 1];
+                } else {
+                    // A very short sprint may already be at or below the
+                    // destination speed. Preserve that actual speed through
+                    // the clip blend even when there is nothing to taper.
+                    if (_match isNotEqualTo []) then {
+                        _unit setVariable ["GAIT_paceHandoffCandidate", [_match select 1, _now + 0.15]];
+                    };
                 };
             };
         };

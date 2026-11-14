@@ -102,6 +102,34 @@ private _fixture = {
     };
 } forEach ["main", "render"];
 
+call _fixture;
+GAIT_testReleaseAnimation = "AmovPercMrunSrasWpstDf_GAIT";
+[_unit, [1,0,false], 10] call GAIT_fnc_observeReleaseMomentum;
+if ((_unit getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo []) then {
+    _failures pushBack "Turbo release started sprint coast from an ordinary jogging clip";
+};
+
+// Model the exact destination match returned by the calibration helper. Its
+// endpoint must reach the animation handoff even if no speed needs shedding.
+GAIT_fnc_readLocomotionWalkToggle = {true};
+GAIT_fnc_releasePaceMatch = {
+    params ["_unit", "_animation", "_family", "_direction", "_speed", "_applied", "_ordinary", "_walkSelected"];
+    if (!_walkSelected) then {throw "FAIL: release did not read the deliberate walk toggle";};
+    [_applied, [toLower _animation, "amovpercmwlksraswpstdf", 5, 1.5, _speed, "pistol", "Df", "ground", 0]]
+};
+call _fixture;
+_unit setVariable ["GAIT_paceHandoffCandidate", []];
+[_unit, [1,0,false], 10] call GAIT_fnc_observeReleaseMomentum;
+private _candidate = _unit getVariable ["GAIT_paceHandoffCandidate", []];
+if ((count _candidate) isNotEqualTo 2 ||
+    {((_candidate select 0) select 1) isNotEqualTo "amovpercmwlksraswpstdf"} ||
+    {(_unit getVariable ["GAIT_releaseMomentumState", []]) isNotEqualTo []}) then {
+    _failures pushBack "Short release did not seed a walk handoff without adding a coast";
+};
+GAIT_fnc_releasePaceMatch = {[]};
+GAIT_fnc_readLocomotionWalkToggle = {false};
+_unit setVariable ["GAIT_paceHandoffCandidate", []];
+
 // Re-tap reverses the same plan at its remaining sample, with a main seed token.
 call _fixture;
 [_unit, [1,0,false], 10] call GAIT_fnc_observeReleaseMomentum;

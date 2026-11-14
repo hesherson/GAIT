@@ -95,26 +95,40 @@ private _lowPistolProfile = [["SlowWpst", "Df", 1.4, 2.8, 5.6]];
 [[0, 6] call GAIT_fnc_paceCoefficientToMS isEqualTo 0, "zero coefficient remains zero; no launch floor"] call _assert;
 [[-0.1, 6] call GAIT_fnc_paceCoefficientToMS isEqualTo -1, "negative coefficient is unknown"] call _assert;
 [["1", 6] call GAIT_fnc_paceMSToCoefficient isEqualTo -1, "nonnumeric speed is unknown"] call _assert;
-// Every load retains the same fraction of its own unboosted run pace.
+// The last fifth of reserve tapers toward 65–75% of the kit's unboosted run.
+private _fullSprint = 1.28;
 private _lightRun = 1.30;
 private _heavyRun = 0.92;
-private _lightFloor = [1.45, _lightRun, 0] call GAIT_fnc_sprintReservePace;
-private _heavyFloor = [1.25, _heavyRun, 0] call GAIT_fnc_sprintReservePace;
-[_lightFloor, _lightRun * 0.85, "empty light sprint retains 85% of its run"] call _near;
-[_heavyFloor, _heavyRun * 0.85, "empty heavy sprint retains 85% of its run"] call _near;
-[_lightFloor > _heavyFloor, "heavy remains slower at the same reserve"] call _assert;
-[[2, _heavyRun, 0] call GAIT_fnc_sprintReservePace, _heavyFloor,
+private _lightFloor = [_fullSprint, _lightRun, 0, 0] call GAIT_fnc_sprintReservePace;
+private _heavyFloor = [_fullSprint, _heavyRun, 0, 100] call GAIT_fnc_sprintReservePace;
+[_lightFloor, _lightRun * 0.75, "empty unloaded sprint retains 75% of its run"] call _near;
+[_heavyFloor, _heavyRun * 0.65, "empty heavy sprint retains 65% of its run"] call _near;
+private _mediumFloor = [_fullSprint, _heavyRun, 0, 50] call GAIT_fnc_sprintReservePace;
+[_mediumFloor, _heavyRun * 0.70, "empty midweight sprint retains 70% of its run"] call _near;
+[_lightFloor > _mediumFloor && {_mediumFloor > _heavyFloor}, "only the depleted target decreases with load"] call _assert;
+[[_fullSprint, _heavyRun, 0, 150] call GAIT_fnc_sprintReservePace, _heavyFloor,
+    "extreme carried mass stays within the exhaustion ratio range"] call _near;
+[[2, _heavyRun, 0, 100] call GAIT_fnc_sprintReservePace, _heavyFloor,
     "downhill momentum does not raise the empty-reserve target"] call _near;
-[[1.25, _heavyRun, 0.45] call GAIT_fnc_sprintReservePace, 1.25,
-    "full target remains available above the taper"] call _near;
+{
+    private _reserve = _x;
+    [[_fullSprint, _lightRun, _reserve, 0] call GAIT_fnc_sprintReservePace, _fullSprint,
+        "light kit holds full pace until the final fifth"] call _near;
+    [[_fullSprint, _heavyRun, _reserve, 100] call GAIT_fnc_sprintReservePace, _fullSprint,
+        "heavy kit holds the same full pace until the final fifth"] call _near;
+} forEach [0.20, 0.25, 0.45, 0.75, 1];
 private _previous = _heavyFloor;
-for "_percent" from 1 to 45 do {
-    private _target = [1.25, _heavyRun, _percent / 100] call GAIT_fnc_sprintReservePace;
+for "_percent" from 1 to 20 do {
+    private _target = [_fullSprint, _heavyRun, _percent / 100, 100] call GAIT_fnc_sprintReservePace;
     [_target > _previous, "sprint target changes continuously through low reserve"] call _assert;
     _previous = _target;
 };
-private _nearEmpty = [1.25, _heavyRun, 0.01] call GAIT_fnc_sprintReservePace;
+private _nearEmpty = [_fullSprint, _heavyRun, 0.01, 100] call GAIT_fnc_sprintReservePace;
 [_nearEmpty < (_heavyFloor * 1.01), "last reserve ticks approach the run floor smoothly"] call _assert;
+private _justBelowTaper = [_fullSprint, _heavyRun, 0.19, 100] call GAIT_fnc_sprintReservePace;
+[_justBelowTaper > (_fullSprint * 0.99), "pace begins tapering gradually below one fifth reserve"] call _assert;
+[[ _fullSprint, _heavyRun, 0, 100, 0, 0.80] call GAIT_fnc_sprintReservePace, _heavyRun * 0.75,
+    "custom exhaustion setting shifts the weight-scaled floor"] call _near;
 
 // Steep grades can push a heavy sprint's candidate below its matching jog.
 private _uphillWalk = 0.48;
@@ -128,9 +142,9 @@ private _uphillFloor = [_uphillWalk, _uphillJog, _walkRef, _jogRef, _sprintRef] 
 private _fallbackFloor = [_uphillWalk, _uphillJog, -1, -1, -1] call GAIT_fnc_uphillSprintFloor;
 [_fallbackFloor, _uphillJog * 0.75 * 1.08, "fallback uphill floor uses jog root-motion estimate"] call _near;
 {
-    private _sprint = [0.14, 0.14, _x, 0.85, _uphillFloor] call GAIT_fnc_sprintReservePace;
+    private _sprint = [0.14, 0.14, _x, 100, _uphillFloor] call GAIT_fnc_sprintReservePace;
     [_sprint, _uphillFloor, "fresh and fatigued uphill sprint honor the pace floor"] call _near;
-} forEach [0, 0.2, 0.45, 1];
+} forEach [0, 0.10, 0.20, 1];
 private _walkDominates = [0.9, 0.2, _walkRef, _jogRef, _sprintRef] call GAIT_fnc_uphillSprintFloor;
 [_walkDominates * _sprintRef, 0.9 * _walkRef * 1.06 * 1.08, "uphill sprint also exceeds a jog held at its walk-relative floor"] call _near;
 diag_log format ["GAIT TEST PASS: physical pace adapter; %1 exact legacy fallback cases, %2 conversion roundtrips, physical floor, partial profiles and invalid calibration rejection", _fallbackChecks, _roundTrips];

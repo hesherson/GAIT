@@ -20,6 +20,9 @@ private _policyCases = [
     ["Unobserved expired entry latches failure", ["entering", true, true, false, false, true, true], "escape"],
     ["Turbo released during entry requests cleanup", ["entering", false, true, false, false, false, true], "release"],
     ["Medical context interrupts pending entry", ["entering", true, false, false, true, false, true], "release"],
+    ["Ordinary weapon-pose blend retains pending entry", ["entering", true, false, false, false, false, true, true], "hold"],
+    ["Ordinary weapon-pose blend retains active movement", ["active", true, false, false, false, false, true, true], "hold"],
+    ["Live lock still interrupts an ordinary blend", ["active", false, false, false, false, false, true, true], "release"],
     ["Custom movement stays active", ["active", true, true, true, false, false, true], "active"],
     ["Custom idle stays owned while Turbo held", ["active", true, true, true, false, false, false], "active"],
     ["Unexpected graph escape does not re-enter", ["active", true, true, false, false, false, true], "escape"],
@@ -56,7 +59,7 @@ if ([true, false, true, false] call GAIT_fnc_locomotionIntent) then {
 if !([true, true, true, false] call GAIT_fnc_locomotionIntent) then {
     _failures pushBack "Turbo sprint lost locomotion ownership";
 };
-if !([[1,0,false],0.1,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
+if !([[1,0,false],0.3,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
     _failures pushBack "Positive ordinary slope did not request jog override";
 };
 if !([[1,0,false],-35,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
@@ -77,6 +80,43 @@ if ([[1,0,false],35,true] call GAIT_fnc_ordinarySlopeJogIntent) then {
 if ([[0,1,false],35,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
     _failures pushBack "Pure lateral input incorrectly requested forward slope jog";
 };
+if ((["SlowWpst", "Df", true] call GAIT_fnc_nativeOrdinaryMoveName) isNotEqualTo "AmovPercMwlkSlowWpstDf" ||
+    {(["SrasWrfl", "Dfr", false] call GAIT_fnc_nativeOrdinaryMoveName) isNotEqualTo "AmovPercMrunSrasWrflDfr"}) then {
+    _failures pushBack "The release destination lost selected walk/jog or weapon pose";
+};
+if ([[1,0,false],0.10,false,false,false,false] call GAIT_fnc_ordinarySlopeJogIntent) then {
+    _failures pushBack "Near-flat grade noise triggered a new terrain jog";
+};
+if !([[1,0,false],0.10,false,false,false,true] call GAIT_fnc_ordinarySlopeJogIntent) then {
+    _failures pushBack "Near-flat grade noise interrupted an established terrain jog";
+};
+if ([[1,0,false],0.02,false,false,false,true] call GAIT_fnc_ordinarySlopeJogIntent) then {
+    _failures pushBack "Flat terrain never released established terrain jog";
+};
+
+{
+    _x params ["_animation", "_expected"];
+    if (([_animation] call GAIT_fnc_locomotionNativeJogNeedsOverride) isNotEqualTo _expected) then {
+        _failures pushBack format ["Wrong terrain jog re-entry policy for %1", _animation];
+    };
+} forEach [
+    ["AmovPercMwlkSrasWrflDf", true], ["AmovPercMwlkSlowWrflDf_ver2", true],
+    ["AmovPercMrunSrasWrflDf", false], ["AmovPercMstpSrasWrflDnon", false],
+    ["AmovPercMwlkSrasWrflDf_AmovPercMrunSlowWrflDf", false], ["AmovPercMlmpSrasWrflDf", false]
+];
+{
+    _x params ["_animation", "_family", "_expected"];
+    if (([_animation, _family] call GAIT_fnc_locomotionCompatibleMoveBlend) isNotEqualTo _expected) then {
+        _failures pushBack format ["Wrong movement blend ownership for %1", _animation];
+    };
+} forEach [
+    ["AmovPercMrunSrasWrflDf_GAIT_AmovPercMrunSlowWrflDf", "SrasWrfl", true],
+    ["AmovPercMevaSrasWrflDf_GAIT_AmovPercMrunSlowWrflDf", "SlowWrfl", true],
+    ["AmovPercMrunSrasWrflDf_AmovPercMrunSlowWrflDf", "SlowWrfl", false],
+    ["AmovPercMrunSrasWrflDf_GAIT_AmovPknlMrunSrasWrflDf", "SrasWrfl", false],
+    ["AmovPercMrunSrasWrflDf_GAIT_AmovPercMlmpSrasWrflDf", "SrasWrfl", false],
+    ["AmovPercMrunSrasWrflDf_GAIT_AmovPercMstpSrasWrflDnon", "SrasWrfl", false]
+];
 
 // The jog and sprint maps pin their own gaits. With W held, Turbo must switch
 // that map even though the movement direction has not changed.

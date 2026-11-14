@@ -65,18 +65,24 @@ GAIT_fnc_slopeStateName = {
     "AmovPerc" + _pace + _family + _direction + _suffix
 };
 
+GAIT_fnc_nativeOrdinaryMoveName = {
+    params ["_family", "_direction", "_walkSelected"];
+    "AmovPerc" + (["Mrun", "Mwlk"] select _walkSelected) + _family + _direction
+};
+
 GAIT_fnc_ordinarySlopeJogIntent = {
     params [
         ["_input", [], [[]]],
         ["_slopeDegrees", 0, [0]],
         ["_aceMovementLock", false, [false]],
         ["_nativeForcedWalk", false, [false]],
-        ["_walkToggled", false, [false]]
+        ["_walkToggled", false, [false]],
+        ["_alreadyJogging", false, [false]]
     ];
     (count _input) >= 3 && {!_aceMovementLock} &&
         {!_nativeForcedWalk} && {!_walkToggled} &&
         {(_input select 0) > 0.05} && {!(_input select 2)} &&
-        {abs _slopeDegrees > 0.01}
+        {abs _slopeDegrees > ([0.25, 0.05] select _alreadyJogging)}
 };
 
 // playMoveNow replaces the pending movement request and follows the explicit
@@ -133,6 +139,7 @@ GAIT_fnc_clearLocomotionInputHistory = {
         "GAIT_turboPressedThisFrame",
         "GAIT_turboInputHeld",
         "GAIT_uphillSprintRecoveryUsed",
+        "GAIT_slopeJogIntent",
         "GAIT_sprintReleaseHandled",
         "GAIT_forwardInputHeld",
         "GAIT_releaseSinceFeatureTick",
@@ -337,16 +344,51 @@ GAIT_fnc_slopeFamilyAvailable = {
 // An escape is reported and latched. The render controller can grant one
 // recovery from an exact native locomotion state during an uphill sprint.
 GAIT_fnc_locomotionDecision = {
-    params ["_phase", "_requested", "_eligible", "_inside", "_entryBlend", "_expired", "_moving"];
+    params ["_phase", "_requested", "_eligible", "_inside", "_entryBlend", "_expired", "_moving",
+        ["_compatibleBlend", false, [false]]];
     if (_phase isEqualTo "exiting") exitWith {["clear", "hold"] select (_inside || {_entryBlend})};
-    if (!_requested || {!_eligible}) exitWith {
+    if (!_requested) exitWith {
         ["clear", "release"] select (_inside || {_entryBlend} || {_phase in ["entering", "active"]})
     };
+    // A normal weapon-pose/pace transition can briefly fail the movement
+    // writer's stricter eligibility check. While raw intent and locks still
+    // agree, let that blend finish instead of issuing an exit then re-entry.
+    if (_compatibleBlend && {_phase in ["entering", "active"]}) exitWith {"hold"};
     if (_phase isEqualTo "blocked") exitWith {"hold"};
+    if (!_eligible) exitWith {
+        ["clear", "release"] select (_inside || {_entryBlend} || {_phase in ["entering", "active"]})
+    };
     if (_inside) exitWith {"active"};
     if (_phase isEqualTo "active") exitWith {"escape"};
     if (_phase isEqualTo "entering") exitWith {["hold", "escape"] select (_expired && {!_entryBlend})};
     ["hold", "enter"] select _moving
+};
+
+// Detect a real standing movement blend with at least one GAIT endpoint.
+// Reject idle, arbitrary native transitions, and medical/stance actions.
+GAIT_fnc_locomotionCompatibleMoveBlend = {
+    params ["_animation", "_family"];
+    private _name = toLower _animation;
+    private _divider = _name find "_amov";
+    if (_divider < 0 || {_family isEqualTo ""}) exitWith {false};
+    private _left = _name select [0, _divider];
+    private _right = _name select [_divider + 1];
+    if ((_left find "_gait") < 0 && {(_right find "_gait") < 0}) exitWith {false};
+    if (!((_left select [8, 4]) in ["mwlk", "mrun", "mtac", "meva", "mspr"]) ||
+        {!((_right select [8, 4]) in ["mwlk", "mrun", "mtac", "meva", "mspr"])}) exitWith {false};
+    if ((_left select [12, 8]) isNotEqualTo toLower _family &&
+        {(_right select [12, 8]) isNotEqualTo toLower _family}) exitWith {false};
+    [_name, _left, _right] call GAIT_fnc_isStandingLocomotionBlend
+};
+
+GAIT_fnc_locomotionMayFinishMoveBlend = {
+    params ["_unit", "_animation"];
+    private _safe = isTouchingGround _unit && {([_unit] call GAIT_fnc_readLocomotionStance) isEqualTo "STAND"} &&
+        {[_unit] call GAIT_fnc_fatigueMovementContextEligible};
+    if (!_safe) exitWith {false};
+    private _gesture = toLower gestureState _unit;
+    (["reload", "melee", "throw"] findIf {(_gesture find _x) >= 0}) < 0 &&
+        {[_animation, [_unit] call GAIT_fnc_slopeWeaponFamily] call GAIT_fnc_locomotionCompatibleMoveBlend}
 };
 
 // A one-shot entry may still be in its ordinary source state when the player
@@ -428,6 +470,7 @@ GAIT_fnc_clearSlopeLocomotionState = {
         _unit setVariable ["GAIT_slopeEntryDeadline", -1];
         _unit setVariable ["GAIT_slopeCancelDeadline", -1];
         _unit setVariable ["GAIT_slopeExitDeadline", -1];
+        _unit setVariable ["GAIT_paceHandoffCandidate", []];
         _unit setVariable ["GAIT_locomotionPhase", "native"];
     };
     private _owner = missionNamespace getVariable ["GAIT_slopeOwner", objNull];
@@ -537,11 +580,9 @@ GAIT_fnc_serviceLocomotionExit = {
         {[_unit] call GAIT_fnc_readLocomotionForcedWalk} ||
         {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0} ||
         {!_sprint && {[_unit] call GAIT_fnc_readLocomotionWalkToggle}};
-    private _pace = ["Mrun", "Mwlk"] select _walk;
-    if (!_walk && {_sprint}) then {_pace = "Meva";};
-    if (_direction isEqualTo "Dnon") then {_pace = "Mstp";};
-    private _target = "AmovPerc" + _pace + _family + _direction;
-    if (_direction isEqualTo "Dnon") then {_target = _target + "_GAITStop";};
+    private _target = [_family, _direction, _walk] call GAIT_fnc_nativeOrdinaryMoveName;
+    if (!_walk && {_sprint}) then {_target = "AmovPercMeva" + _family + _direction;};
+    if (_direction isEqualTo "Dnon") then {_target = "AmovPercMstp" + _family + "Dnon_GAITStop";};
     private _states = configFile >> "CfgMovesMaleSdr" >> "States";
     if (!isClass (_states >> _target)) then {_target = "AmovPercMstp" + _family + "Dnon";};
     if (!isClass (_states >> _target)) exitWith {false};
@@ -553,6 +594,18 @@ GAIT_fnc_serviceLocomotionExit = {
     diag_log format ["[GAIT_LOCOMOTION] exit Draw3D %1 -> %2", _animation, _target];
     [_unit, _target] call GAIT_fnc_requestLocomotionMove;
     true
+};
+
+// A correct native jog already supplies W-only slope pace. Acquire its custom
+// graph only if the terrain selected a walking clip that needs overriding.
+GAIT_fnc_locomotionNativeJogNeedsOverride = {
+    params ["_animation"];
+    private _state = toLower _animation;
+    private _parts = _state splitString "_";
+    private _base = _parts select 0;
+    if ((_base select [0, 12]) isNotEqualTo "amovpercmwlk" || {(count _parts) > 2}) exitWith {false};
+    private _suffix = _parts param [1, ""];
+    _suffix isEqualTo "" || {_suffix isEqualTo "ver2" && {(_base select [12, 8]) isEqualTo "slowwrfl"}}
 };
 
 // A changed live direction may replace a still-blending exit, including a
@@ -793,14 +846,15 @@ GAIT_fnc_resumeLocomotionExit = {
     private _aceSlopeLock = (_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0 ||
         {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
     private _forcedWalk = [_unit] call GAIT_fnc_readLocomotionForcedWalk;
-    private _ordinarySlopeJog = [_input,
-        missionNamespace getVariable ["GAIT_lastKnownSlopeDegrees", 0],
-        _aceSlopeLock, _forcedWalk, [_unit] call GAIT_fnc_readLocomotionWalkToggle] call GAIT_fnc_ordinarySlopeJogIntent;
+    private _turbo = _input select 2;
+    private _ordinarySlopeJog = _unit getVariable ["GAIT_slopeJogIntent", false] &&
+        {!_aceSlopeLock} && {!_forcedWalk} && {!([_unit] call GAIT_fnc_readLocomotionWalkToggle)} &&
+        {(_input select 0) > 0.05} && {!_turbo};
     // Let an intentional sprint-to-jog release finish. Its W-only intent is
     // not a new press and must not interrupt the existing native jog blend.
     private _exitTarget = toLower (_unit getVariable ["GAIT_slopeExitTarget", ""]);
     private _resumeInput = (_unit getVariable ["GAIT_turboPressedThisFrame", false]) ||
-        {_ordinarySlopeJog && {(_exitTarget select [8, 4]) isNotEqualTo "mrun"}};
+        {_ordinarySlopeJog && {(_exitTarget select [8, 4]) isEqualTo "mstp"}};
     if (!_resumeInput) exitWith {false};
     private _request = missionNamespace getVariable ["GAIT_locomotionRequest", []];
     private _lease = (4 * (missionNamespace getVariable ["GAIT_ss_tickRate", 0.05])) max 1;
@@ -808,7 +862,7 @@ GAIT_fnc_resumeLocomotionExit = {
         {diag_tickTime - (_request select 3) > _lease}) exitWith {false};
     private _moving = abs (_input select 0) > 0.05 || {abs (_input select 1) > 0.05};
     private _featureRequest = (_request select 1) && {!(_request select 2)};
-    private _requested = [_featureRequest, _input select 2, _moving, _ordinarySlopeJog]
+    private _requested = [_featureRequest, _turbo, _moving, _ordinarySlopeJog]
         call GAIT_fnc_locomotionIntent;
     private _enabled = (missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", true]) &&
         {missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", true]} && {call GAIT_fnc_modeAllowsMovement};
@@ -884,13 +938,14 @@ GAIT_fnc_tickLocomotion = {
     private _aceSlopeLock = (_unit getVariable ["ace_common_effect_blockSprint", 0]) > 0 ||
         {(_unit getVariable ["ace_common_effect_forceWalk", 0]) > 0};
     private _forcedWalk = [_unit] call GAIT_fnc_readLocomotionForcedWalk;
-    private _ordinarySlopeJog = [_input,
-        missionNamespace getVariable ["GAIT_lastKnownSlopeDegrees", 0],
-        _aceSlopeLock, _forcedWalk, [_unit] call GAIT_fnc_readLocomotionWalkToggle] call GAIT_fnc_ordinarySlopeJogIntent;
+    private _turbo = _input select 2;
+    private _ordinarySlopeJog = _unit getVariable ["GAIT_slopeJogIntent", false] &&
+        {!_aceSlopeLock} && {!_forcedWalk} && {!([_unit] call GAIT_fnc_readLocomotionWalkToggle)} &&
+        {(_input select 0) > 0.05} && {!_turbo};
     private _nativeSlopeLock = !([_unit] call GAIT_fnc_readLocomotionSprintAllowed) || {_forcedWalk};
     private _locked = (_request select 2) || {_nativeSlopeLock} || {_aceSlopeLock};
     private _requested = _enabled && {!_locked} && {[
-        _request select 1, _input select 2, _moving, _ordinarySlopeJog
+        _request select 1, _turbo, _moving, _ordinarySlopeJog
     ] call GAIT_fnc_locomotionIntent};
     // No repeated animation command: this only keeps existing graph ownership
     // until the finite speed plan or existing uphill brake completes.
@@ -909,7 +964,7 @@ GAIT_fnc_tickLocomotion = {
     private _entryTarget = _unit getVariable ["GAIT_slopeEntryTarget", ""];
     private _gaitIntent = "";
     if (_requested && {_eligible} && {_phase in ["active", "entering"]}) then {
-        _gaitIntent = [_phase, _input select 2, _releaseHeld, _animation, _entryTarget]
+        _gaitIntent = [_phase, _turbo, _releaseHeld, _animation, _entryTarget]
             call GAIT_fnc_locomotionGaitIntent;
     };
     if (_gaitIntent isEqualTo "release") then {_requested = false;};
@@ -932,8 +987,11 @@ GAIT_fnc_tickLocomotion = {
     private _sprintStillInJog = [_phase, _animation, _entryTarget]
         call GAIT_fnc_locomotionEntryStillInJog;
     private _insideTarget = _activeFamily isNotEqualTo "" && {!_sprintStillInJog};
+    private _compatibleBlend = !_eligible && {_requested} && {_phase in ["active", "entering"]} &&
+        {[_unit, _animation] call GAIT_fnc_locomotionMayFinishMoveBlend};
     private _action = [_phase, _requested, _eligible, _insideTarget, _expectedBlend,
-        diag_tickTime > (_unit getVariable ["GAIT_slopeEntryDeadline", -1]), _moving] call GAIT_fnc_locomotionDecision;
+        diag_tickTime > (_unit getVariable ["GAIT_slopeEntryDeadline", -1]), _moving, _compatibleBlend]
+        call GAIT_fnc_locomotionDecision;
     switch (_action) do {
         case "release": {
             [_unit, _input, [_unit] call GAIT_fnc_readLocomotionForcedWalk] call GAIT_fnc_releaseSlopeLocomotion;
@@ -969,6 +1027,7 @@ GAIT_fnc_tickLocomotion = {
         };
         case "enter": {
             if (_family isEqualTo "" || {!([_family] call GAIT_fnc_slopeFamilyAvailable)}) exitWith {};
+            if (!_turbo && {!([_animation] call GAIT_fnc_locomotionNativeJogNeedsOverride)}) exitWith {};
             [_unit, _family, _input, _animation] call GAIT_fnc_beginLocomotionEntry;
         };
     };

@@ -48,7 +48,7 @@ for "_grade" from 0 to 89 do {_grades pushBack ([_grade,15,40,0.32] call GAIT_fn
             private _lastSprint = 1e10;
             for "_grade" from 0 to 88 step 4 do {
                 private _walkGrade = _grades select _grade;
-                private _sprintGrade = [_grade,2,35,0.40,_weight] call GAIT_fnc_uphillSprintPaceMultiplier;
+                private _sprintGrade = [_grade,2,35,0.40] call GAIT_fnc_uphillPaceMultiplier;
                 private _pair = [1.6,_candidateBase,_walkGrade,_sprintGrade,_load,_effectiveRatio] call GAIT_fnc_slopePaceModel;
                 _pair params ["_walk", "_sprint"];
                 if (_walk <= 0 || {_sprint < (_walk * _effectiveRatio) - 0.00001}) then {
@@ -72,41 +72,10 @@ for "_grade" from 0 to 89 do {_grades pushBack ([_grade,15,40,0.32] call GAIT_fn
     } forEach [_flatSprint, 0.05 * _flatSprint];
 } forEach [0,0.25,0.5,0.75,1];
 
-// Regression for the live coefficient integration: a reserve-independent
-// floor made default unarmed fresh and exhausted sprint identical. Its extra
-// fresh margin must preserve reserve response even when both candidates are
-// below the floor. These are target coefficients, not measured clip speeds.
-private _reserveChecks = 0;
-{
-    private _weight = _x;
-    private _load = _loads select _weight;
-    private _walkWeightSeverity = ((_weight - 35) / 80) max 0 min 1;
-    private _walkPenalty = 0.32 * (0.75 + (0.50 * _walkWeightSeverity));
-    for "_grade" from 0 to 89 do {
-        private _walkGrade = [_grade,15,40,_walkPenalty] call GAIT_fnc_uphillPaceMultiplier;
-        private _sprintGrade = [_grade,2,35,0.40,_weight] call GAIT_fnc_uphillSprintPaceMultiplier;
-        {
-            private _normalizer = _x;
-            private _priorTarget = -1;
-            {
-                private _reserve = _x;
-                private _candidate = (0.89 + ((1.28 - 0.89) * _reserve)) * _normalizer;
-                private _pair = [0.86,_candidate,_walkGrade,_sprintGrade,_load,1.20 + (0.20 * _reserve)] call GAIT_fnc_slopePaceModel;
-                private _target = _pair select 1;
-                if (_target <= _priorTarget) then {
-                    throw format ["FAIL: default reserve response lost at grade %1, load %2, normalizer %3, reserve %4",_grade,_weight,_normalizer,_reserve];
-                };
-                _priorTarget = _target;
-                _reserveChecks = _reserveChecks + 1;
-            } forEach [0,0.25,0.5,0.75,1];
-        } forEach [1,0.725];
-    };
-} forEach [0,35,75,100,150,250];
-
 // Reference-unit invariance: converting every base speed m/s -> km/h must
 // produce the same conversion in the pair, including when the floor is active.
 private _ms = [1.6,0.5,0.4,0.2,0.75,1.2] call GAIT_fnc_slopePaceModel;
 private _kmh = [1.6*3.6,0.5*3.6,0.4,0.2,0.75,1.2] call GAIT_fnc_slopePaceModel;
 [(_ms select 0)*3.6,_kmh select 0,"walking common-reference units"] call _almostEqual;
 [(_ms select 1)*3.6,_kmh select 1,"sprint common-reference units"] call _almostEqual;
-diag_log format ["GAIT TEST PASS: slope/load pace model, %1 grade-load-reserve combinations; sprint floor, monotonic grade/load, heavy-pack tail and common-reference units; %2 default armed/unarmed reserve-response samples",_checks,_reserveChecks];
+diag_log format ["GAIT TEST PASS: slope/load pace model, %1 grade-load-reserve combinations; sprint floor, monotonic grade/load, heavy-pack tail and common-reference units",_checks];

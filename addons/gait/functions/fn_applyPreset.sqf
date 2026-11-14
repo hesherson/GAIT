@@ -42,7 +42,7 @@ private _set = {
     _x call _set;
 } forEach [
     ["GAIT_ss_slopeLocomotionEnabled", true],
-    ["GAIT_ss_exhaustedRunRatio", 0.85],
+    ["GAIT_ss_exhaustedRunPace", 0.70],
     ["GAIT_ss_extraHeavyPenaltyPer50Lb", 0.18],
     ["GAIT_ss_normalSpeed", 0.86],
     ["GAIT_ss_sprintFullSpeed", 1.28],
@@ -50,12 +50,13 @@ private _set = {
     ["GAIT_ss_masterTripFrequency", 1.00],
     ["GAIT_ss_wReleaseZeroMomentumDelay", 0.50],
     ["GAIT_ss_shiftReleaseRunTaperEnabled", true],
-    ["GAIT_ss_shiftReleaseRunTaperDuration", 0.85],
+    ["GAIT_ss_shiftReleaseRunTaperDuration", 1.15],
     ["GAIT_ss_shiftReleaseRunTaperCurve", 1.45],
     ["GAIT_ss_sprintStartBraceDuration", 0.15],
     ["GAIT_ss_sprintStartBraceSpeed", 0.44],
     ["GAIT_ss_sprintStartBraceLerp", 0.575],
     ["GAIT_ss_slopeStopBraceEnabled", true],
+    ["GAIT_ss_uphillReleaseBraceEnabled", false],
     ["GAIT_ss_slopeStopBraceStartDegrees", 15.0],
     ["GAIT_ss_slopeStopBraceMaxDegrees", 35.0],
     ["GAIT_ss_slopeStopBraceExtraDuration", 0.18],

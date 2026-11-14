@@ -51,14 +51,6 @@ GAIT_fnc_uphillPaceMultiplier = {
     (1 - (_referencePenalty max 0 min 0.99)) ^ _severity
 };
 
-GAIT_fnc_uphillSprintPaceMultiplier = {
-    params ["_gradeDegrees", "_startDegrees", "_referenceDegrees", "_referencePenalty", "_gearLbs"];
-    private _mass = _gearLbs max 0;
-    private _loadScale = 0.70 + (0.60 * (_mass / (_mass + 75)));
-    [_gradeDegrees, _startDegrees, _referenceDegrees, _referencePenalty * _loadScale]
-        call GAIT_fnc_uphillPaceMultiplier
-};
-
 // Scale the regular coefficient response without altering bracing or release
 // timing. In particular, a rising hill should slow a moving sprint promptly.
 GAIT_fnc_slopeSprintRamp = {

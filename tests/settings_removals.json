@@ -7,6 +7,7 @@
   "GAIT_ss_sprintExhaustedSpeed": "Exhausted sprint uses a ratio of the loadout's normal run pace.",
   "GAIT_ss_minSprintWalkRatio": "Replaced by the exhausted run pace ratio and an uphill jog-relative floor.",
   "GAIT_ss_freshSprintWalkMargin": "The uphill sprint floor compares to both walking and jogging.",
+  "GAIT_ss_exhaustedRunRatio": "Replaced by the load-adjusted exhausted run midpoint.",
   "GAIT_ss_masterFxIntensity": "ACE owns fatigue feedback.",
   "GAIT_ss_tinnitusEnabled": "ACE owns fatigue feedback.",
   "GAIT_ss_tinnitusStartExhaustion": "ACE owns fatigue feedback.",

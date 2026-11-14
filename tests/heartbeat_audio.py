@@ -1,47 +1,91 @@
-#!/usr/bin/env python3
-"""Guard the narrow ACE heartbeat config patch against source-contract drift.
+"""Check the narrow startup patch against ACE and ACM playback layouts."""
 
-The ACE reference is addons/medical_feedback/CfgSounds.hpp, reviewed at
-https://github.com/acemod/ACE3/blob/a8332b182e2764947b8b2e551386452e712eff11/addons/medical_feedback/CfgSounds.hpp
-These checks verify gain, sample/pitch preservation and optional load order.
-They cannot verify perceived loudness inside Arma.
-"""
 from pathlib import Path
-import math
 import re
 import unittest
 
-
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "addons/heartbeat/config.cpp"
-VARIANTS = ("fast_1", "fast_2", "fast_3", "norm_1", "norm_2", "slow_1", "slow_2")
+SOURCE = (ROOT / "addons/gait/functions/fn_aceHeartbeatVolume.sqf").read_text()
+CONFIG = (ROOT / "addons/gait/config.cpp").read_text()
+
+# Playback shapes from ACE 3.21.2 and ACM Extended a888b45, after macro
+# expansion. The heartbeat schedule is outside the replaced statements.
+ACE_SOURCE = """
+if (isGameFocused) then { playSound "ACE_heartbeat_fast_1"; };
+[ace_medical_feedback_fnc_effectHeartBeat, [], _waitTime] call CBA_fnc_waitAndExecute;
+if (isGameFocused) then { playSound (selectRandom ["ACE_heartbeat_slow_1", "ACE_heartbeat_slow_2"]); };
+"""
+ACM_SOURCE = """
+if (isGameFocused) then {
+    playSoundUI ["ACE_heartbeat_fast_1", (linearConversion [140, 190, _heartRate, 0.1, 1, true])];
+};
+[ace_medical_feedback_fnc_effectHeartBeat, [], _waitTime] call CBA_fnc_waitAndExecute;
+if (isGameFocused) then {
+    playSoundUI [(selectRandom ["ACE_heartbeat_slow_1", "ACE_heartbeat_slow_2"]),
+        (linearConversion [60, 45, _heartRate, 0.1, 1, true])];
+};
+"""
+
+
+def patterns(acm=False):
+    literals = dict(re.findall(r"private _(\w+)\s*=\s*'(.*)';", SOURCE))
+    literals.update({name: value.replace("''", "'") for name, value in literals.items()})
+    command = r"playSoundUI\s*\[\s*" if acm else r"playSound\s+"
+    tail = literals["uiGain"] if acm else r"\s*;/g"
+    return [
+        re.compile((literals["focus"] + command + literals[variant] + tail).removesuffix("/g"))
+        for variant in ("fastSound", "slowSound")
+    ]
+
+
+def patch_playback(source, acm=False):
+    playback = patterns(acm)
+    if any(len(list(pattern.finditer(source))) != 1 for pattern in playback):
+        return source
+    args = r"\2, \3" if acm else r"\2"
+    for pattern in playback:
+        source = pattern.sub(
+            r'\1[' + args + '] call (uiNamespace getVariable "GAIT_fnc_playAceHeartbeat");',
+            source,
+        )
+    return source
 
 
 class HeartbeatAudioContract(unittest.TestCase):
-    def setUp(self):
-        self.source = re.sub(r"//[^\n]*|/\*.*?\*/", "", SOURCE.read_text(), flags=re.S)
+    def test_ace_prestart_is_forwarded_after_cache_seed(self):
+        self.assertRegex(CONFIG, r'requiredAddons\[\].*"ace_medical_feedback"')
+        self.assertRegex(CONFIG, r'(?s)Extended_PreStart_EventHandlers\s*\{.*class ace_medical_feedback')
+        self.assertIn(
+            r"'\gait\functions\fn_aceHeartbeatVolume.sqf']; call compileScript "
+            r"['\z\ace\addons\medical_feedback\XEH_preStart.sqf']",
+            CONFIG,
+        )
+        self.assertIn('private _aceFunction = "ace_medical_feedback_fnc_effectHeartBeat"', SOURCE)
+        self.assertIn('if (!isNil {uiNamespace getVariable _aceFunction}) exitWith {};', SOURCE)
+        self.assertIn('uiNamespace setVariable [_aceFunction, compileFinal _source]', SOURCE)
 
-    def test_only_heartbeat_classes_are_patched(self):
-        classes = re.findall(r"\bclass\s+(\w+)", self.source)
-        self.assertEqual(classes, ["CfgPatches", "gait_heartbeat", "CfgSounds"] +
-                         ["ACE_heartbeat_" + variant for variant in VARIANTS])
-        self.assertEqual(list((ROOT / "addons/heartbeat").rglob("*.sqf")), [])
+    def test_supported_playback_keeps_ace_cadence_and_acm_gain(self):
+        for original, acm in ((ACE_SOURCE, False), (ACM_SOURCE, True)):
+            with self.subTest(acm=acm):
+                patched = patch_playback(original, acm)
+                self.assertEqual(patched.count("GAIT_fnc_playAceHeartbeat"), 2)
+                self.assertIn("call CBA_fnc_waitAndExecute", patched)
+                self.assertIn('selectRandom ["ACE_heartbeat_slow_1", "ACE_heartbeat_slow_2"]', patched)
+                if acm:
+                    self.assertIn("linearConversion [140, 190, _heartRate, 0.1, 1, true]", patched)
+                    self.assertIn("linearConversion [60, 45, _heartRate, 0.1, 1, true]", patched)
 
-    def test_all_variants_keep_samples_and_pitch_at_ten_percent_original_gain(self):
-        entries = re.findall(r'class (ACE_heartbeat_\w+)\s*\{\s*sound\[\]\s*=\s*'
-                             r'\{"([^"]+)",\s*([0-9.]+),\s*([0-9.]+)\};\s*\};', self.source)
-        self.assertEqual(len(entries), len(VARIANTS))
-        target_original_gain = 0.1 * 10 ** (1 / 20)
-        for (name, path, gain, pitch), variant in zip(entries, VARIANTS):
-            self.assertEqual(name, "ACE_heartbeat_" + variant)
-            self.assertEqual(path, "\\z\\ace\\addons\\medical_feedback\\sounds\\" + variant + ".wav")
-            self.assertTrue(math.isclose(float(gain), target_original_gain, rel_tol=1e-8))
-            self.assertEqual(float(pitch), 1)
-
-    def test_ace_owns_playback_and_addon_is_optional(self):
-        self.assertRegex(self.source, r'requiredAddons\[\]\s*=\s*\{"ace_medical_feedback"\}')
-        self.assertRegex(self.source, r'skipWhenMissingDependencies\s*=\s*1;')
-        self.assertNotRegex(self.source, r'(?i)playSound|fadeSound|CfgFunctions|Extended_\w+_EventHandlers')
+    def test_missing_duplicate_or_unrelated_playback_is_unchanged(self):
+        for original in (
+            ACE_SOURCE.replace("ACE_heartbeat_fast_1", "different_sample"),
+            ACE_SOURCE + ACE_SOURCE,
+            'if (isGameFocused) then { playSound "ACE_fracture_1"; };',
+        ):
+            self.assertEqual(patch_playback(original), original)
+        self.assertNotRegex(SOURCE, r"\bfadeSound\b|\bremoteExec(?:Call)?\b")
+        self.assertIn('["GAIT_ss_aceHeartbeatVolume", 10]', SOURCE)
+        self.assertIn('if (_percentage <= 0) exitWith {};', SOURCE)
+        self.assertIn('if (_percentage >= 100) exitWith {playSound _soundClass;};', SOURCE)
 
 
 if __name__ == "__main__":

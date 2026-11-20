@@ -25,24 +25,48 @@ def executable(text):
 
 
 class LocomotionInvariants(unittest.TestCase):
+    def test_gesture_release_cannot_latch_a_weapon_lock(self):
+        release = (ROOT / "addons/gait/rifle_run.hpp").read_text().split("class GAIT_EndSprintGesture: GestureEmpty", 1)[1].split("};",1)[0]
+        for setting in ('disableWeapons = 0;', 'enableOptics = 1;', 'looped = 0;', 'speed = -0.08;'):
+            self.assertIn(setting,release)
+        for script in ("fn_initSprintSystem.sqf","fn_updateRifleRun.sqf"):
+            controller = (ROOT / "addons/gait/functions" / script).read_text()
+            self.assertNotIn('switchGesture ["GestureEmpty"',controller)
+            self.assertIn('playActionNow "GAIT_EndSprintGesture"',controller)
+
+    def test_normal_brace_is_a_one_shot_on_the_chest_and_neck(self):
+        gestures = (ROOT / "addons/gait/rifle_run.hpp").read_text()
+        mask = re.search(r'GAIT_NormalBraceMask\[\]\s*=\s*\{([^}]+)\}', gestures)[1]
+        self.assertEqual(re.findall(r'"([^"]+)"', mask), ["Spine1", "Neck"])
+        brace = re.search(r'class GAIT_NormalBrace: Default\s*\{([^}]+)\}', gestures)[1]
+        self.assertIn('looped = 0;', brace)
+        self.assertIn('disableWeapons = 0;', brace)
+        controller = read("fn_initSprintSystem.sqf")
+        self.assertIn('_newNormalBrace = !_burst &&', controller)
+        self.assertIn('playActionNow "GAIT_NormalBrace"', controller)
+
+    def test_rifle_mask_owns_chest_between_proxy_and_wrist(self):
+        gestures = (ROOT / "addons/gait/rifle_run.hpp").read_text()
+        mask = re.search(r'GAIT_RifleRunArm\[\]\s*=\s*\{([^}]+)\}', gestures).group(1)
+        for entry in ('"Spine2",1', 'GAIT_RUN_ARMS', '"weapon",1'):
+            self.assertIn(entry, mask)
+
     def test_version_identity(self):
         project = (ROOT / ".hemtt/project.toml").read_text()
         config = (ROOT / "addons/gait/config.cpp").read_text()
         mod = (ROOT / "mod.cpp").read_text()
-        self.assertIn("build = 29", project)
-        self.assertIn('versionStr = "1.8.0-alpha29";', config)
-        self.assertIn("versionAr[] = {1,8,0,29};", config)
-        self.assertIn('tooltip = "GAIT 1.8.0-alpha29";', mod)
+        self.assertIn("build = 74", project)
+        self.assertIn('versionStr = "1.8.0-alpha74";', config)
+        self.assertIn("versionAr[] = {1,8,0,74};", config)
+        self.assertIn('tooltip = "GAIT 1.8.0-alpha74";', mod)
 
-    def test_graph_pose_and_no_walk_contract(self):
+    def test_graph_has_separate_native_pose_families(self):
         text = GRAPH.read_text()
-        states = re.findall(r"class AmovPerc(?:Mstp|Mrun|Meva)\w+_GAIT(?:Sprint)?:", text)
-        self.assertEqual(len(states), 85)
-        self.assertEqual(len(re.findall(r"class AmovPercMstp\w+Dnon_GAITStop:", text)), 5)
-        self.assertEqual(len(re.findall(r"class GAIT_Slope\w+Actions:", text)), 15)
-        self.assertNotRegex(text, r"class AmovPercMwlk\w+_GAIT(?:Sprint)?:")
-        for family in ("SrasWrfl", "SlowWrfl", "SrasWpst", "SlowWpst", "SnonWnon"):
-            self.assertEqual(len(re.findall(rf"class AmovPerc(?:Mstp|Mrun|Meva){family}\w+_GAIT(?:Sprint)?:", text)), 17)
+        for pose in ("Perc", "Pknl"):
+            self.assertEqual(len(re.findall(rf"class Amov{pose}Mstp\w+Dnon_GAITSprintStop:", text)), 1)
+            for family in ("SrasWrfl", "SlowWrfl", "SrasWpst", "SlowWpst", "SnonWnon", "SrasWlnr"):
+                states = re.findall(rf"class Amov{pose}(?:Mstp|Mrun|Meva|Mwlk|Mtac){family}\w+_GAIT(?:Sprint)?:", text)
+                self.assertEqual(len(states), 25 if family == "SnonWnon" else 33)
         self.assertIn("class GAIT_SlopePistolLowActions: PistolLowStandActions", text)
 
     def test_direction_owns_input_not_speed_phase(self):
@@ -85,6 +109,9 @@ class LocomotionInvariants(unittest.TestCase):
         self.assertIn("GAIT_fnc_ordinarySlopeJogIntent", slope)
         self.assertIn("GAIT_fnc_uphillLaunchBraceFactor", main)
         self.assertEqual(main.count("call GAIT_fnc_capDownhillPace"), 2)
+        reserve = main.index("call GAIT_fnc_sprintReservePace;")
+        downhill_cap = main.index("call GAIT_fnc_capDownhillPace;", reserve)
+        self.assertIn("_targetSpeed * _slopeSpeedMultiplier", main[reserve:downhill_cap])
         self.assertIn("call GAIT_fnc_uphillSprintFloor", main)
         self.assertIn("call GAIT_fnc_sprintLaunchBraceDuration", main)
         self.assertIn("GAIT_fnc_lookupUnitPaceReference", main)
@@ -118,21 +145,44 @@ class LocomotionInvariants(unittest.TestCase):
         slope = read("fn_slopeLocomotion.sqf")
         self.assertIn('inputAction "WalkRunTemp"', native)
         self.assertIn('if (_nativeWalk && {!_allowCarry}) exitWith', native)
-        self.assertIn('[player, _currentSpeed, false, true] call GAIT_fnc_applyNativeMovement', main)
-        self.assertIn('[player] call GAIT_fnc_releaseNativeWalkPace', slope)
+        self.assertIn('(_weightedWalkPace max _walkFloor) * _downhillWalkMultiplier', main)
+        self.assertIn('[player, _walkTarget, false, false, false, _loadPaceScale] call GAIT_fnc_applyNativeMovement', main)
+        self.assertIn('[player] call GAIT_fnc_releaseNativeWalkPace', main)
+        self.assertIn('call GAIT_fnc_walkingLoadMultiplier', main)
         self.assertIn('!_nativeWalk', slope)
 
-    def test_deceleration_uses_only_the_common_speed_ramp(self):
+    def test_deceleration_has_one_speed_writer_and_draw3d_only_selects_clips(self):
         main = read("fn_initSprintSystem.sqf")
         start = main.index('call GAIT_fnc_jogDecelerationRamp;')
         end = main.index('call GAIT_fnc_applyNativeMovement;', start)
         self.assertIn('call GAIT_fnc_stepSpeedCoefficient;', main[start:end])
+        self.assertIn('_currentSpeed = _releaseCoefficient;', main[start:end])
+        self.assertEqual(main.count('call GAIT_fnc_sprintReleaseCoefficient;'), 1)
         self.assertFalse((FUNCTIONS / "fn_releaseMomentum.sqf").exists())
         self.assertFalse((FUNCTIONS / "fn_uphillBrake.sqf").exists())
         slope = read("fn_slopeLocomotion.sqf")
         self.assertNotIn('GAIT_fnc_applyNativeMovement', slope)
         self.assertNotIn('GAIT_ss_shiftReleaseRunTaper', slope)
         self.assertNotIn('GAIT_paceHandoff', slope)
+
+    def test_casualty_terrain_uses_the_native_writer_without_sprint_graph_entry(self):
+        main = read("fn_initSprintSystem.sqf")
+        helpers = read("fn_traversalHelpers.sqf")
+        self.assertIn('(attachedTo _patient) isNotEqualTo _unit', helpers)
+        self.assertIn('private _sprintIntent = _sprintRequested && {!_patientHandling || {_carryContext}};', main)
+        self.assertIn('private _fastMoveIntent = _gaitMovementEnabled && {_gaitStanceOk} && {!_isAceCarrying} && {!_isAceDragging};', main)
+        start = main.index('case (_patientHandling && {!_movingCarry}):')
+        branch = main[start:main.index('case _stanceMotion:', start)]
+        self.assertIn('call GAIT_fnc_casualtyTerrainMultiplier;', branch)
+        self.assertIn('call GAIT_fnc_applyNativeMovement;', branch)
+        self.assertIn('call GAIT_fnc_releaseSpeedCoefficient;', branch)
+        carry_target = main[main.index('private _movingCarry ='):start]
+        self.assertIn('call GAIT_fnc_sprintReservePace;', carry_target)
+        self.assertIn('if (_downhillTravel) then {_targetSpeed = _targetSpeed * _slopeSpeedMultiplier;};', carry_target)
+        start = main.index('case (_movingCarry ||')
+        ramp = main[start:main.index('default {', start)]
+        for helper in ("sprintAccelerationRamp", "sprintReleaseSlopeScale", "sprintWalkProgress", "applyNativeMovement"):
+            self.assertIn(f"call GAIT_fnc_{helper}", ramp)
 
     def test_locality_and_reset_contract(self):
         helper = read("fn_traversalHelpers.sqf")

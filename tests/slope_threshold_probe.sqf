@@ -286,7 +286,10 @@ private _handler = addMissionEventHandler ["EachFrame", {
         currentWeapon _unit, weaponLowered _unit, !isNull (findDisplay 312)
     ];
     private _movement = [_velocity, _horizontalSpeed, vectorMagnitude _surfaceVelocity, _velocity vectorDotProduct _facing, _velocity vectorDotProduct _right, getAnimSpeedCoef _unit];
-    private _settings = [missionNamespace getVariable ["GAIT_ss_slopeHandlingEnabled", -1], missionNamespace getVariable ["GAIT_ss_slopeLocomotionEnabled", -1], missionNamespace getVariable ["ace_advanced_fatigue_enabled", -1], missionNamespace getVariable ["GAIT_walkPaceTarget", -1], missionNamespace getVariable ["GAIT_sprintPaceTarget", -1], loadAbs _unit, missionNamespace getVariable ["GAIT_ss_loadAbsPerLb", -1]];
+    private _settings = [missionNamespace getVariable ["GAIT_ss_enabled", false],
+        missionNamespace getVariable ["ace_advanced_fatigue_enabled", false],
+        missionNamespace getVariable ["GAIT_walkPaceTarget", -1],
+        missionNamespace getVariable ["GAIT_sprintPaceTarget", -1], loadAbs _unit / 10];
     private _trialLabel = missionNamespace getVariable ["GAIT32_trialLabel", ""];
     private _row = [_seq, diag_frameNo, _now, time, _state get "label", str _unit, _position, _slope, _input, _rawInput, _animation, _actions, _gesture, _engine, _gait, _context, _movement, _settings, _trialLabel];
 

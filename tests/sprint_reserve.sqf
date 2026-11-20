@@ -61,6 +61,19 @@ private _jogged = [_remaining, "hold", 90, 60, 10, _heavyRate] call GAIT_fnc_ste
 [_jogged isEqualTo _remaining, "jogging neither spends nor restores fallback reserve"] call _assert;
 [([_jogged, "rest", 10, 60, 10, _heavyRate] call GAIT_fnc_stepFallbackSprintReserve) isEqualTo 60,
     "stationary recovery refills fallback reserve to its cap"] call _assert;
+private _lightWalkShare = [20] call GAIT_fnc_walkRecoveryShare;
+private _heavyWalkShare = [120] call GAIT_fnc_walkRecoveryShare;
+private _patientWalkShare = [120, true] call GAIT_fnc_walkRecoveryShare;
+[_lightWalkShare <= 0.19 && {_lightWalkShare > _heavyWalkShare} &&
+    {_heavyWalkShare > _patientWalkShare} && {_patientWalkShare > 0},
+    "walking restores a small weight-scaled share, reduced with a patient"] call _assert;
+[[30, "walk", 1, 60, 10, 0, _lightWalkShare] call GAIT_fnc_stepFallbackSprintReserve, 30 + 6 * _lightWalkShare,
+    "walking uses a share of the existing fallback recovery rate"] call _close;
+[([[1,0,false],1.3,false,true,"",true] call GAIT_fnc_sprintReserveActivity) isEqualTo "walk" &&
+    {([[1,0,false],1.3,false,true,"",false] call GAIT_fnc_sprintReserveActivity) isEqualTo "hold"} &&
+    {([[0,0,false],1.3,false,true,"",true] call GAIT_fnc_sprintReserveActivity) isEqualTo "hold"} &&
+    {([[1,0,true],1.3,true,true,"",true] call GAIT_fnc_sprintReserveActivity) isEqualTo "sprint"},
+    "only commanded walking earns walking recovery, and sprint still takes priority"] call _assert;
 
 {
     _x params ["_mass", "_slope", "_expectedDuration"];
@@ -141,5 +154,29 @@ private _expectedReserve = [2300, 2300, _expectedEffort, 0, 1, _aceCapacity] cal
 [player, "hold", 0.30, 0] call GAIT_fnc_accumulateAceSprintEffort;
 [[1100, 1125, player] call GAIT_fnc_filterAceSprintReserve, 1110,
     "the ACE hook restores only the fraction spent resting"] call _close;
+[player, "walk", 0.50, 0, 0, _lightWalkShare] call GAIT_fnc_accumulateAceSprintEffort;
+[player, "hold", 0.50, 0] call GAIT_fnc_accumulateAceSprintEffort;
+[[1100, 1140, player] call GAIT_fnc_filterAceSprintReserve, 1100 + 20 * _lightWalkShare,
+    "walking recovery is a share of ACE's recovery, weighted by time walking"] call _close;
+[player,"walk",0.5,0,0,_heavyWalkShare] call GAIT_fnc_accumulateAceSprintEffort;
+[player,"hold",0.5,0] call GAIT_fnc_accumulateAceSprintEffort;
+[[1100,1095,player] call GAIT_fnc_filterAceSprintReserve,1100 + 4 * _heavyWalkShare,
+    "zero-surplus walking earns its weighted floor only for time walking"] call _close;
+[[1100,1100,0,0.2,1,_aceCapacity,0.2,0] call GAIT_fnc_aceSprintReserveDelta,1100,
+    "a disabled recovery factor disables the walking floor"] call _close;
+
+private _lightRise = ["stance", 20, 1] call GAIT_fnc_stanceReserveDrainRate;
+private _heavyRise = ["stance", 120, 1] call GAIT_fnc_stanceReserveDrainRate;
+private _heavyCrouch = ["crouch", 120, 0] call GAIT_fnc_stanceReserveDrainRate;
+[_heavyRise > _lightRise && {_heavyRise > _heavyCrouch}, "heavy prone rise costs more reserve than a light rise or crouch travel"] call _assert;
+[([[0,0,false],0,false,true,"crouch"] call GAIT_fnc_sprintReserveActivity) isEqualTo "rest",
+    "stationary crouch can recover reserve"] call _assert;
+private _lower = [60,"stance",0.5,60,10,_heavyRise] call GAIT_fnc_stepFallbackSprintReserve;
+[_lower < 60, "confirmed stance changes spend fallback reserve"] call _assert;
+[player, "stance", 0.5, 0, _heavyRise] call GAIT_fnc_accumulateAceSprintEffort;
+private _expectedStanceReserve = [2300, 2300, 0.5 * _heavyRise, 0, 0.5, _aceCapacity]
+    call GAIT_fnc_aceSprintReserveDelta;
+[[2300, 2300, player] call GAIT_fnc_filterAceSprintReserve, _expectedStanceReserve,
+    "stance effort spends the same reserve through ACE"] call _close;
 
 diag_log format ["GAIT TEST PASS: time-based exertion, multiplicative gear and terrain, and native ACE recovery (%1 checks)", _checks];

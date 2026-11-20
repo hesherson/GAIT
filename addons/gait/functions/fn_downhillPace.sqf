@@ -1,11 +1,38 @@
 /*
     Pure downhill pace helpers. No animation, velocity, fatigue or settings I/O.
 
-    The caller supplies directional grade, earned downhill momentum and the
-    loaded and unloaded flat pace multipliers. Gravity acts along the slope.
-    The additional load response represents how much momentum a runner with
-    heavy kit carries into each step when braking the descent.
+    Gravity acts along the slope. All kits share that acceleration, with a
+    small additional response to gentle descents as the carried load rises.
 */
+
+GAIT_fnc_downhillRunAngles = {
+    params ["_startDegrees", "_peakDegrees"];
+    private _span = (_peakDegrees - _startDegrees) max 0.1;
+    private _start = _startDegrees - ((0.70 * _startDegrees) min 2);
+    [_start, _start + (0.75 * _span)]
+};
+
+GAIT_fnc_downhillWalkMultiplier = {
+    params ["_gradeDegrees", "_startDegrees", "_peakDegrees"];
+    private _span = (_peakDegrees - _startDegrees) max 0.1;
+    private _gradeShare = ((-_gradeDegrees - _startDegrees) / _span) max 0 min 1;
+    1 + (0.10 * ((0.65 * sqrt _gradeShare) + (0.35 * _gradeShare)))
+};
+
+GAIT_fnc_casualtyTerrainMultiplier = {
+    params ["_grade", "_clip"];
+    if (_grade < 0) exitWith {
+        private _pull = ([_grade, 0.5, 18] call GAIT_fnc_downhillWalkMultiplier) - 1;
+        private _share = switch (_clip) do {
+            case "drag": {0.45};
+            case "carryWalk": {0.75};
+            default {1};
+        };
+        1 + (_pull * _share)
+    };
+    private _penalty = [0.24, 0.28] select (_clip isEqualTo "drag");
+    ([_grade, 2, 35, _penalty] call GAIT_fnc_uphillPaceMultiplier) max 0.65
+};
 
 GAIT_fnc_downhillMomentumTarget = {
     params [
@@ -43,59 +70,51 @@ GAIT_fnc_stepDownhillMomentum = {
     (_current + ((_target - _current) * _alpha)) max 0 min 1
 };
 
-GAIT_fnc_downhillPaceMultiplier = {
-    params [
-        ["_gradeDegrees", 0, [0]],
-        ["_gearLbs", 0, [0]],
-        ["_momentum", 0, [0]],
-        ["_startDegrees", 0.5, [0]],
-        ["_peakDegrees", 18, [0]],
-        ["_entryBoost", 0.03, [0]],
-        ["_sustainedBoost", 0.14, [0]],
-        ["_loadMultiplier", 1, [0]],
-        ["_unloadedMultiplier", 1, [0]],
-        ["_steepStartDegrees", 18, [0]],
-        ["_steepFullDegrees", 40, [0]],
-        ["_maximumRelativePace", 1.18, [0]]
-    ];
-    private _decline = (-_gradeDegrees) max 0;
+// Only the scalar speed bonus carries across a turn. Live input keeps steering.
+GAIT_fnc_turnDownhillBonus = {
+    params ["_previous", "_earned", "_grade", "_dt"];
+    private _seconds = if (_earned >= _previous) then {0.25} else {[0.50,0.18] select (_grade > 2)};
+    [_previous, _earned, _dt, _seconds, _seconds] call GAIT_fnc_stepDownhillMomentum
+};
+
+GAIT_fnc_shufflePose = {
+    params ["_decline","_crossfall","_previous"];
+    private _right = _crossfall > 0;
+    if (_previous != "" && {abs _crossfall < 0.16}) then {_right = _previous find "right" >= 0};
+    private _medium = _previous find "medium" >= 0;
+    private _steep = _previous find "steep" >= 0;
+    private _band = "";
+    if (_decline >= ([28,25] select (_medium || _steep))) then {_band = "medium"};
+    if (_decline >= ([35,32] select _steep)) then {_band = "steep"};
+    (["gait_shuffleleft","gait_shuffleright"] select _right) + _band
+};
+
+GAIT_fnc_downhillGradeFactor = {
+    params ["_decline", "_startDegrees", "_peakDegrees"];
     _startDegrees = (_startDegrees max 0) min 80;
     _peakDegrees = (_peakDegrees max (_startDegrees + 0.1)) min 89.9;
-    _entryBoost = (_entryBoost max 0) min 0.35;
-    _sustainedBoost = (_sustainedBoost max 0) min 0.25;
-    _momentum = (_momentum max 0) min 1;
-    // Keep the first seconds close to the entry boost, then give sustained
-    // descents room to build pace through the latter part of the meter.
-    private _earnedMomentum = _momentum ^ 4;
-    private _activeBoost = _entryBoost + (_sustainedBoost * _earnedMomentum);
-    if (_decline <= _startDegrees || {_activeBoost <= 0}) exitWith {1};
-
-    private _relativePull = sin ((_decline - _startDegrees) min (_peakDegrees - _startDegrees)) /
+    private _relativePull = sin ((_decline - _startDegrees) max 0 min (_peakDegrees - _startDegrees)) /
         sin (_peakDegrees - _startDegrees);
-    // Preserve some pull on a shallow slope, where a smoothstep around zero
-    // would make the change barely perceptible.
-    private _gradeFactor = (0.65 * _relativePull) + (0.35 * sqrt _relativePull);
+    (0.65 * _relativePull) + (0.35 * sqrt _relativePull)
+};
 
-    _steepStartDegrees = _steepStartDegrees max _peakDegrees;
-    _steepFullDegrees = _steepFullDegrees max (_steepStartDegrees + 0.1);
-    private _steep = ((_decline - _steepStartDegrees) / (_steepFullDegrees - _steepStartDegrees)) max 0 min 1;
-    _steep = _steep * _steep * (3 - (2 * _steep));
-
-    private _mass = _gearLbs max 0;
-    private _loadShare = _mass / (_mass + 75);
-    private _load = _loadMultiplier max 0.001;
-    private _unloaded = _unloadedMultiplier max _load;
-    // Loaded runners retain more pace over time. Keep the entry gain modest
-    // and earn the larger recovery as momentum builds on a sustained descent.
-    private _retentionScale = (0.02 * ((_entryBoost / 0.03) min 1)) +
-        (0.98 * _earnedMomentum * ((_sustainedBoost / 0.10) min 1));
-    private _retention = (1 - ((1 - _gradeFactor) ^ 2)) * _retentionScale;
-    private _retainedPace = (_unloaded - _load) * _retention;
-    private _gravityScale = 1 + (0.20 * _steep);
-    private _bonus = _unloaded * _activeBoost * _gradeFactor * _gravityScale * (1 + (0.33 * _loadShare));
-    // Bound both the unloaded pace reference and each kit's gain from flat.
-    private _maximumPace = (_unloaded * (_maximumRelativePace max 1)) min (_load * 1.42);
-    ((_load + _retainedPace + _bonus) min _maximumPace) / _load
+GAIT_fnc_downhillPaceMultiplier = {
+    params ["_gradeDegrees", "_loadShare", "_momentum", ["_startDegrees", 0.5], ["_peakDegrees", 18],
+        ["_entryBoost", 0.03], ["_sustainedBoost", 0.14], ["_maximumPace", 1.18]];
+    private _decline = -_gradeDegrees;
+    if (_decline <= 0) exitWith {1};
+    private _activeBoost = (_entryBoost max 0 min 0.35) +
+        ((_sustainedBoost max 0 min 0.25) * (_momentum max 0 min 1) ^ 4);
+    private _steepStart = _peakDegrees max 18;
+    private _steep = ((_decline - _steepStart) / ((40 - _steepStart) max 0.1)) max 0 min 1;
+    private _gravity = _activeBoost * (1 + (0.20 * _steep ^ 2 * (3 - (2 * _steep))));
+    private _basePull = [_decline, _startDegrees, _peakDegrees] call GAIT_fnc_downhillGradeFactor;
+    private _earlyPull = ([_decline] + ([_startDegrees, _peakDegrees] call GAIT_fnc_downhillRunAngles))
+        call GAIT_fnc_downhillGradeFactor;
+    // The extra downhill pull uses less than the minimum 2.5% light-kit
+    // advantage, so stronger relative acceleration preserves pace ordering.
+    private _extra = (_gravity * (1.08 * _earlyPull - _basePull)) max 0 min 0.012;
+    (1 + (_gravity * _basePull) + (_loadShare * _extra)) min _maximumPace
 };
 
 // An exact clip reference converts a physical ceiling to a coefficient.
@@ -104,10 +123,11 @@ GAIT_fnc_capDownhillPace = {
     params [
         ["_candidate", 0, [0]],
         ["_referenceMS", -1, [0]],
-        ["_maximumKmh", 0, [0]]
+        ["_maximumKmh", 0, [0]],
+        ["_loadPaceRatio", 1, [0]]
     ];
     if (!(_referenceMS > 0.1 && {_referenceMS < 25}) || {_maximumKmh <= 0}) exitWith {_candidate};
-    _candidate min (_maximumKmh / (3.6 * _referenceMS))
+    _candidate min (_maximumKmh * _loadPaceRatio / (3.6 * _referenceMS))
 };
 
 GAIT_fnc_downhillTripSpeedFactors = {
@@ -138,6 +158,21 @@ GAIT_fnc_downhillTripRollChance = {
     // Compose a per-second probability over the actual update interval.
     // Shorter update intervals must not change the total risk over a second.
     1 - ((1 - _chancePerSecond) ^ _dt)
+};
+
+GAIT_fnc_stepDepletedRunTime = {
+    params ["_time", "_reserve", "_running", "_eligible", "_dt"];
+    if (!_eligible || {_reserve > 0.05}) exitWith {0};
+    private _step = _dt max 0 min 0.25;
+    if (_running && {_reserve <= 0.02}) exitWith {(_time + _step) min 12};
+    (_time - 2 * _step) max 0
+};
+
+GAIT_fnc_downhillTripFatigueFactors = {
+    params ["_reserve", "_depletedRunTime"];
+    private _fatigue = (1 - (_reserve max 0 min 1)) ^ 2.2;
+    private _exposure = (_depletedRunTime / 12) max 0 min 1;
+    [1 + 0.65 * _fatigue, 1 + 0.35 * _exposure, 1 - 0.25 * _fatigue]
 };
 
 GAIT_fnc_stepDownhillTripQualification = {

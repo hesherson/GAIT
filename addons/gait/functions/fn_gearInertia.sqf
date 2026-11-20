@@ -10,6 +10,27 @@ GAIT_fnc_gearWeightAnchors = {
     [0, _first, _second, _third]
 };
 
+GAIT_fnc_patientBurden = {
+    params ["_patientGearLb", "_dragging"];
+    // Effective effort, in kit-equivalent lb. Ground support reduces drag effort.
+    (150 + (_patientGearLb max 0 min 200)) * ([0.45,0.20] select _dragging)
+};
+
+GAIT_fnc_effectiveTravelLoad = {
+    params ["_unit", "_patient", "_dragging", "_dt"];
+    private _base = (_unit getVariable ["ace_movement_totalLoad", loadAbs _unit]) / 10;
+    private _target = 0;
+    if (!isNull _patient && {_patient isKindOf "CAManBase"} && {attachedTo _patient isEqualTo _unit}) then {
+        private _patientKit = (_patient getVariable ["ace_movement_totalLoad", loadAbs _patient]) / 10;
+        _target = [_patientKit, _dragging] call GAIT_fnc_patientBurden;
+    };
+    private _previous = _unit getVariable ["GAIT_patientBurdenLb", 0];
+    private _next = _target + (_previous - _target) * exp (-6 * (_dt max 0 min 0.25));
+    if (abs (_next - _target) < 0.05) then {_next = _target;};
+    _unit setVariable ["GAIT_patientBurdenLb", _next];
+    _base + _next
+};
+
 GAIT_fnc_gearInertia = {
     params [
         ["_gearLbs", 0, [0]],
@@ -51,4 +72,13 @@ GAIT_fnc_sprintAccelerationRamp = {
     ];
     [_baseLerp, (_gearScale max 0.05 min 3) * (_sprintScale max 0.25 min 1)]
         call GAIT_fnc_scaleInertiaRamp
+};
+
+// Full kit retains a deliberate stance change when rested and reaches the
+// slowest allowable cadence only when its reserve is depleted.
+GAIT_fnc_stancePaceCoefficient = {
+    params ["_gearLbs", "_reserve", "_depth"];
+    private _load = ((_gearLbs / 150) max 0 min 1) ^ 1.15;
+    private _fatigue = (1 - (_reserve max 0 min 1)) ^ 1.6;
+    (1 - ((_depth max 0 min 1) * ((0.18 * _load) + ((0.03 + 0.14 * _load) * _fatigue)))) max 0.65
 };

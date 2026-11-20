@@ -20,6 +20,15 @@ private _almostEqual = {
     [abs (_left - _right) < 0.00001, "pace is continuous across configured mass anchors"] call _assert;
 } forEach [35,55,75];
 
+private _travelTime = 0;
+for "_i" from 1 to 160 do {_travelTime = [_travelTime, true, 0.05] call GAIT_fnc_stepLoadPaceTime;};
+[[0, 0] call GAIT_fnc_lightLoadPaceBonus, 0.01, "light kit benefits as soon as movement starts"] call _almostEqual;
+[[4, 0] call GAIT_fnc_lightLoadPaceBonus, 0.014, "light kit advantage eases in with continuous travel"] call _almostEqual;
+[[_travelTime, 0] call GAIT_fnc_lightLoadPaceBonus, 0.018, "full light kit advantage takes eight seconds"] call _almostEqual;
+[[_travelTime, 20] call GAIT_fnc_lightLoadPaceBonus, 0.02, "sustained climbs widen the gap slightly"] call _almostEqual;
+for "_i" from 1 to 40 do {_travelTime = [_travelTime, false, 0.05] call GAIT_fnc_stepLoadPaceTime;};
+[_travelTime, 0, "standing still sheds the additional light kit pace in two seconds"] call _almostEqual;
+
 // Uphill reference angle is a calibration point, not a penalty cap.
 [[5,5,35,0.4] call GAIT_fnc_uphillPaceMultiplier, 1, "grade curve begins at start"] call _almostEqual;
 [[35,5,35,0.4] call GAIT_fnc_uphillPaceMultiplier, 0.6, "reference grade keeps configured penalty"] call _almostEqual;

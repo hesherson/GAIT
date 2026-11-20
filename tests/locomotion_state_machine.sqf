@@ -159,7 +159,7 @@ if (["entering", "AmovPercMevaSlowWpstDf_GAIT", "AmovPercMevaSlowWpstDf_GAIT"] c
     [["AmovPercMrunSrasWrflDf", "Df", false], false],
     [["AmovPercMwlkSrasWrflDf", "Df", true], false],
     [["AmovPercMrunSrasWrflDf", "Dfr", false], true],
-    [["AmovPercMstpSrasWrflDnon_GAITStop", "Dnon", true], false]
+    [["AmovPercMstpSrasWrflDnon", "Dnon", true], false]
 ];
 if ((["AmovPercMevaSrasWrflDf_GAIT_AmovPercMwlkSlowWrflDf_ver2", "SrasWrfl"]
     call GAIT_fnc_locomotionExitBlendPose) isNotEqualTo "SlowWrfl") then {
@@ -360,6 +360,21 @@ private _blendCases = [
         _failures pushBack format ["Blend-name parser %1: expected %2, got %3", _name, _expected, _actual];
     };
 } forEach _blendCases;
+
+{
+    _x params ["_animation", "_pace", "_expected"];
+    if (([_animation, _pace] call GAIT_fnc_riflePoseBlendTarget) isNotEqualTo _expected) then {
+        _failures pushBack format ["Rifle pose blend %1 did not resolve to %2", _animation, _expected];
+    };
+} forEach [
+    ["AmovPercMevaSrasWrflDf_GAIT_AmovPercMevaSlowWrflDf_GAIT", "meva", "SlowWrfl"],
+    ["AmovPknlMevaSlowWrflDfr_GAIT_AmovPknlMevaSrasWrflDfr_GAIT", "meva", "SrasWrfl"],
+    ["AmovPercMstpSlowWrflDnon_AmovPercMstpSrasWrflDnon", "mstp", "SrasWrfl"],
+    ["AmovPercMstpSrasWrflDnon_AmovPknlMstpSlowWrflDnon", "mstp", ""],
+    ["AmovPercMevaSrasWrflDf_GAIT_AmovPercMstpSlowWrflDnon", "meva", ""],
+    ["AmovPercMstpSlowWrflDnon_AmovPercMstpSrasWrflDnon_reload", "mstp", ""],
+    ["AmovPercMstpSrasWrflDnon_AmovPercMstpSrasWpstDnon", "mstp", ""]
+];
 
 if (_failures isEqualTo []) then {
     diag_log format ["GAIT locomotion state machine tests PASS: %1 policy cases; held W/A/D/idle, immediate native-source startup redirect and release direction redirects; blocked/late-entry/medical sequence; %2 blend-name cases.", count _policyCases, count _blendCases];

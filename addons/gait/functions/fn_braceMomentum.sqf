@@ -3,12 +3,12 @@
     an uphill sprint can have a lower coefficient than a flat walk. A prior
     moving sprint therefore protects every brace cause until the player has
     actually stopped, or has settled at walking pace after the grace period.
-    State: [establishedSprint, lastMovingSprintTime, settledTime, stoppedTime].
+    State: [establishedSprint, lastMovingSprintTime, settledTime, stoppedTime, stopRearm].
     This helper has no animation, velocity, fatigue or namespace side effects.
 */
 GAIT_fnc_stepBraceMomentum = {
     params [
-        ["_state", [false, -999, 0, 0], [[]]],
+        ["_state", [false, -999, 0, 0, 0], [[]]],
         ["_continuingSprint", false, [false]],
         ["_contextOk", false, [false]],
         ["_actualSpeedMS", 0, [0]],
@@ -20,22 +20,40 @@ GAIT_fnc_stepBraceMomentum = {
         ["_settleSeconds", 2, [0]],
         ["_coefficientMargin", 0.04, [0]]
     ];
-    if (!_contextOk) exitWith {[[false, -999, 0, 0], false]};
+    if (!_contextOk) exitWith {[[false, -999, 0, 0, 0], false, 0]};
     private _established = _state param [0, false, [false]];
     private _lastMovingSprint = _state param [1, -999, [0]];
     private _settled = _state param [2, 0, [0]];
     private _stopped = _state param [3, 0, [0]];
+    private _stopRearm = 0;
+    if ((count _state) > 4) then {_stopRearm = _state param [4, 0, [0]];};
     private _step = _dt max 0 min 0.20;
     private _moving = _actualSpeedMS > 0.25;
 
-    _stopped = [0, _stopped + _step] select (!_moving);
-    if (_stopped >= 0.15) exitWith {[[false, -999, 0, _stopped min 0.15], false]};
+    if (!_moving) exitWith {
+        _stopped = (_stopped + _step) min 0.75;
+        if (_established) then {
+            // The first 150 ms are free. The next 600 ms gradually restore
+            // both brace duration and depth, even while Turbo is still held.
+            private _progress = ((_stopped - 0.15) / 0.60) max 0 min 1;
+            private _eased = _progress * _progress * (3 - 2 * _progress);
+            _stopRearm = _stopRearm max _eased;
+            if (_stopped >= 0.749999) then {
+                _stopRearm = 1;
+                _established = false;
+                _lastMovingSprint = -999;
+            };
+        };
+        [[_established, _lastMovingSprint, 0, _stopped, _stopRearm],
+            _established && {_stopRearm < 0.000001}, _stopRearm]
+    };
     // Never acquire momentum from the first press or during its brace. The
     // caller requires a continuing sprint and an expired/inactive brace.
-    if (_continuingSprint && {_moving}) then {
+    if (_continuingSprint) then {
         _established = true;
         _lastMovingSprint = _now;
         _settled = 0;
+        _stopRearm = 0;
     } else {
         // W-only movement can be a native jog above 2 m/s, especially with
         // light gear. Rearm against the intended non-sprint coefficient after
@@ -48,13 +66,15 @@ GAIT_fnc_stepBraceMomentum = {
         if (_established && {_atWalkPace} && {(_now - _lastMovingSprint) >= (_graceSeconds max 0)}) then {
             _settled = _settled + _step;
             if (_settled >= (_settleSeconds max 0.05)) then {
+                if (_stopRearm > 0) then {_stopRearm = 1;};
                 _established = false;
                 _lastMovingSprint = -999;
                 _settled = 0;
             };
         } else {_settled = 0;};
     };
-    [[_established, _lastMovingSprint, _settled, _stopped], _established]
+    [[_established, _lastMovingSprint, _settled, 0, _stopRearm],
+        _established && {_stopRearm < 0.000001}, _stopRearm]
 };
 
 // One veto applies to standing, crouch and remembered slope-stop triggers.
@@ -88,8 +108,9 @@ GAIT_fnc_uphillLaunchBraceFactor = {
 // End the planted launch a little sooner without changing the duration
 // settings also used by the uphill sprint-release brake.
 GAIT_fnc_sprintLaunchBraceDuration = {
-    params ["_baseDuration", "_linearExtra", "_uphillExtra"];
-    0.92 * (_baseDuration + (_linearExtra max _uphillExtra))
+    params ["_baseDuration", "_linearExtra", "_uphillExtra", ["_gearAcceleration", 1], ["_burst", false]];
+    private _ordinary = 0.92 * (_baseDuration / (_gearAcceleration max 0.01) + (_linearExtra max _uphillExtra));
+    _ordinary * ([1, 0.5] select _burst)
 };
 
 // Small ordinary-movement step from a true stop. This is deliberately much

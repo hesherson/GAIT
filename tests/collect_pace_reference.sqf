@@ -58,7 +58,8 @@ private _clips = [];
     {
         private _direction = _x;
         {
-            private _clip = "AmovPerc" + _x + _family + _direction;
+            private _nativeFamily = [_family, "SlowWlnr"] select (_family isEqualTo "SrasWlnr" && {_x isEqualTo "Meva"});
+            private _clip = "AmovPerc" + _x + _nativeFamily + _direction;
             private _cfg = configFile >> "CfgMovesMaleSdr" >> "States" >> _clip;
             if (isClass _cfg && {(getText (_cfg >> "file")) isNotEqualTo ""}) then {
                 // name, family, direction, gait column, block speeds, RTM,
@@ -68,7 +69,7 @@ private _clips = [];
             };
         } forEach ["Mwlk", "Mrun", "Meva"];
     } forEach ["Df", "Dfr", "Dr", "Dbr", "Db", "Dbl", "Dl", "Dfl"];
-} forEach ["SrasWrfl", "SlowWrfl", "SrasWpst", "SnonWnon"];
+} forEach ["SrasWrfl", "SlowWrfl", "SrasWpst", "SlowWpst", "SrasWlnr", "SnonWnon"];
 
 private _deadline = diag_tickTime + _duration;
 missionNamespace setVariable ["GAIT_paceReferenceBusyUntil", _deadline + 1];

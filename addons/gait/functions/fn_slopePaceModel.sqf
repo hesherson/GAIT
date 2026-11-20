@@ -36,6 +36,28 @@ GAIT_fnc_continuousLoadMultiplier = {
     _m3 / (1 + ((_extraHeavyPer50Lb max 0) * ((_gearLbs - _heavy) / 50)))
 };
 
+GAIT_fnc_walkingLoadMultiplier = {
+    params ["_weightLbs", "_thresholds", "_paceAnchors", "_extraHeavyPer50Lb"];
+    private _unloaded = (_paceAnchors select 0) max 0.01;
+    ([(_weightLbs min 150), _thresholds, _paceAnchors, _extraHeavyPer50Lb]
+        call GAIT_fnc_continuousLoadMultiplier) / _unloaded
+};
+
+GAIT_fnc_stepLoadPaceTime = {
+    params ["_seconds", "_moving", "_dt"];
+    private _step = _dt max 0 min 0.2;
+    if (_moving) exitWith {(_seconds + _step) min 8};
+    (_seconds - (4 * _step)) max 0
+};
+
+GAIT_fnc_lightLoadPaceBonus = {
+    params ["_movementSeconds", "_gradeDegrees"];
+    private _progress = (_movementSeconds / 8) max 0 min 1;
+    private _climb = (_gradeDegrees / 20) max 0 min 1;
+    private _ease = _progress * _progress * (3 - (2 * _progress));
+    0.01 + (_ease * (0.008 + (0.002 * _climb)))
+};
+
 GAIT_fnc_uphillPaceMultiplier = {
     params [
         ["_gradeDegrees", 0, [0]],

@@ -50,9 +50,9 @@ GAIT_fnc_observePaceCalibration = {
     private _clip = toLower animationState _unit;
     if (_clip isEqualTo "") exitWith {_unit setVariable ["GAIT_paceObservation", []];};
     private _base = (_clip splitString "_") select 0;
-    private _ordinary = (_base select [0,8]) isEqualTo "amovperc" &&
+    private _ordinary = (_base select [0,8]) in ["amovperc", "amovpknl"] &&
         {(_base select [8,4]) in ["mrun", "mwlk", "mtac", "meva", "mspr"]} &&
-        {(_base select [12,8]) in ["sraswrfl", "slowwrfl", "sraswpst", "slowwpst", "snonwnon"]} &&
+        {(_base select [12,8]) in ["sraswrfl", "slowwrfl", "sraswpst", "slowwpst", "snonwnon", "sraswlnr", "slowwlnr"]} &&
         {(_base select [20]) in ["df", "dfl", "dfr"]};
     private _info = [_unit] call GAIT_fnc_readPaceMoveInfo;
     private _coefficient = getAnimSpeedCoef _unit;
@@ -67,7 +67,7 @@ GAIT_fnc_observePaceCalibration = {
     private _eligible = _ordinary && {(_clip find "_amov") < 0} &&
         {(_input select 0) > 0.95} && {call GAIT_fnc_modeAllowsMovement} &&
         {[_unit, false] call GAIT_fnc_nativeMovementEligible} &&
-        {isTouchingGround _unit} && {(stance _unit) isEqualTo "STAND"} &&
+        {isTouchingGround _unit} && {(stance _unit) in ["STAND", "CROUCH"]} &&
         {(_info param [3, 0]) >= 0.99} && {_speed > 0.3} &&
         {abs (((_heading - _priorHeading + 540) mod 360) - 180) < 2} &&
         {(["reload", "melee", "throw"] findIf {(_gesture find _x) >= 0}) < 0} &&
@@ -142,10 +142,13 @@ GAIT_fnc_sameClipPaceReference = {
 };
 
 GAIT_fnc_combatPaceReference = {
-    params ["_unit", "_family", "_direction", "_grade", "_jogClip", "_jogReference"];
-    private _base = "AmovPercMtac" + _family + _direction;
+    params ["_unit", "_family", "_direction", "_grade", "_jogClip", "_jogReference", ["_pose", "Perc"]];
+    private _base = "Amov" + _pose + "Mtac" + _family + _direction;
     private _clips = [_base];
-    if (_family isEqualTo "SlowWrfl") then {_clips pushBack (_base + "_ver2");};
+    if (_family isEqualTo "SlowWrfl" && {!(_pose isEqualTo "Perc" &&
+        {missionNamespace getVariable ["GAIT_animateWalkLoaded", false]})}) then {
+        _clips pushBack (_base + "_ver2");
+    };
     private _states = configFile >> "CfgMovesMaleSdr" >> "States";
     private _jog = _states >> _jogClip;
     private _reference = -1;

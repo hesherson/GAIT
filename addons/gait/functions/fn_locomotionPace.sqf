@@ -47,6 +47,191 @@ GAIT_fnc_paceMSToCoefficient = {
     _speed / _reference
 };
 
+GAIT_fnc_sprintWalkPace = {
+    params ["_startMS", "_walkMS", "_progress"];
+    // Smoothstep starts braking immediately and eases into the walk endpoint.
+    private _t = _progress max 0 min 1;
+    private _weight = _t * _t * (3 - 2 * _t);
+    private _initial = _startMS max _walkMS;
+    _initial + (_walkMS - _initial) * _weight
+};
+
+GAIT_fnc_sprintReleaseSpeed = {
+    params ["_release", "_destinationMS", "_progress"];
+    private _startMS = _release select 1;
+    private _anchor = _release param [3, -1];
+    if (_anchor < 0) exitWith {[_startMS, _destinationMS, _progress] call GAIT_fnc_sprintWalkPace};
+    private _remaining = [1, 0, _progress] call GAIT_fnc_sprintWalkPace;
+    private _initialRemaining = [1, 0, _anchor] call GAIT_fnc_sprintWalkPace;
+    private _weight = (_remaining / (_initialRemaining max 0.000001)) max 0 min 1;
+    _destinationMS + ((_startMS - _destinationMS) * _weight)
+};
+
+GAIT_fnc_rebaseSprintRelease = {
+    params ["_release", "_now", "_speed", "_intoCrouch"];
+    _release params ["_start", "_previousSpeed", "_scale", ["_oldAnchor", -1], ["_shortened", false]];
+    private _progress = [_start, _now, _scale] call GAIT_fnc_sprintWalkProgress;
+    if (_intoCrouch && {!_shortened}) then {
+        // Keep the position on the original ease curve, with 25% less
+        // remaining time. Repeated stance changes never restart the taper.
+        _start = _now - ((_now - _start) * 0.75);
+        _scale = _scale * 0.75;
+        _shortened = true;
+    };
+    [_start, _speed, _scale, _progress, _shortened]
+};
+
+GAIT_fnc_stepSprintReleaseSample = {
+    params ["_previous", "_press", "_now", "_speed", "_applied", "_target"];
+    // A high playback rate left over from the previous gait can briefly
+    // overspeed a new sprint. That excess is never earned release momentum.
+    private _bounded = _speed * ((_target / (_applied max 0.05)) max 0 min 1);
+    _previous params [["_oldPress", -1], ["_since", _now], ["_last", -1], ["_pace", 0]];
+    if (_press isNotEqualTo _oldPress || {_now - _last > 0.20}) exitWith {[_press, _now, _now, _bounded]};
+    private _sample = [_pace, _bounded, 0.30, _now - _last] call GAIT_fnc_stepSpeedCoefficient;
+    [_press, _since, _now, _sample]
+};
+
+GAIT_fnc_sprintReleaseStartSpeed = {
+    params ["_sample", "_press", "_now"];
+    _sample params [["_oldPress", -1], ["_since", _now], ["_last", -1], ["_pace", 0]];
+    if (_oldPress isNotEqualTo _press || {_last - _since < 0.24} ||
+        {_now - _last > 0.20}) exitWith {0};
+    _pace
+};
+
+GAIT_fnc_releaseClipReference = {
+    params ["_unit", "_clip", "_grade"];
+    private _name = toLower _clip;
+    private _divider = _name find "_amov";
+    if (_divider >= 0) then {_name = _name select [_divider + 1];};
+    private _base = (_name splitString "_") param [0, ""];
+    private _states = configFile >> "CfgMovesMaleSdr" >> "States";
+    private _state = _states >> _name;
+    private _reference = [_unit, _name, _grade] call GAIT_fnc_lookupUnitPaceReference;
+    if (_reference > 0) exitWith {_reference};
+    private _root = getArray (_state >> "GAIT_rootTravel");
+    if (_root isEqualTo []) then {_root = getArray (_states >> (_base + "_GAIT") >> "GAIT_rootTravel");};
+    private _distance = _root param [0, 0];
+    private _rtm = _root param [1, ""];
+    private _file = (toLower getText (_state >> "file")) splitString "/\";
+    private _rate = getNumber (_state >> "speed");
+    if (_distance > 0 && {_rtm isNotEqualTo ""} && {(_file param [(count _file) - 1, ""]) isEqualTo _rtm} &&
+        {abs _rate > 0.001}) exitWith {
+        _distance * (if (_rate < 0) then {1 / abs _rate} else {_rate})
+    };
+
+    // Animation replacements with a different RTM use a bounded estimate
+    // until a matching passive measurement is available.
+    private _crouched = (_base select [4, 4]) isEqualTo "pknl";
+    private _sideways = (_base select [20]) in ["dl", "dbl", "db", "dbr", "dr"];
+    switch (_base select [8, 4]) do {
+        case "mwlk": {([1.42, 1.10] select _crouched) * ([1, 0.76] select _sideways)};
+        case "meva";
+        case "mspr": {[5.1, 4.65] select _crouched};
+        default {([3.9, 3.15] select _crouched) * ([1, 0.73] select _sideways)};
+    }
+};
+
+GAIT_fnc_capSprintPace = {
+    params ["_candidate", "_reference", "_clipScale", "_terrain", "_loadScale"];
+    // Bound both fast native weapon clips and an unmeasured animation set.
+    // The downhill envelope still allows the existing 30 km/h ceiling.
+    private _gradeScale = _terrain max 1;
+    private _bonus = _loadScale max 1 min 1.02;
+    private _limited = _candidate min (1.10 * _clipScale * _gradeScale * _bonus);
+    if ([_reference] call GAIT_fnc_paceReferenceValid) then {
+        _limited = _limited min (((6 * _gradeScale * _bonus) min (30 / 3.6)) / _reference);
+    };
+    _limited
+};
+
+GAIT_fnc_weaponStrideScale = {
+    params ["_standardReference", "_weaponReference", ["_fallback", 1]];
+    if (!([_standardReference] call GAIT_fnc_paceReferenceValid) ||
+        {!([_weaponReference] call GAIT_fnc_paceReferenceValid)}) exitWith {_fallback};
+    (_standardReference / _weaponReference) max 0.35 min 1.35
+};
+
+GAIT_fnc_blendedStrideReference = {
+    params ["_source", "_target", "_weight"];
+    private _t = _weight max 0 min 1;
+    _source + ((_target - _source) * _t)
+};
+
+GAIT_fnc_releaseStrideReference = {
+    params ["_unit", "_animation", "_grade"];
+    private _reference = [_unit, _animation, _grade] call GAIT_fnc_releaseClipReference;
+    private _source = _unit getVariable ["GAIT_slopeEntrySource", ""];
+    private _target = _unit getVariable ["GAIT_slopeEntryTarget", ""];
+    if (_source isEqualTo "" || {_target isEqualTo ""} ||
+        {!([_animation, _source, _target] call GAIT_fnc_isLocomotionHandoffBlend)}) exitWith {_reference};
+    private _from = [_unit, _source, _grade] call GAIT_fnc_releaseClipReference;
+    private _to = [_unit, _target, _grade] call GAIT_fnc_releaseClipReference;
+    [_from, _to, (([_unit] call GAIT_fnc_readPaceMoveInfo) param [3, 1])]
+        call GAIT_fnc_blendedStrideReference
+};
+
+GAIT_fnc_releasePlanValid = {
+    params ["_plan", "_now", "_start", "_weapon", "_destination"];
+    (count _plan) isEqualTo 9 && {_now >= (_plan select 0)} && {_now - (_plan select 0) <= 0.20} &&
+        {_start isEqualTo (_plan select 1)} && {_weapon isEqualTo (_plan select 2)} &&
+        {toLower _destination isEqualTo toLower (_plan select 3)}
+};
+
+GAIT_fnc_releasePlaybackRate = {
+    params ["_speed", "_reference", "_animation"];
+    private _name = toLower _animation;
+    private _divider = _name find "_amov";
+    if (_divider >= 0) then {_name = _name select [_divider + 1];};
+    private _pace = _name select [8, 4];
+    private _minimum = 0.2;
+    private _maximum = [1.20, 1.15] select (_pace in ["mwlk", "mtac"]);
+    (_speed / (_reference max 0.1)) max _minimum min _maximum
+};
+
+GAIT_fnc_sprintReleaseCoefficient = {
+    params ["_unit", "_release", "_animation", "_destinationClip", "_grade", "_destinationCoefficient",
+        ["_reference", -1, [0]], ["_plannedSpeed", -1, [0]]];
+    _release params ["_start", "_startMS", ["_slopeScale", 1]];
+    private _progress = [_start, diag_tickTime, _slopeScale] call GAIT_fnc_sprintWalkProgress;
+    private _destinationReference = [_unit, _destinationClip, _grade] call GAIT_fnc_releaseClipReference;
+    private _paceMS = _plannedSpeed;
+    if (_paceMS < 0) then {
+        _paceMS = [_release, _destinationCoefficient * _destinationReference, _progress] call GAIT_fnc_sprintReleaseSpeed;
+    };
+    if (_reference <= 0) then {
+        _reference = [_unit, _animation, _grade] call GAIT_fnc_releaseStrideReference;
+    };
+    // The new clip's root motion can start before its pose blend ends.
+    // In that interval using the outgoing reference underdrives the walk.
+    [_paceMS, _reference, _animation] call GAIT_fnc_releasePlaybackRate
+};
+
+GAIT_fnc_limitStanceTravelSpeed = {
+    params ["_now", "_weapon", "_speed", "_limit"];
+    _limit params [["_until", -1], ["_sameWeapon", ""], ["_previousSpeed", 0]];
+    if (_now <= _until && {_weapon isEqualTo _sameWeapon}) exitWith {_speed min _previousSpeed};
+    _speed
+};
+
+GAIT_fnc_stanceTravelReference = {
+    params ["_unit", "_animation", "_handoff", "_grade"];
+    _handoff params ["_source", "_target"];
+    private _from = [_unit, _source, _grade] call GAIT_fnc_releaseClipReference;
+    // animationState can still report the source on the first blend frame.
+    if ((toLower _animation) isEqualTo (toLower _source)) exitWith {_from};
+    private _to = [_unit, _target, _grade] call GAIT_fnc_releaseClipReference;
+    private _targetSprint = (toLower _target select [8, 4]) in ["meva", "mspr"] ||
+        {"gaitsprint" in (toLower _target splitString "_")};
+    if (_targetSprint) exitWith {
+        // The faster stride may already drive the mixed state while the pose is still blending.
+        if (toLower _animation isEqualTo toLower _target) then {_to} else {_from max _to}
+    };
+    private _weight = (([_unit] call GAIT_fnc_readPaceMoveInfo) param [3, 1]) max 0 min 1;
+    _from + ((_to - _from) * _weight)
+};
+
 GAIT_fnc_locomotionPaceReferences = {
     params [
         ["_profiles", [], [[]]],
@@ -57,7 +242,7 @@ GAIT_fnc_locomotionPaceReferences = {
     _family = toLower _family;
     _direction = toLower _direction;
     _gait = toLower _gait;
-    if !(_family in ["sraswrfl", "slowwrfl", "sraswpst", "slowwpst", "snonwnon"]) exitWith {[]};
+    if !(_family in ["sraswrfl", "slowwrfl", "sraswpst", "slowwpst", "snonwnon", "sraswlnr"]) exitWith {[]};
     if !(_direction in ["df", "dfr", "dr", "dbr", "db", "dbl", "dl", "dfl"]) exitWith {[]};
     private _column = ["walk", "jog", "sprint"] find _gait;
     if (_column < 0) exitWith {[]};

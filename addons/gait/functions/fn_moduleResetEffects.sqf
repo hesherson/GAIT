@@ -24,7 +24,9 @@ if (_targets isEqualTo []) then {
     ["GAIT_resetEffects", ["zeus_module"], _x] call CBA_fnc_targetEvent;
 } forEach _targets;
 
-diag_log format ["[GAIT] Zeus reset module activated for %1 player(s).", count _targets];
+if (missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false]) then {
+    diag_log format ["[GAIT] Zeus reset module activated for %1 player(s).", count _targets];
+};
 
 if (!isNull _logic) then {
     deleteVehicle _logic;

@@ -1,12 +1,12 @@
-// GAIT 1.8.0-alpha29: restore sprint entry and held movement
+// GAIT 1.8.0-alpha74
 class CfgPatches
 {
     class gait
     {
         name = "GAIT";
         version = 1.8;
-        versionStr = "1.8.0-alpha29";
-        versionAr[] = {1,8,0,29};
+        versionStr = "1.8.0-alpha74";
+        versionAr[] = {1,8,0,74};
         author = "mavis";
         url = "";
         requiredVersion = 2.18;
@@ -29,6 +29,7 @@ class Extended_PreStart_EventHandlers
 };
 
 #include "slope_actions.hpp"
+#include "rifle_run.hpp"
 
 class CfgFunctions
 {
@@ -46,11 +47,11 @@ class CfgFunctions
             // REVERT: restore "preInit = 1;" here AND delete the
             // Extended_PreInit_EventHandlers block at the bottom of this file.
             class registerSettings {};
+            class updateRifleRun {};
             class initSprintSystem
             {
                 postInit = 1;
             };
-            class applyPreset {};
             class resetEffects {};
             class moduleResetEffects {};
         };

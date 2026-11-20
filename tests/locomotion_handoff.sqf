@@ -17,7 +17,7 @@ private _failures = [];
 private _sprint = "AmovPercMevaSrasWrflDf_GAIT";
 private _walk = "AmovPercMrunSrasWrflDf";
 private _idle = "AmovPercMstpSrasWrflDnon";
-private _stop = _idle + "_GAITStop";
+private _stop = _idle + "_GAITSprintStop";
 {
     _x params ["_animation", "_source", "_target", "_expected"];
     private _actual = [_animation,_source,_target] call GAIT_fnc_isLocomotionHandoffBlend;
@@ -28,7 +28,7 @@ private _stop = _idle + "_GAITStop";
     [_stop+"_"+_sprint,_stop,_sprint,true],
     [_sprint+"_"+_stop,_sprint,_idle,false],
     [_sprint+"_"+_idle,_sprint,_stop,false],
-    [_sprint+"_"+_walk+"_GAITStop",_sprint,_walk+"_GAITStop",false],
+    [_sprint+"_"+_walk+"_GAITSprintStop",_sprint,_walk+"_GAITSprintStop",false],
     [_sprint+"_"+_idle,_walk+"_"+_sprint,_idle,true],
     [_walk+"_"+_idle,_walk+"_"+_sprint,_idle,true],
     [_sprint+"_"+_walk,_sprint,_idle,false],
@@ -165,6 +165,18 @@ _testUnit setVariable ["GAIT_releaseSinceFeatureTick", false];
 if !(_testUnit getVariable ["GAIT_releaseSinceFeatureTick", false]) then {
     _failures pushBack "A complete Turbo release/re-tap between feature ticks lost its release edge";
 };
+
+{
+    _testUnit setVariable ["GAIT_releasePacePlan", [10,9,"rifle","walk",2,1.4,3.9,0.51,0.37]];
+    if (_x isEqualTo "context reset") then {
+        [_testUnit] call GAIT_fnc_clearLocomotionInputHistory;
+    } else {
+        [_testUnit] call GAIT_fnc_clearSlopeLocomotionState;
+    };
+    if ((_testUnit getVariable ["GAIT_releasePacePlan", []]) isNotEqualTo []) then {
+        _failures pushBack format ["%1 retained a stale speed plan",_x];
+    };
+} forEach ["stance change","weapon change","context reset"];
 
 {missionNamespace setVariable [_x select 0, _x select 1];} forEach _savedGlobals;
 

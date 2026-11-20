@@ -20,11 +20,25 @@ private _retap = [_running select 0, false, true, 3.0, 0.65, 0.86, 11, 0.05, 3, 
 private _brief = [_running select 0, false, true, 0, 0.7, 0.86, 10.05, 0.05, 3, 2, 0.04] call GAIT_fnc_stepBraceMomentum;
 [_brief select 1, "single zero-velocity frame does not erase motion history"] call _assert;
 private _stopState = _running select 0;
-for "_i" from 1 to 4 do {
+private _latchedRearm = 0;
+for "_i" from 1 to 15 do {
     private _stop = [_stopState, false, true, 0, 0.7, 0.86, 10 + _i * 0.05, 0.05, 3, 2, 0.04] call GAIT_fnc_stepBraceMomentum;
     _stopState = _stop select 0;
+    private _rearm = _stop select 2;
+    if (_i <= 3) then {
+        [_stop select 1 && {_rearm < 0.000001}, "150 ms of true stop retain momentum"] call _assert;
+    } else {
+        [_rearm > _latchedRearm, "the brace regains strength gradually after the grace"] call _assert;
+    };
+    if (_i isEqualTo 9) then {
+        [abs (_rearm - 0.5) < 0.00001, "450 ms of true stop rearms half the brace"] call _assert;
+        private _moving = [_stopState, false, true, 1, 0.7, 0.86, 10.50, 0.05, 3, 2, 0.04]
+            call GAIT_fnc_stepBraceMomentum;
+        [(_moving select 2) isEqualTo _rearm, "stepping into a walk preserves the partial rearm until launch"] call _assert;
+    };
+    _latchedRearm = _rearm;
 };
-[!(_stopState select 0), "actual stop clears momentum within the old grace window"] call _assert;
+[!(_stopState select 0) && {_latchedRearm isEqualTo 1}, "750 ms at a stop fully rearms the brace"] call _assert;
 [[true, false, false, false, false, true, true] call GAIT_fnc_shouldBrace, "stopped hill restart can brace again"] call _assert;
 private _settledState = _running select 0;
 for "_i" from 1 to 110 do {
@@ -83,6 +97,9 @@ private _unsafe = [_running select 0, true, false, 5.5, 1.20, 0.86, 11, 0.05, 3,
 [!(_unsafe select 1), "medical/vehicle/disabled context cannot retain motion ownership"] call _assert;
 private _wall = [_empty, true, true, 0, 1.28, 0.86, 11, 0.05, 3, 2, 0.04] call GAIT_fnc_stepBraceMomentum;
 [!(_wall select 1), "held sprint against wall does not earn momentum"] call _assert;
+private _sprintAgain = [_stopState, true, true, 3.5, 0.72, 0.86, 11, 0.05, 3, 2, 0.04]
+    call GAIT_fnc_stepBraceMomentum;
+[_sprintAgain select 1 && {(_sprintAgain select 2) isEqualTo 0}, "continuing sprint after the next brace earns new momentum"] call _assert;
 [!([false, false, true, true, true, true, true] call GAIT_fnc_shouldBrace), "disabled brace stays disabled"] call _assert;
 
 // Positive-grade launch burden is exponential and momentum-protected starts
@@ -114,6 +131,20 @@ private _overRef = [50,false,35] call GAIT_fnc_uphillLaunchBraceFactor;
     [abs (_newDuration - (0.92 * _previousDuration)) < 0.00001,
         "sprint launch ends slightly sooner while preserving the stronger grade contribution"] call _assert;
 } forEach [[0.15,0,0], [0.15,0.18,0.12], [0.15,0.18,0.54], [0,0,0]];
+
+private _lastFlat = 0;
+{
+    private _gear = ([_x] call GAIT_fnc_gearInertia) select 0;
+    private _flat = [0.15,0,0,_gear,false] call GAIT_fnc_sprintLaunchBraceDuration;
+    [_flat > _lastFlat, "heavier kits take longer to plant the launch step"] call _assert;
+    _lastFlat = _flat;
+    {
+        _x params ["_linear","_uphill"];
+        private _normal = [0.15,_linear,_uphill,_gear,false] call GAIT_fnc_sprintLaunchBraceDuration;
+        private _burst = [0.15,_linear,_uphill,_gear,true] call GAIT_fnc_sprintLaunchBraceDuration;
+        [abs (2 * _burst - _normal) < 0.00001, "double tap halves the complete load and grade duration"] call _assert;
+    } forEach [[0,0],[0.18,0],[0.18,0.54]];
+} forEach [0,35,55,75,100,125];
 
 // Ordinary movement from a true stop gets a separate shallow, finite step.
 // Heavier kits are both deeper and longer.

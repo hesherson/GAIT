@@ -4,6 +4,11 @@ private _assert = {
     if (!_condition) then {throw format ["FAIL: %1", _label];};
 };
 private _epsilon = 0.00001;
+private _carryLight = [20,false] call GAIT_fnc_patientBurden;
+private _carryHeavy = [110,false] call GAIT_fnc_patientBurden;
+private _dragHeavy = [110,true] call GAIT_fnc_patientBurden;
+[_carryLight < _carryHeavy && {_dragHeavy < _carryHeavy} && {_dragHeavy > ([20,true] call GAIT_fnc_patientBurden)},
+    "patient kit increases load for both carry and drag with reduced drag effort"] call _assert;
 {
     _x params ["_weight", "_relief"];
     private _response = [_weight] call GAIT_fnc_gearInertia;
@@ -72,4 +77,10 @@ private _sprint95 = _sprintSteps * 0.05;
 [_sprint95 > 4.0 && {_sprint95 < 4.4}, "default sprint acceleration stretches to about 4.1 seconds to 95 percent"] call _assert;
 [_sprint95 > (_generic95 * 1.35), "sprint acceleration is materially slower than generic movement"] call _assert;
 
-diag_log "GAIT TEST PASS: continuous sprint brace relief and load-scaled acceleration.";
+private _stanceRested = [120, 1, 1] call GAIT_fnc_stancePaceCoefficient;
+private _stanceDrained = [120, 0, 1] call GAIT_fnc_stancePaceCoefficient;
+[_stanceRested > 0.85 && {_stanceRested < 0.88}, "120 lb has noticeable stance inertia at full reserve"] call _assert;
+[_stanceDrained < _stanceRested && {_stanceDrained > 0.70}, "fatigue adds a bounded penalty to heavy stance moves"] call _assert;
+[( [200, 0, 1] call GAIT_fnc_stancePaceCoefficient) isEqualTo 0.65, "the heaviest exhausted prone move keeps its 0.65 floor"] call _assert;
+[( [150, 0, 0.85] call GAIT_fnc_stancePaceCoefficient) > 0.65, "crouching carries a smaller penalty than rising from prone"] call _assert;
+diag_log "GAIT TEST PASS: continuous sprint brace relief, load-scaled acceleration and bounded stance pace.";

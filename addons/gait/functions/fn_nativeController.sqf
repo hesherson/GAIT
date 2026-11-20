@@ -9,6 +9,19 @@ GAIT_fnc_readNativeCoefficient = {params ["_unit"]; getAnimSpeedCoef _unit};
 GAIT_fnc_writeNativeCoefficient = {params ["_unit", "_coefficient"]; _unit setAnimSpeedCoef _coefficient;};
 GAIT_fnc_readTemporaryWalkRun = {inputAction "WalkRunTemp" > 0};
 
+GAIT_fnc_nativePaceFloor = {
+    params ["_animation"];
+    private _name = toLower _animation;
+    private _blend = _name find "_amov";
+    if (_blend >= 0) then {_name = _name select [_blend + 1];};
+    if !((_name select [0, 8]) in ["amovperc", "amovpknl", "amovppne"]) exitWith {0};
+    private _pace = _name select [8, 4];
+    private _loweredWalk = _pace isEqualTo "mwlk" &&
+        {(_name select [12, 8]) in ["slowwrfl", "slowwpst", "slowwlnr"]};
+    if (_pace isEqualTo "mtac" || {_loweredWalk}) exitWith {0.89};
+    [0, 0.65] select ((_name select [4, 4]) in ["pknl", "ppne"] && {_pace in ["mrun", "mwlk"]})
+};
+
 GAIT_fnc_nativeWalkRequested = {
     params ["_unit", "_turbo"];
     if (([_unit] call GAIT_fnc_readLocomotionForcedWalk) ||
@@ -59,7 +72,7 @@ GAIT_fnc_releaseNativeWalkPace = {
 // animation. Ordinary blends, reload gestures and brief ground-contact loss
 // must not let AF repeatedly reinstate its slope restriction.
 GAIT_fnc_fatigueMovementContextEligible = {
-    params [["_unit", player, [objNull]]];
+    params [["_unit", player, [objNull]], ["_allowCasualtyCarry", false], ["_allowCasualtyDrag", false]];
     if (isNull _unit || {!local _unit} || {_unit isNotEqualTo player} || {!alive _unit}) exitWith {false};
     if (call GAIT_fnc_isSuspendedContext) exitWith {false};
     if (!isNull (objectParent _unit) || {!isNull (attachedTo _unit)}) exitWith {false};
@@ -70,17 +83,23 @@ GAIT_fnc_fatigueMovementContextEligible = {
         "ACE_isUnconscious",
         "GAIT_isTripping",
         "MAV_fastCarry_pickupActive",
-        "ace_dragging_isDragging",
         "ace_dragging_isDragged",
         "ace_dragging_isCarried",
-        "ace_dragging_isCarrying",
         "ace_common_isClimbing",
         "ace_medical_treatment_inProgress"
     ] findIf {(_unit getVariable [_x, false]) isEqualTo true};
     if (_restricted >= 0) exitWith {false};
     if ((missionNamespace getVariable ["ace_common_isClimbing", false]) isEqualTo true) exitWith {false};
     if ((missionNamespace getVariable ["ace_medical_treatment_inProgress", false]) isEqualTo true) exitWith {false};
-    true
+    if (_unit getVariable ["ace_dragging_isDragging", false]) exitWith {
+        _allowCasualtyDrag && {([_unit, _unit getVariable ["ace_dragging_draggedObject", objNull], animationState _unit, false]
+            call GAIT_fnc_activeCasualtyClip) isEqualTo "drag"}
+    };
+    if !(_unit getVariable ["ace_dragging_isCarrying", false]) exitWith {true};
+    // Stamina and the fatigue bridge can opt in for a confirmed shoulder carry.
+    if (!_allowCasualtyCarry) exitWith {false};
+    private _patient = _unit getVariable ["ace_dragging_carriedObject", objNull];
+    ([_unit, _patient, animationState _unit, true, true] call GAIT_fnc_activeCasualtyClip) isNotEqualTo ""
 };
 
 // Stamina was explicitly suspended by the original 1.6.1 movement controller.
@@ -103,7 +122,7 @@ GAIT_fnc_writeNativeStaminaEnabled = {
 GAIT_fnc_ownsNativeStaminaPolicy = {
     params [["_unit", player, [objNull]]];
     (call GAIT_fnc_modeAllowsMovement) &&
-        {[_unit] call GAIT_fnc_fatigueMovementContextEligible}
+        {[_unit, true] call GAIT_fnc_fatigueMovementContextEligible}
 };
 
 GAIT_fnc_releaseNativeStaminaOwnership = {
@@ -145,9 +164,9 @@ GAIT_fnc_updateNativeStaminaOwnership = {
 
 GAIT_fnc_ownsFatigueMovementPolicy = {
     params [["_unit", player, [objNull]]];
-    (call GAIT_fnc_modeAllowsAceLockClearing) &&
+    (call GAIT_fnc_modeAllowsMovement) &&
     {call GAIT_fnc_aceAdvancedFatigueActive} &&
-    {[_unit] call GAIT_fnc_fatigueMovementContextEligible}
+    {[_unit, true] call GAIT_fnc_fatigueMovementContextEligible}
 };
 
 GAIT_fnc_clearACEAdvancedFatigueMovementLocks = {
@@ -195,9 +214,10 @@ GAIT_fnc_installNativeAceBridge = {
 
 GAIT_fnc_applyNativeMovement = {
     params [["_unit", player, [objNull]], ["_coefficient", 1, [0]], ["_allowCarry", false, [false]],
-        ["_nativeWalk", false, [false]]];
+        ["_nativeWalk", false, [false]], ["_stanceMotion", false, [false]], ["_loadPaceScale", 1, [0]],
+        ["_movingStance", false, [false]]];
     if (_nativeWalk && {!_allowCarry}) exitWith {[_unit] call GAIT_fnc_releaseNativeWalkPace};
-    if !([_unit, _allowCarry] call GAIT_fnc_nativeMovementEligible) exitWith {
+    if !([_unit, _allowCarry, _stanceMotion] call GAIT_fnc_nativeMovementEligible) exitWith {
         [] call GAIT_fnc_releaseNativeMovement;
         _coefficient
     };
@@ -210,10 +230,10 @@ GAIT_fnc_applyNativeMovement = {
 
     // Vegetation contributes to this same write, never a second speed loop.
     private _drag = 0;
-    if (missionNamespace getVariable ["GAIT_ss_vegetationDragEnabled", true]) then {
+    private _maxDrag = (missionNamespace getVariable ["GAIT_ss_vegetationDragMax", 0.18]) max 0 min 0.25;
+    if ((!_stanceMotion || {_movingStance}) && {_maxDrag > 0}) then {
         if (time >= (missionNamespace getVariable ["GAIT_vegNextCheck", -1])) then {
-            private _radius = (missionNamespace getVariable ["GAIT_ss_vegetationDragRadius", 2.5]) max 0.5 min 8;
-            private _maxDrag = (missionNamespace getVariable ["GAIT_ss_vegetationDragMax", 0.18]) max 0 min 0.75;
+            private _radius = 2.5;
             {
                 private _weight = 1 - ((_unit distance2D _x) / _radius) min 1;
                 _drag = _drag + (_maxDrag * 0.55 * _weight);
@@ -221,20 +241,19 @@ GAIT_fnc_applyNativeMovement = {
             missionNamespace setVariable ["GAIT_vegDragFactor", _drag min _maxDrag];
             missionNamespace setVariable ["GAIT_vegNextCheck", time + 0.4];
         };
-        _drag = missionNamespace getVariable ["GAIT_vegDragFactor", 0];
+        _drag = (missionNamespace getVariable ["GAIT_vegDragFactor", 0]) min _maxDrag;
     } else {
-        missionNamespace setVariable ["GAIT_vegDragFactor", 0];
+        if (!_stanceMotion) then {missionNamespace setVariable ["GAIT_vegDragFactor", 0];};
     };
-    if (missionNamespace getVariable ["GAIT_ss_registerAceAnimExclusion", true]) then {
-        if (!isNil "ace_advanced_fatigue_setAnimExclusions") then {
-            ace_advanced_fatigue_setAnimExclusions pushBackUnique "GAIT";
-        };
-    } else {
-        if (!isNil "ace_advanced_fatigue_setAnimExclusions") then {
-            ace_advanced_fatigue_setAnimExclusions = ace_advanced_fatigue_setAnimExclusions - ["GAIT"];
-        };
+    if (!isNil "ace_advanced_fatigue_setAnimExclusions") then {
+        ace_advanced_fatigue_setAnimExclusions pushBackUnique "GAIT";
     };
-    private _final = (_coefficient * (1 - _drag)) max 0.000001;
+    private _floor = [0, 0.65] select _stanceMotion;
+    if (!_allowCarry && {!_stanceMotion}) then {
+        _floor = ([[_unit] call GAIT_fnc_readLocomotionAnimation] call GAIT_fnc_nativePaceFloor) * _loadPaceScale;
+    };
+    _coefficient = _coefficient max _floor;
+    private _final = (_coefficient * (1 - _drag)) max _floor max 0.000001;
     [_unit, _final] call GAIT_fnc_writeNativeCoefficient;
     missionNamespace setVariable ["GAIT_nativeLastWritten", _final];
     missionNamespace setVariable ["GAIT_nativeLastPreVegetation", _coefficient];

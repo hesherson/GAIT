@@ -1,4 +1,4 @@
 name = "GAIT";
 author = "mavis";
-tooltip = "GAIT 1.8.0-alpha29";
+tooltip = "GAIT 1.8.0-alpha74";
 overview = "GAIT movement, terrain, and momentum with ACE fatigue feedback. Requires CBA_A3 and ACE3.";

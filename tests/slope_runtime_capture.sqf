@@ -56,7 +56,7 @@ private _handler = addMissionEventHandler ["EachFrame", {
         call GAIT_fnc_getMovementInput
     };
     private _grade = if (isNil "GAIT_fnc_getTravelSlopeDegrees") then {0} else {
-        [_unit, missionNamespace getVariable ["GAIT_ss_slopeSampleDistance", 2], _input] call GAIT_fnc_getTravelSlopeDegrees
+        [_unit, 2, _input] call GAIT_fnc_getTravelSlopeDegrees
     };
     private _velocity = velocity _unit;
     private _normal = surfaceNormal (getPosWorld _unit);
@@ -82,7 +82,7 @@ private _handler = addMissionEventHandler ["EachFrame", {
         vectorMagnitude _surfaceVelocity,
         _velocity vectorDotProduct _direction,
         _velocity vectorDotProduct _right,
-        (loadAbs _unit) / ((missionNamespace getVariable ["GAIT_ss_loadAbsPerLb", 10]) max 0.01),
+        (loadAbs _unit) / 10,
         isSprintAllowed _unit, isForcedWalk _unit,
         _unit getVariable ["ace_common_effect_blockSprint", 0],
         _unit getVariable ["ace_common_effect_forceWalk", 0],

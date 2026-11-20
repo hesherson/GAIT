@@ -8,11 +8,63 @@ private _assert = {
 
 private _downhillPace = {
     params ["_grade", "_kit", "_momentum"];
-    private _load = [_kit] call GAIT_fnc_continuousLoadMultiplier;
-    private _unloaded = [0] call GAIT_fnc_continuousLoadMultiplier;
-    _load * ([_grade, _kit, _momentum, 0.5, 18, 0.03, 0.14, _load, _unloaded]
-        call GAIT_fnc_downhillPaceMultiplier)
+    [_grade, _kit / 150, _momentum] call GAIT_fnc_downhillPaceMultiplier
 };
+
+{
+    _x params ["_args","_expected"];
+    [(_args call GAIT_fnc_shufflePose) == _expected,"shuffle follows grade and keeps its lead across small fluctuations"] call _assert;
+} forEach [
+    [[23,-0.25,""],"gait_shuffleleft"],
+    [[29,0.25,""],"gait_shufflerightmedium"],
+    [[26,-0.02,"gait_shufflerightmedium"],"gait_shufflerightmedium"],
+    [[36,0.22,"gait_shuffleleftmedium"],"gait_shufflerightsteep"],
+    [[33,-0.05,"gait_shufflerightsteep"],"gait_shufflerightsteep"],
+    [[24,-0.3,"gait_shufflerightsteep"],"gait_shuffleleft"]
+];
+
+private _cross = [0.12,0,0,0.05] call GAIT_fnc_turnDownhillBonus;
+private _climb = [0.12,0,8,0.05] call GAIT_fnc_turnDownhillBonus;
+[_climb > 0 && {_climb < _cross} && {_cross < 0.12}, "cross-slope fades, uphill sheds speed faster"] call _assert;
+private _alternating = 0;
+for "_i" from 1 to 100 do {
+    _alternating = [_alternating, [0,0.06] select (_i mod 2), 0, 0.05] call GAIT_fnc_turnDownhillBonus;
+    [_alternating <= 0.06, "turns cannot stack downhill speed"] call _assert;
+};
+
+private _lightAngles = [0.5, 18];
+private _heavyAngles = _lightAngles call GAIT_fnc_downhillRunAngles;
+[abs ((_heavyAngles select 0) - 0.15) < 0.000001 && {([-0.3, 0, 0] call _downhillPace) isEqualTo 1} &&
+    {([-0.3, 115, 0] call _downhillPace) > 1},
+    "heavy kits start gaining pace sooner while light kits use the selected onset"] call _assert;
+private _lightMomentum = ([-0.3] + _lightAngles) call GAIT_fnc_downhillMomentumTarget;
+private _heavyMomentum = ([-0.3] + _heavyAngles) call GAIT_fnc_downhillMomentumTarget;
+[_lightMomentum isEqualTo 0 && {_heavyMomentum > 0}, "the live momentum curve can build on a shallower descent with heavy gear"] call _assert;
+[ (([-5] + _heavyAngles) call GAIT_fnc_downhillMomentumTarget) >
+    (([-5] + _lightAngles) call GAIT_fnc_downhillMomentumTarget),
+    "heavy kits build a larger share of momentum on a gentle descent"] call _assert;
+
+private _walkFlat = [0, 0.5, 18] call GAIT_fnc_downhillWalkMultiplier;
+private _walkGentle = [-5, 0.5, 18] call GAIT_fnc_downhillWalkMultiplier;
+private _walkModerate = [-10, 0.5, 18] call GAIT_fnc_downhillWalkMultiplier;
+private _walkSteep = [-30, 0.5, 18] call GAIT_fnc_downhillWalkMultiplier;
+[_walkFlat isEqualTo 1 && {([12, 0.5, 18] call GAIT_fnc_downhillWalkMultiplier) isEqualTo 1},
+    "walking bonus applies only to the downhill direction"] call _assert;
+[_walkGentle > 1 && {_walkGentle < _walkModerate} && {_walkModerate < _walkSteep} &&
+    {abs (_walkSteep - 1.10) < 0.000001}, "walk pace rises gradually to a ten percent cap"] call _assert;
+
+{
+    private _clip = _x;
+    private _flat = [0, _clip] call GAIT_fnc_casualtyTerrainMultiplier;
+    private _shallow = [-5, _clip] call GAIT_fnc_casualtyTerrainMultiplier;
+    private _downhill = [-18, _clip] call GAIT_fnc_casualtyTerrainMultiplier;
+    private _climb = [25, _clip] call GAIT_fnc_casualtyTerrainMultiplier;
+    [_flat isEqualTo 1 && {_shallow > _flat} && {_downhill > _shallow} && {_downhill <= 1.10} &&
+        {_climb < _flat}, "casualty movement follows directional grade with a bounded downhill boost"] call _assert;
+} forEach ["carryWalk", "carryRun", "drag"];
+[([-18, "drag"] call GAIT_fnc_casualtyTerrainMultiplier) < ([-18, "carryWalk"] call GAIT_fnc_casualtyTerrainMultiplier) &&
+    {([-18, "carryWalk"] call GAIT_fnc_casualtyTerrainMultiplier) < ([-18, "carryRun"] call GAIT_fnc_casualtyTerrainMultiplier)},
+    "dragging has less downhill assistance than walking or running with a patient"] call _assert;
 
 {
     private _mult = [_x, 0, 1] call GAIT_fnc_downhillPaceMultiplier;
@@ -20,20 +72,20 @@ private _downhillPace = {
 } forEach [90, 35, 1, 0, -0.499, -0.5];
 private _mildEntry = [-2, 0, 0] call GAIT_fnc_downhillPaceMultiplier;
 [_mildEntry > 1 && {_mildEntry < 1.01}, "mild descent gives a small immediate pace gain"] call _assert;
-[([-18, 150, 1, 0.5, 18, 0, 0, 0.72, 1.08] call GAIT_fnc_downhillPaceMultiplier) isEqualTo 1,
+[([-18, 1, 1, 0.5, 18, 0, 0] call GAIT_fnc_downhillPaceMultiplier) isEqualTo 1,
     "configured zero bonuses stay zero at all loads"] call _assert;
-private _entryOnly = [-6, 150, 0, 0.5, 18, 0.03, 0, 0.72, 1.08] call GAIT_fnc_downhillPaceMultiplier;
-[abs (([-6, 150, 1, 0.5, 18, 0.03, 0, 0.72, 1.08] call GAIT_fnc_downhillPaceMultiplier) - _entryOnly) < 0.000001,
-    "disabling sustained boost also removes the sustained load recovery"] call _assert;
+private _entryOnly = [-6, 1, 0, 0.5, 18, 0.03, 0] call GAIT_fnc_downhillPaceMultiplier;
+[abs (([-6, 1, 1, 0.5, 18, 0.03, 0] call GAIT_fnc_downhillPaceMultiplier) - _entryOnly) < 0.000001,
+    "disabling sustained boost prevents it for every kit"] call _assert;
 
 private _moderateLight = [-18, 0, 1] call _downhillPace;
 private _steepLight = [-40, 0, 1] call _downhillPace;
 [_moderateLight > 1.08 && {_steepLight > _moderateLight}, "steeper descent adds more pace"] call _assert;
-private _maximumLight = [-40, 0, 1, 0.5, 18, 0.35, 0.25, 1.08, 1.08] call GAIT_fnc_downhillPaceMultiplier;
-private _maximumLoaded = [-40, 150, 1, 0.5, 18, 0.35, 0.25, 0.72, 1.08] call GAIT_fnc_downhillPaceMultiplier;
-[abs (_maximumLight - 1.18) < 0.000001, "descent remains bounded relative to unloaded flat pace"] call _assert;
-[abs (_maximumLoaded - 1.42) < 0.000001, "very heavy loads have a bounded increase relative to their own flat pace"] call _assert;
-private _customCap = [-60, 0, 1, 0.5, 18, 0.35, 0.25, 1.08, 1.08, 18, 40, 1.08]
+private _maximumLight = [-40, 0, 1, 0.5, 18, 0.35, 0.25] call GAIT_fnc_downhillPaceMultiplier;
+private _maximumLoaded = [-40, 1, 1, 0.5, 18, 0.35, 0.25] call GAIT_fnc_downhillPaceMultiplier;
+[abs (_maximumLight - 1.18) < 0.000001 && {abs (_maximumLoaded - 1.18) < 0.000001},
+    "downhill gravity stays within eighteen percent of each kit's flat target"] call _assert;
+private _customCap = [-60, 0, 1, 0.5, 18, 0.35, 0.25, 1.08]
     call GAIT_fnc_downhillPaceMultiplier;
 [abs (_customCap - 1.08) < 0.000001, "lower configured relative ceiling limits steep descent"] call _assert;
 
@@ -60,8 +112,26 @@ private _mildHeavyMid = [-2, 150, 0.5] call _downhillPace;
 private _mildHeavySustained = [-2, 150, 1] call _downhillPace;
 [_mildHeavyEntry > ([0, 150, 0] call _downhillPace), "heavy kit gets immediate pull on mild downhill"] call _assert;
 [_mildHeavyMid > _mildHeavyEntry && {_mildHeavySustained > _mildHeavyMid}, "mild downhill gradually gains pace"] call _assert;
-[([-18, 75, 1] call _downhillPace) > ([-18, 0, 1] call _downhillPace), "heavy kit can overtake an unloaded runner on a sustained descent"] call _assert;
-[([-60, 150, 1] call _downhillPace) < _steepLight, "very heavy kit cannot gain unbounded speed to reach the unloaded cap"] call _assert;
+{
+    private _movementSeconds = _x;
+    {
+        private _grade = _x;
+        private _lightBonus = [_movementSeconds, _grade] call GAIT_fnc_lightLoadPaceBonus;
+        private _lastPace = 10;
+        private _lastCappedPace = 10;
+        for "_kit" from 0 to 150 step 5 do {
+            private _scale = 1 + ((1 - (_kit / 150)) * _lightBonus);
+            private _gravity = [_grade, _kit, _movementSeconds / 8] call _downhillPace;
+            private _pace = _scale * _gravity;
+            [_pace < _lastPace, "a lighter sprint target stays ahead at equal reserve and travel time"] call _assert;
+            private _cappedPace = [_pace, 10, 30, 1 - (0.025 * _kit / 150)] call GAIT_fnc_capDownhillPace;
+            [_cappedPace < _lastCappedPace && {_cappedPace <= (30 / 36)},
+                "a calibrated ceiling preserves the lighter kit's small advantage"] call _assert;
+            _lastPace = _pace;
+            _lastCappedPace = _cappedPace;
+        };
+    } forEach [20, 0, -0.2, -0.5, -2, -5, -12, -18, -28, -45];
+} forEach [0, 4, 8];
 
 private _sprintClipMS = 7.5;
 private _runClipMS = 4.5;
@@ -165,12 +235,12 @@ for "_i" from 1 to 160 do {
     private _mediumPace = (([-18, 90, _momentum] call _downhillPace) / _flatMedium) min 1.18;
     if (_i isEqualTo 20) then {_oneSecondPace = _mediumPace;};
     if (_i isEqualTo 80) then {_fourSecondPace = _mediumPace;};
-    if (_i isEqualTo 120) then {_lightAfterSixSeconds = ([-18, 0, _momentum] call _downhillPace) / 1.08;};
+    if (_i isEqualTo 120) then {_lightAfterSixSeconds = [-18, 0, _momentum] call _downhillPace;};
 };
 private _eightSecondPace = (([-18, 90, _momentum] call _downhillPace) / _flatMedium) min 1.18;
-private _lightAfterEightSeconds = ([-18, 0, _momentum] call _downhillPace) / 1.08;
-[_oneSecondPace > 1.04 && {_oneSecondPace < 1.07}, "a 90 lb pack still gets a restrained opening second"] call _assert;
-[_fourSecondPace > (_oneSecondPace + 0.09) && {_eightSecondPace > 1.17} && {_eightSecondPace <= 1.18},
+private _lightAfterEightSeconds = [-18, 0, _momentum] call _downhillPace;
+[_oneSecondPace > 1.03 && {_oneSecondPace < 1.06}, "a 90 lb pack still gets a restrained opening second"] call _assert;
+[_fourSecondPace > (_oneSecondPace + 0.065) && {_eightSecondPace > 1.16} && {_eightSecondPace <= 1.18},
     "heavy sprint builds more speed on the same descent then settles inside the cap"] call _assert;
 [_lightAfterEightSeconds > (_lightAfterSixSeconds + 0.01), "an unloaded sprint can still earn pace after six seconds"] call _assert;
 [_momentum > 0.97, "nearby grade changes do not restart the descent timer"] call _assert;

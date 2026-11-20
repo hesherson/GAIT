@@ -36,8 +36,9 @@ SUITES = {
     "native_walk_pace": ("nativeController",),
     "slope_direction": ("slopeLocomotion",),
     "slope_state_selection": ("slopeLocomotion",),
-    "locomotion_pace": ("slopePaceModel", "locomotionPace"),
+    "locomotion_pace": ("slopePaceModel", "traversalHelpers", "locomotionPace"),
     "sprint_reserve": ("sprintReserve",),
+    "burst_sprint": ("traversalHelpers", "slopeLocomotion", "burstSprint", "sprintReserve"),
     "pace_calibration": ("paceCalibration",),
     "gear_inertia": ("gearInertia", "traversalHelpers"),
     "locomotion_coast": ("traversalHelpers", "slopeLocomotion"),
@@ -122,7 +123,10 @@ def main() -> int:
     results = []
     for name in names:
         try:
-            result = run_suite(root, Path(executable).resolve(), output, name, suites[name])
+            helpers = suites[name]
+            if ("slopeLocomotion" in helpers or "sprintReserve" in helpers) and "burstSprint" not in helpers:
+                helpers = ("burstSprint", *helpers)
+            result = run_suite(root, Path(executable).resolve(), output, name, helpers)
         except (OSError, ValueError) as error:
             result = {"suite": name, "status": "FAIL", "diagnostics": [str(error)]}
         results.append(result)

@@ -1,82 +1,65 @@
-"""Check every exposed setting, preset value, retired control and UI range."""
-import json,re,unittest
+"""Guard the public options and prevent retired settings from affecting gameplay."""
+
+import json
+import re
+import unittest
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]
-FUNCTIONS=ROOT/'addons/gait/functions'
-NUMBER=r'-?\d+(?:\.\d+)?'
-def read_settings():
-    s=(FUNCTIONS/'fn_registerSettings.sqf').read_text()
-    rows=[]
-    for m in re.finditer(r'\[\s*"(GAIT_ss_[^"]+)"(.*?)\]\s*call _add(Checkbox|Slider|List);',s,re.S):
-        name,body,kind=m.groups()
-        strings=re.findall(r'"([^"]*)"',body)
-        category=re.search(r'_category(\w+)',body)[1]
-        row=dict(name=name,title=strings[0],description=strings[1],kind=kind,category=category)
-        tail=body[re.search(r'_category\w+',body).end():]
-        if kind=='Slider':
-            values=[float(x) for x in re.findall(NUMBER,tail)]
-            row.update(min=values[0],max=values[1],default=values[2],decimals=int(values[3]))
-        elif kind=='Checkbox':row['default']='true' in tail
-        else:
-            arrays=re.findall(r'\[[^\]]*\]',tail)
-            row['values']=json.loads(arrays[0]);row['labels']=json.loads(arrays[1])
-            index=int(re.findall(NUMBER,tail[tail.rfind(']')+1:])[0]);row['default']=row['values'][index]
-        rows.append(row)
-    return rows
+
+
+ROOT = Path(__file__).resolve().parents[1]
+FUNCTIONS = ROOT / "addons/gait/functions"
+REGISTRY = FUNCTIONS / "fn_registerSettings.sqf"
+REGISTRATION = re.compile(
+    r'\["(GAIT_ss_\w+)", "[^"]+", "[^"]+",\s*'
+    r'_category(Movement|Player),\s*(\[[^\]]+\]|true|false)(?:, (true|false))?'
+    r'\]\s*call _add(Checkbox|Slider);'
+)
+EXPECTED = {
+    "GAIT_ss_enabled": ("Movement", "Checkbox", True, True),
+    "GAIT_ss_sprintWalkTaperDuration": ("Movement", "Slider", True, [2.3, 2.9, 2.7, 1]),
+    "GAIT_ss_masterTripFrequency": ("Movement", "Slider", True, [0, 1.5, 1, 2]),
+    "GAIT_ss_vegetationDragMax": ("Movement", "Slider", True, [0, 0.25, 0.18, 2]),
+    "GAIT_ss_aceHeartbeatVolume": ("Player", "Slider", False, [0, 100, 10, 0]),
+    "GAIT_ss_debugHudEnabled": ("Player", "Checkbox", False, False),
+}
+
+
 class SettingsAudit(unittest.TestCase):
-    def test_registry_unique_and_valid(self):
-        rows=read_settings();self.assertEqual(len(rows),107);self.assertEqual(len({r['name'] for r in rows}),len(rows))
-        for r in rows:
-            if r['kind']=='Slider':self.assertTrue(r['min']<=r['default']<=r['max'],r['name'])
-            if r['kind']=='List':self.assertEqual(len(r['values']),len(r['labels']))
-    def test_each_setting_has_runtime_reader(self):
-        code='\n'.join(p.read_text() for p in FUNCTIONS.glob('*.sqf') if p.name not in ['fn_registerSettings.sqf','fn_applyPreset.sqf'])
-        code=re.sub(r'/\*.*?\*/|//[^\n]*','',code,flags=re.S)
-        for r in read_settings():self.assertIn('"'+r['name']+'"',code,r['name'])
-    def test_retired_settings_are_not_read_or_preset(self):
-        removed=json.loads((ROOT/'tests/settings_removals.json').read_text())
-        code='\n'.join(p.read_text() for p in FUNCTIONS.glob('*.sqf'))
-        for key in removed:self.assertNotIn('"'+key+'"',code)
-    def test_presets_only_use_live_controls_and_valid_values(self):
-        rows={r['name']:r for r in read_settings()}
-        pairs=re.findall(r'\["(GAIT_ss_[^"]+)",\s*('+NUMBER+r'|true|false)\]',(FUNCTIONS/'fn_applyPreset.sqf').read_text())
-        for name,value in pairs:
-            self.assertIn(name,rows)
-            r=rows[name]
-            if r['kind']=='Slider':self.assertTrue(r['min']<=float(value)<=r['max'],name)
-    def test_effective_ranges_and_modes(self):
-        rows={r['name']:r for r in read_settings()}
-        self.assertTrue(rows['GAIT_ss_shiftReleaseRunTaperEnabled']['default'])
-        self.assertEqual(rows['GAIT_ss_shiftReleaseRunTaperDuration']['default'],1.15)
-        self.assertEqual(rows['GAIT_ss_debugHudInterval']['min'],0.05)
-        self.assertEqual(rows['GAIT_ss_exhaustedRunPace']['default'],0.70)
-        self.assertEqual(rows['GAIT_ss_sprintFullSpeed']['default'],1.00)
-        self.assertEqual(rows['GAIT_ss_normalSpeed']['default'],0.90)
-        self.assertEqual(rows['GAIT_ss_flatSprintPeak']['default'],1.14)
-        self.assertEqual(rows['GAIT_ss_sprintReserveMax']['default'],60)
-        self.assertEqual(rows['GAIT_ss_aceHeartbeatVolume']['default'],10)
-        self.assertEqual(rows['GAIT_ss_uphillFatigueDrainStartDegrees']['default'],4)
-        self.assertEqual(rows['GAIT_ss_uphillFatigueDrainMaxMultiplier']['default'],2.10)
-        self.assertEqual(rows['GAIT_ss_downhillSprintCapKmh']['default'],30)
-        self.assertEqual(rows['GAIT_ss_downhillJogCapKmh']['default'],18)
-        self.assertEqual(rows['GAIT_ss_downhillSustainedExtraBoost']['default'],0.14)
-        self.assertEqual(rows['GAIT_ss_downhillMomentumBuildSeconds']['default'],6.5)
-        self.assertEqual(rows['GAIT_ss_compatibilityMode']['values'],[1,4])
-        self.assertEqual(rows['GAIT_ss_compatibilityMode']['labels'],['Movement only','Disabled'])
-        self.assertEqual(rows['GAIT_ss_compatibilityMode']['default'],1)
-        release_desc=rows['GAIT_ss_shiftReleaseRunTaperDuration']['description']
-        self.assertIn('1.15',release_desc)
-        self.assertIn('every movement direction',release_desc)
+    def test_only_supported_settings_are_registered(self):
+        source = REGISTRY.read_text()
+        observed = {}
+        for name, category, values, scope, kind in REGISTRATION.findall(source):
+            self.assertNotIn(name, observed)
+            observed[name] = (category, kind, scope != "false", json.loads(values))
+        self.assertEqual(observed, EXPECTED)
+        self.assertCountEqual(re.findall(r'"(GAIT_ss_\w+)"', source), EXPECTED.keys())
+
+    def test_only_supported_settings_are_read_at_runtime(self):
+        runtime = "\n".join(path.read_text() for path in FUNCTIONS.glob("*.sqf") if path != REGISTRY)
+        self.assertEqual(set(re.findall(r'"(GAIT_ss_\w+)"', runtime)), set(EXPECTED))
+        self.assertNotIn("GAIT_fnc_applyPreset", runtime)
+
+    def test_numeric_values_remain_bounded_with_older_profiles(self):
+        for name, (_, kind, _, values) in EXPECTED.items():
+            if kind != "Slider":
+                continue
+            low, high, default, _ = values
+            pattern = rf'\(missionNamespace getVariable \["{name}", {default}\]\) max {low} min {high}\b'
+            self.assertTrue(any(re.search(pattern, path.read_text()) for path in FUNCTIONS.glob("*.sqf")), name)
+
     def test_cleanup_cannot_be_disabled(self):
-        main=(FUNCTIONS/'fn_initSprintSystem.sqf').read_text()
-        helper=(FUNCTIONS/'fn_traversalHelpers.sqf').read_text()
-        self.assertIn('["player_object_changed"] call GAIT_fnc_resetEffects;',main)
-        self.assertIn('if (_foreignCamera) exitWith {true};',helper)
-        self.assertIn('if (player getVariable ["ACE_isUnconscious", false]) exitWith {true};',helper)
-        self.assertNotIn('GAIT_fnc_isSuspendedContext = {',main)
-        reset=(FUNCTIONS/'fn_resetEffects.sqf').read_text()
-        module=(FUNCTIONS/'fn_moduleResetEffects.sqf').read_text()
-        self.assertIn('GAIT_fnc_clearLocomotionInputHistory',reset)
-        self.assertIn('CBA_fnc_targetEvent',module)
-        self.assertNotIn('remoteExecCall',module)
-if __name__=='__main__':unittest.main()
+        main = (FUNCTIONS / "fn_initSprintSystem.sqf").read_text()
+        helper = (FUNCTIONS / "fn_traversalHelpers.sqf").read_text()
+        self.assertIn('["player_object_changed"] call GAIT_fnc_resetEffects;', main)
+        self.assertIn('if (_foreignCamera) exitWith {true};', helper)
+        self.assertIn('if (player getVariable ["ACE_isUnconscious", false]) exitWith {true};', helper)
+        self.assertNotIn('GAIT_fnc_isSuspendedContext = {', main)
+        reset = (FUNCTIONS / "fn_resetEffects.sqf").read_text()
+        module = (FUNCTIONS / "fn_moduleResetEffects.sqf").read_text()
+        self.assertIn("GAIT_fnc_clearLocomotionInputHistory", reset)
+        self.assertIn("CBA_fnc_targetEvent", module)
+        self.assertNotIn("remoteExecCall", module)
+
+
+if __name__ == "__main__":
+    unittest.main()

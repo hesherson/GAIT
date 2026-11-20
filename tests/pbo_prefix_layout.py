@@ -119,14 +119,18 @@ class PboPrefixLayout(unittest.TestCase):
                 source_prefixes(root)
 
     def test_built_prefix_settings_payload_and_checksum(self):
-        build = ROOT / ".hemttout/build/addons"
+        build = Path(os.environ.get("GAIT_BUILD_PATH", ROOT / ".hemttout/build")) / "addons"
         if not build.exists():
             self.skipTest("Run hemtt build to validate the packed PBO")
-        self.assertEqual({p.name for p in build.glob("*.pbo")}, {"gait_gait.pbo"})
-        properties, contents = read_pbo(build / "gait_gait.pbo")
+        self.assertEqual({p.name for p in build.glob("*.pbo")}, {"gait.pbo"})
+        properties, contents = read_pbo(build / "gait.pbo")
         self.assertEqual(properties["prefix"], "gait")
         self.assertIn("config.bin", contents)
         self.assertIn("acm_heartbeat/config.bin", contents)
+        self.assertIn("nswg2_animations/config.bin", contents)
+        self.assertIn("animate_walk/config.bin", contents)
+        self.assertFalse(any(name.startswith("data/burst_") for name in contents))
+        self.assertNotIn(b"gait_burstrifle", contents["config.bin"].lower())
         self.assertFalse(any(name.startswith("heartbeat/") for name in contents))
         self.assertNotIn("sounds/tinnitus_loop.ogg", contents)
         source_functions = ROOT / "addons/gait/functions"

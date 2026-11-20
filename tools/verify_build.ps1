@@ -71,20 +71,25 @@ $BuildPath = [IO.Path]::GetFullPath($BuildPath)
 $AddonPath = Join-Path $BuildPath 'addons'
 if (-not (Test-Path -LiteralPath $AddonPath -PathType Container)) { throw "Missing built addons folder: $AddonPath" }
 $ActualPbos = @(Get-ChildItem -LiteralPath $AddonPath -Filter '*.pbo' -File)
-if ($ActualPbos.Count -ne 1 -or $ActualPbos[0].Name -ne 'gait_gait.pbo') {
-    throw "Expected only gait_gait.pbo in $AddonPath. Rebuild into a clean output folder."
+if ($ActualPbos.Count -ne 1 -or $ActualPbos[0].Name -ne 'gait.pbo') {
+    throw "Expected only gait.pbo in $AddonPath. Rebuild into a clean output folder."
 }
-$Core = Read-VerifiedPbo (Join-Path $AddonPath 'gait_gait.pbo') 'gait'
-if (-not $Core.Files.ContainsKey('acm_heartbeat\config.bin')) {
-    throw 'Missing the optional ACM heartbeat config from gait_gait.pbo.'
+$Core = Read-VerifiedPbo (Join-Path $AddonPath 'gait.pbo') 'gait'
+foreach ($Config in @('acm_heartbeat\config.bin', 'nswg2_animations\config.bin', 'animate_walk\config.bin')) {
+    if (-not $Core.Files.ContainsKey($Config) -or $Core.Files[$Config].Size -le 0) {
+        throw "Missing optional compatibility config '$Config' from gait.pbo."
+    }
 }
 $RequiredScripts = @(
-    'fn_aceHeartbeatVolume.sqf', 'fn_aceSprintReserveHook.sqf', 'fn_applyPreset.sqf', 'fn_braceMomentum.sqf', 'fn_downhillPace.sqf', 'fn_gearInertia.sqf',
+    'fn_aceHeartbeatVolume.sqf', 'fn_aceSprintReserveHook.sqf', 'fn_braceMomentum.sqf', 'fn_burstSprint.sqf', 'fn_downhillPace.sqf', 'fn_gearInertia.sqf',
     'fn_initSprintSystem.sqf', 'fn_locomotionPace.sqf', 'fn_moduleResetEffects.sqf',
     'fn_nativeController.sqf', 'fn_redirectAceStartup.sqf', 'fn_registerSettings.sqf', 'fn_paceCalibration.sqf', 'fn_resetEffects.sqf',
-    'fn_slopeLocomotion.sqf', 'fn_slopePaceModel.sqf', 'fn_sprintReserve.sqf', 'fn_traversalHelpers.sqf'
+    'fn_slopeLocomotion.sqf', 'fn_slopePaceModel.sqf', 'fn_sprintReserve.sqf', 'fn_traversalHelpers.sqf', 'fn_updateRifleRun.sqf'
 )
 $ExpectedScriptPaths = @($RequiredScripts | ForEach-Object { 'functions\' + $_.ToLowerInvariant() })
+if (@($Core.Files.Keys | Where-Object { $_ -like 'data\burst_*.rtm' }).Count) {
+    throw 'Obsolete custom burst animation in gait.pbo.'
+}
 $BuiltScriptPaths = @($Core.Files.Keys | Where-Object { $_ -like 'functions\*.sqf' })
 if ($BuiltScriptPaths.Count -ne $ExpectedScriptPaths.Count -or
     @($BuiltScriptPaths | Where-Object { $_ -notin $ExpectedScriptPaths }).Count -ne 0) {
@@ -103,6 +108,37 @@ if ($SourceRoot -ne '') {
 }
 $Hasher = [Security.Cryptography.SHA256]::Create()
 try {
+    $RunFiles = @(foreach ($Family in 'rifle_run_standard','rifle_run_compact','rifle_run_roomy','pistol_run','launcher_run') {
+        $motions = @('travel','drive','descent','tired','turn','fatigue_blend','fatigue_return')
+        if ($Family.StartsWith('rifle_')) { $motions += 'upright','lower' }
+        foreach ($motion in $motions) {
+            $maxLevel = if ($Family -eq 'launcher_run' -or $motion -in 'upright','lower') {0} else {6}
+            foreach ($level in 0..$maxLevel) {
+                $suffix = if ($level -eq 0) {''} else {"_h$level"}
+                "${Family}_${motion}${suffix}.rtm"
+                "${Family}_${motion}_inhale${suffix}.rtm"
+            }
+        }
+        if ($Family.StartsWith('rifle_')) {
+            foreach ($pose in 'upright','lower','travel','tired') {"${Family}_catch_${pose}.rtm"; foreach ($q in 0..3) {"${Family}_gather_${pose}_${q}.rtm"}}
+        }
+    })
+    if (@($Core.Files.Keys | Where-Object { $_ -like 'data\*_run_*.rtm' }).Count -ne $RunFiles.Count) {
+        throw 'Unexpected dead-sprint animation inventory.'
+    }
+    $ShuffleFiles = foreach ($side in 'left','right') {
+        foreach ($grade in '','_medium','_steep') {"downhill_shuffle_${side}${grade}.rtm"}
+    }
+    foreach ($File in ($RunFiles + 'normal_brace.rtm' + $ShuffleFiles)) {
+        $Entry = $Core.Files['data\' + $File]
+        if ($null -eq $Entry -or $Entry.Size -le 0) { throw "Missing rifle run animation: $File" }
+        if ($SourceRoot -ne '') {
+            $SourceBytes = [IO.File]::ReadAllBytes((Join-Path $SourceRoot ("addons\gait\data\" + $File)))
+            $SourceHash = [Convert]::ToBase64String($Hasher.ComputeHash($SourceBytes))
+            $BuiltHash = [Convert]::ToBase64String($Hasher.ComputeHash($Core.Bytes, $Entry.Offset, $Entry.Size))
+            if ($SourceHash -cne $BuiltHash) { throw "Built rifle run animation differs from source: $File" }
+        }
+    }
     foreach ($Script in $RequiredScripts) {
         $VirtualPath = 'functions\' + $Script.ToLowerInvariant()
         if (-not $Core.Files.ContainsKey($VirtualPath) -or $Core.Files[$VirtualPath].Size -le 0) {

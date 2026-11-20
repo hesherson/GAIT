@@ -34,6 +34,10 @@ missionNamespace setVariable ["GAIT_lastTripTime", -999];
 // Movement transients must not survive a manual/Zeus/player-context reset.
 missionNamespace setVariable ["GAIT_braceActive", false];
 missionNamespace setVariable ["GAIT_braceEndTime", -1];
+missionNamespace setVariable ["GAIT_stopBraceRearm", 0];
+missionNamespace setVariable ["GAIT_stanceWork", []];
+missionNamespace setVariable ["GAIT_tripDepletedRunTime", 0];
+missionNamespace setVariable ["GAIT_tripFatigueFactors", [1, 1, 1]];
 missionNamespace setVariable ["GAIT_slopeJogOverride", false];
 missionNamespace setVariable ["GAIT_downhillMomentum", 0];
 missionNamespace setVariable ["GAIT_walkStartBraceActive", false];
@@ -53,4 +57,6 @@ if (!isNull player) then {
     };
 };
 
-diag_log format ["[GAIT] Movement reset (%1).", _reason];
+if (missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false]) then {
+    diag_log format ["[GAIT] Movement reset (%1).", _reason];
+};

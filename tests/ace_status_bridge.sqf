@@ -10,18 +10,16 @@ GAIT_testBridgeEvents = [[], []];
 GAIT_testBridgeMasks = [0, 0];
 GAIT_testBridgeEngine = [false, false];
 GAIT_testBridgeDispatches = 0;
-GAIT_testBridgeMode = true;
 GAIT_testBridgeMaster = true;
-GAIT_testBridgeClearSetting = true;
 GAIT_testBridgeActive = true;
 GAIT_testBridgePolicyContext = true;
+GAIT_testBridgeAttachedCarry = false;
 GAIT_testBridgeFrameChecks = 0;
 GAIT_testBridgeEffectsCalls = 0;
 GAIT_testBridgeReasons = ["ace_advanced_fatigue", "ace_medical_fracture", "ace_dragging"];
 
-// Model the existing mode helper's master/mode/clear-setting contract; exercise
-// the real ownership predicate, cleanup helper and event installer below.
-GAIT_fnc_modeAllowsAceLockClearing = {GAIT_testBridgeMaster && GAIT_testBridgeMode && GAIT_testBridgeClearSetting};
+// Substitute the master toggle read and exercise the actual ownership predicate.
+GAIT_fnc_modeAllowsMovement = {GAIT_testBridgeMaster};
 GAIT_fnc_aceAdvancedFatigueActive = {GAIT_testBridgeActive};
 if ([objNull] call GAIT_fnc_fatigueMovementContextEligible) then {
     _failures pushBack "Null unit was eligible to own fatigue movement policy";
@@ -29,7 +27,10 @@ if ([objNull] call GAIT_fnc_fatigueMovementContextEligible) then {
 // SQF-VM has no live player/animation runtime. Replace only the body-context
 // sampler, keeping GAIT's real policy gates. An unsafe animation frame must
 // not be consulted by the fatigue bridge or hand AF ownership back.
-GAIT_fnc_fatigueMovementContextEligible = {GAIT_testBridgePolicyContext};
+GAIT_fnc_fatigueMovementContextEligible = {
+    params ["_unit", ["_allowCasualtyCarry", false]];
+    GAIT_testBridgePolicyContext || {_allowCasualtyCarry && {GAIT_testBridgeAttachedCarry}}
+};
 GAIT_fnc_nativeMovementEligible = {GAIT_testBridgeFrameChecks = GAIT_testBridgeFrameChecks + 1; false};
 // SQF-VM does not implement compileFinal. Compare the original code value to
 // detect any replacement; final-code engine enforcement is covered by Arma.
@@ -144,15 +145,34 @@ if (GAIT_testBridgeEffectsCalls != 1) then {
         };
         [objNull, _effect, "ace_advanced_fatigue", false] call ace_common_fnc_statusEffect_set;
         missionNamespace setVariable [_gate, true];
-    } forEach ["GAIT_testBridgeMaster", "GAIT_testBridgeMode", "GAIT_testBridgeClearSetting", "GAIT_testBridgeActive", "GAIT_testBridgePolicyContext"];
+    } forEach ["GAIT_testBridgeMaster", "GAIT_testBridgeActive", "GAIT_testBridgePolicyContext"];
 } forEach ["blockSprint", "forceWalk"];
 
 if (GAIT_testBridgeFrameChecks != 0) then {
     _failures pushBack "Fatigue ownership consulted transient animation/frame eligibility";
 };
 
+GAIT_testBridgePolicyContext = false;
+GAIT_testBridgeAttachedCarry = true;
+if !([objNull] call GAIT_fnc_ownsNativeStaminaPolicy) then {
+    _failures pushBack "A confirmed shoulder carry did not use GAIT's stamina policy";
+};
+{
+    [objNull, _x, "ace_advanced_fatigue", true] call ace_common_fnc_statusEffect_set;
+    if ((GAIT_testBridgeMasks select _forEachIndex) != 0 || {GAIT_testBridgeEngine select _forEachIndex}) then {
+        _failures pushBack ("Fatigue restriction survived on an attached carry: " + _x);
+    };
+    [objNull, _x, "ace_medical_fracture", true] call ace_common_fnc_statusEffect_set;
+    [objNull, _x, "ace_dragging", true] call ace_common_fnc_statusEffect_set;
+    [objNull, _x, "ace_advanced_fatigue", true] call ace_common_fnc_statusEffect_set;
+    [objNull] call GAIT_fnc_clearACEAdvancedFatigueMovementLocks;
+    if ((GAIT_testBridgeMasks select _forEachIndex) != 6 || {!(GAIT_testBridgeEngine select _forEachIndex)}) then {
+        _failures pushBack ("The carry exception removed a non-fatigue restriction for " + _x);
+    };
+} forEach ["blockSprint", "forceWalk"];
+
 if (_failures isEqualTo []) then {
-    diag_log "GAIT ACE status bridge PASS: initialization order; reset idempotence; effects function preserved; synchronous nested dispatch; medical owner masks; master/mode/AF/context gates; ownership independent of transient animation eligibility.";
+    diag_log "GAIT ACE status bridge PASS: initialization order; reset idempotence; effects function preserved; synchronous nested dispatch; medical owner masks; master/AF/context gates; ownership independent of transient animation eligibility.";
 } else {
     {diag_log ("GAIT ACE status bridge FAIL: " + _x);} forEach _failures;
     throw "GAIT ACE status bridge regression failed";

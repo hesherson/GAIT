@@ -22,14 +22,18 @@ if (isNil "_loop") then {
         _source = (_source select [0, _beforeOffset]) + _capture +
             (_source select [_beforeOffset, _afterOffset - _beforeOffset]) + _filter + (_source select [_afterOffset]);
     } else {
-        diag_log "[GAIT] ACE sprint reserve rules unavailable: installed Advanced Fatigue loop does not match the supported layout.";
+        if (missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false]) then {
+            diag_log "[GAIT] ACE sprint reserve rules unavailable: installed Advanced Fatigue loop does not match the supported layout.";
+        };
     };
     private _effectsCall = '\bcall\s+ace_advanced_fatigue_fnc_handleEffects\s*;/gi';
     private _effectsSupported = count (_source regexFind [_effectsCall]) isEqualTo 1;
     if (_effectsSupported) then {
         _source = _source regexReplace [_effectsCall, 'call _gaitRunFatigueEffects;'];
     } else {
-        diag_log "[GAIT] ACE fatigue movement guard unavailable: installed Advanced Fatigue loop does not match the supported effects call.";
+        if (missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false]) then {
+            diag_log "[GAIT] ACE fatigue movement guard unavailable: installed Advanced Fatigue loop does not match the supported effects call.";
+        };
     };
     if (_supported || {_effectsSupported}) then {
         _loop = compileFinal _source;
@@ -59,7 +63,9 @@ private _gaitRunFatigueEffects = {
         if (_matches isNotEqualTo []) then {
             _guarded = compileFinal (_source regexReplace [_fatigueLock, "false"]);
         } else {
-            diag_log "[GAIT] ACE fatigue movement guard unavailable: installed Advanced Fatigue effects do not match the supported lock layout.";
+            if (missionNamespace getVariable ["GAIT_ss_debugHudEnabled", false]) then {
+                diag_log "[GAIT] ACE fatigue movement guard unavailable: installed Advanced Fatigue effects do not match the supported lock layout.";
+            };
         };
         _cache = [_original, _guarded];
         missionNamespace setVariable ["GAIT_aceFatigueEffectsCache", _cache];

@@ -18,10 +18,13 @@ function Test-SameOrChildPath([string]$Path, [string]$Parent) {
 function Assert-DeployTarget([string]$Path) {
     $existing = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
     if ($null -eq $existing) { return }
+    $addons = Join-Path $Path 'addons'
+    $currentPbo = Test-Path -LiteralPath (Join-Path $addons 'gait.pbo') -PathType Leaf
+    $legacyPbo = Test-Path -LiteralPath (Join-Path $addons 'gait_gait.pbo') -PathType Leaf
     if ($existing -isnot [IO.DirectoryInfo] -or
         ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
-        !(Test-Path -LiteralPath (Join-Path $Path 'addons/gait_gait.pbo') -PathType Leaf)) {
-        throw "DeployPath must be a new directory or an existing GAIT mod directory containing addons/gait_gait.pbo. Checked $Path."
+        !($currentPbo -or $legacyPbo)) {
+        throw "DeployPath must be a new directory or an existing GAIT mod directory. Checked $Path."
     }
 }
 

@@ -79,4 +79,12 @@ private _customGate = [[10, -1], 18, true, false, 26, 40, 25, 7] call GAIT_fnc_s
 private _belowCustomGate = [_customGate, 18.1, true, false, 24.9, 40, 25, 7] call GAIT_fnc_stepDownhillTripQualification;
 [_belowCustomGate isEqualTo [-1, -1, 0, 0], "earned coast qualification ends below actual configured minimum"] call _assert;
 
-diag_log format ["GAIT TEST PASS: downhill velocity risk, smooth threshold, no speed plateau, timestep probability and release qualification (%1 checks)", _checks];
+private _fresh = [1, 0] call GAIT_fnc_downhillTripFatigueFactors;
+private _drained = [0, 0] call GAIT_fnc_downhillTripFatigueFactors;
+private _overrun = [0, 12] call GAIT_fnc_downhillTripFatigueFactors;
+[_fresh isEqualTo [1,1,1] && {(_drained select 0) > 1.6}, "empty reserve is the dominant extra risk factor"] call _assert;
+[(_overrun select 1) > 1.3 && {(_drained select 2) isEqualTo 0.75}, "depleted running adds risk even at a lower pace"] call _assert;
+[([11.9, 0, true, true, 0.2] call GAIT_fnc_stepDepletedRunTime) isEqualTo 12, "depleted running exposure caps at 12 seconds"] call _assert;
+[([10, 0, false, true, 0.25] call GAIT_fnc_stepDepletedRunTime) isEqualTo 9.5, "exposure decays after running ends"] call _assert;
+[([10, 0.1, true, true, 0.1] call GAIT_fnc_stepDepletedRunTime) isEqualTo 0, "reserve recovery resets depleted running exposure"] call _assert;
+diag_log format ["GAIT TEST PASS: downhill speed, fatigue, depleted running, timestep probability and release qualification (%1 checks)", _checks];
